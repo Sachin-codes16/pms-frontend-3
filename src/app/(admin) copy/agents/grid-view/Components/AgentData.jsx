@@ -1,4 +1,4 @@
-import IconifyIcon from '@/components/wrappers/IconifyIcon';
+﻿import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { Link } from 'react-router-dom';
 import { Button, Card, CardBody, CardFooter, Col, Row } from 'react-bootstrap';
 import { useEffect, useState } from 'react';
@@ -69,7 +69,7 @@ const TenantCard = ({ lead, assignmentMap }) => {
   const assignedCount = assignmentMap[lead?.leadId] ?? 0;
   const fullName = `${lead?.firstName || ''} ${lead?.lastName || ''}`.trim();
   const avatar = lead?.profileImage
-    ? `https://essdemo.alwijha.net/media/${lead.profileImage}`
+    ? `https://alw.checkour.work/media/${lead.profileImage}`
     : null;
   const phone = lead?.phoneNumber || lead?.phone_number || '';
   const address = [lead?.address, lead?.city, lead?.country].filter(Boolean).join(', ');

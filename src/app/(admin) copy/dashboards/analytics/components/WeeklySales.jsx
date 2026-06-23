@@ -1,4 +1,4 @@
-// src/app/(admin)/dash/an/components/WeeklySales.jsx
+﻿// src/app/(admin)/dash/an/components/WeeklySales.jsx
 
 import ReactApexChart from 'react-apexcharts';
 import { useNavigate } from 'react-router-dom';
@@ -12,7 +12,7 @@ const PLACEHOLDER_IMG =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='220' viewBox='0 0 400 220'%3E%3Crect width='400' height='220' fill='%23eef2f7'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='14' fill='%23aab8c5'%3ENo Image%3C/text%3E%3C/svg%3E";
 
 // ── Base URL for media files ──────────────────────────────────────────────────
-const MEDIA_BASE = 'https://essdemo.alwijha.net';
+const MEDIA_BASE = 'https://alw.checkour.work';
 
 // ── Helper: convert relative path → full URL ─────────────────────────────────
 function resolvePhotoUrl(raw) {

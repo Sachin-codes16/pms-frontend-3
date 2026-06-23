@@ -1,7 +1,26 @@
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Card, CardBody, Col, Row } from "react-bootstrap";
 import { Link, useLocation } from "react-router-dom";
+import { toast } from "react-toastify";
+import Spinner from "@/components/Spinner";
+import useCheckIn from "@/hooks/useCheckIn";
+
+// GET /checkin-checkout/check_in/get/ nests these under
+// propertyDetails.{basicInformation,rentalAndFinancialDetails}.
+const FIELD_PATHS = {
+  property_type: ["propertyDetails", "basicInformation", "propertyType"],
+  property_code: ["propertyDetails", "basicInformation", "propertyCode"],
+  monthly_rent: ["propertyDetails", "rentalAndFinancialDetails", "monthlyRent"],
+  security_deposit: ["propertyDetails", "rentalAndFinancialDetails", "securityDeposit"],
+  maintenance_charges: ["propertyDetails", "rentalAndFinancialDetails", "maintenance"],
+};
+
+const SECTION_FIELDS = {
+  property_details: ["property_type", "property_code", "building_name", "unit_number", "floor_number", "property_status"],
+  rental_details: ["monthly_rent", "security_deposit", "advance_rent_received", "first_month_rent_paid", "payment_mode", "maintenance_charges"],
+  comments: ["notes_or_comment"],
+};
 
 const fieldStyle = {
   background: "#f9f9fc",
@@ -31,27 +50,29 @@ const sectionTitleStyle = {
   scrollMarginTop: 110,
 };
 
-const FormField = ({ label, placeholder, as = "input", children }) => (
+const FormField = ({ label, name, placeholder, as = "input", defaultValue, children }) => (
   <div>
     <label style={labelStyle}>{label}</label>
     {as === "select" ? (
-      <select style={fieldStyle} defaultValue="">
+      <select style={fieldStyle} name={name} defaultValue={defaultValue ?? ""}>
         <option value="" disabled>
           {placeholder}
         </option>
         {children}
       </select>
     ) : (
-      <input style={fieldStyle} placeholder={placeholder} />
+      <input style={fieldStyle} name={name} placeholder={placeholder} defaultValue={defaultValue} />
     )}
   </div>
 );
 
-const TextAreaField = ({ label, placeholder }) => (
+const TextAreaField = ({ label, name, placeholder, defaultValue }) => (
   <div>
     <label style={labelStyle}>{label}</label>
     <textarea
+      name={name}
       placeholder={placeholder}
+      defaultValue={defaultValue}
       style={{
         ...fieldStyle,
         minHeight: 94,
@@ -83,12 +104,63 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
     ? "/check-out-dashboard"
     : "/check-in-dashboard";
 
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");
+
+  const { item, loading, updateSections, fetchItem } = useCheckIn({ id });
+  const formRef = useRef(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const getValue = (name) => {
+    const path = FIELD_PATHS[name];
+    const value = path?.reduce((acc, key) => acc?.[key], item);
+    return value === null || value === undefined ? "" : value;
+  };
+
   useEffect(() => {
     if (!location.hash) return;
 
     const section = document.getElementById(location.hash.slice(1));
     section?.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [location.hash]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formRef.current) return;
+    if (!id) {
+      alert('Cannot submit: no check-in id in the URL (open this page via "Edit Details" on an existing check-in, not a fresh "Create Check-Ins").');
+      return;
+    }
+    const formData = new FormData(formRef.current);
+    const values = {};
+    for (const [k, v] of formData.entries()) {
+      if (v === "") continue;
+      values[k] = v;
+    }
+    const sections = {};
+    for (const [sectionKey, fields] of Object.entries(SECTION_FIELDS)) {
+      const body = {};
+      for (const field of fields) {
+        if (values[field] !== undefined) body[field] = values[field];
+      }
+      if (Object.keys(body).length > 0) sections[sectionKey] = body;
+    }
+    try {
+      setSubmitting(true);
+      await updateSections(id, sections);
+      await fetchItem();
+      setSubmitting(false);
+      toast.success("Property details updated successfully");
+      alert("Property details updated successfully.");
+    } catch (err) {
+      setSubmitting(false);
+      console.error("Property details submit failed", err);
+      const res = err?.response?.data;
+      const message = res ? JSON.stringify(res) : err?.message || "Something went wrong";
+      toast.error(message);
+      alert(message);
+    }
+  };
 
   return (
     <div>
@@ -117,6 +189,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
         </h4>
       </div>
 
+      <form ref={formRef} onSubmit={handleSubmit}>
       <Row className="g-4 align-items-start">
         <Col xs={12} lg={3}>
           <Card
@@ -127,19 +200,27 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
             }}
           >
             <CardBody style={{ padding: 24 }}>
-              <h5
-                className="mb-2"
-                style={{ color: "#526b89", fontSize: 18, fontWeight: 700 }}
-              >
-                Ali Z Shaikh
-              </h5>
-              <div
-                className="d-flex flex-wrap gap-3 mb-4"
-                style={{ color: "#526b89", fontSize: 14 }}
-              >
-                <span>alishaikh@domain.com</span>
-                <span>+91 102345XX89</span>
-              </div>
+              {loading ? (
+                <div style={{ padding: 24, display: "flex", justifyContent: "center" }}>
+                  <Spinner />
+                </div>
+              ) : (
+                <>
+                  <h5
+                    className="mb-2"
+                    style={{ color: "#526b89", fontSize: 18, fontWeight: 700 }}
+                  >
+                    {item?.tenantDetails?.personalDetails?.tenantName || "Ali Z Shaikh"}
+                  </h5>
+                  <div
+                    className="d-flex flex-wrap gap-3 mb-4"
+                    style={{ color: "#526b89", fontSize: 14 }}
+                  >
+                    <span>{item?.tenantDetails?.contactDetails?.tenantEmail || "alishaikh@domain.com"}</span>
+                    <span>{item?.tenantDetails?.contactDetails?.tenantMobileNumber || "+91 102345XX89"}</span>
+                  </div>
+                </>
+              )}
 
               <Row className="g-3 mb-4">
                 <Col xs={6}>
@@ -225,7 +306,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   Cancel
                 </Button>
                 <Button
-                  type="button"
+                  type="submit"
+                  disabled={submitting}
                   className="w-50"
                   style={{
                     background: "#526b89",
@@ -234,7 +316,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     height: 40,
                   }}
                 >
-                  Submit
+                  {submitting ? "Saving..." : "Submit"}
                 </Button>
               </div>
             </CardBody>
@@ -272,6 +354,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   <Col md={4}>
                     <FormField
                       label="Property Type"
+                      name="property_type"
+                      defaultValue={getValue("property_type")}
                       placeholder="Select Type"
                       as="select"
                     >
@@ -282,29 +366,38 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     </FormField>
                   </Col>
                   <Col md={4}>
-                    <FormField label="Property Code" placeholder="PRX123456" />
+                    <FormField
+                      label="Property Code"
+                      name="property_code"
+                      defaultValue={getValue("property_code")}
+                      placeholder="PRX123456"
+                    />
                   </Col>
                   <Col md={4}>
                     <FormField
                       label="Building Name"
+                      name="building_name"
                       placeholder="Building Name"
                     />
                   </Col>
                   <Col md={4}>
                     <FormField
                       label="Flat / Unit Number"
+                      name="unit_number"
                       placeholder="Unit Number"
                     />
                   </Col>
                   <Col md={4}>
                     <FormField
                       label="Floor Number"
+                      name="floor_number"
                       placeholder="Floor Number"
                     />
                   </Col>
                   <Col md={4}>
                     <FormField
                       label="Property Status"
+                      name="property_status"
                       placeholder="Select Status"
                       as="select"
                     >
@@ -321,26 +414,39 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                 </h5>
                 <Row className="g-4 mb-4">
                   <Col md={4}>
-                    <FormField label="Monthly Rent" placeholder="Amount" />
+                    <FormField
+                      label="Monthly Rent"
+                      name="monthly_rent"
+                      defaultValue={getValue("monthly_rent")}
+                      placeholder="Amount"
+                    />
                   </Col>
                   <Col md={4}>
-                    <FormField label="Security Deposit" placeholder="Amount" />
+                    <FormField
+                      label="Security Deposit"
+                      name="security_deposit"
+                      defaultValue={getValue("security_deposit")}
+                      placeholder="Amount"
+                    />
                   </Col>
                   <Col md={4}>
                     <FormField
                       label="Advance Rent Received"
+                      name="advance_rent_received"
                       placeholder="Amount"
                     />
                   </Col>
                   <Col md={4}>
                     <FormField
                       label="First Month Rent Paid"
+                      name="first_month_rent_paid"
                       placeholder="Amount"
                     />
                   </Col>
                   <Col md={4}>
                     <FormField
                       label="Payment Mode"
+                      name="payment_mode"
                       placeholder="Select Mode"
                       as="select"
                     >
@@ -353,6 +459,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   <Col md={4}>
                     <FormField
                       label="Maintenance Charges"
+                      name="maintenance_charges"
+                      defaultValue={getValue("maintenance_charges")}
                       placeholder="Amount"
                     />
                   </Col>
@@ -365,6 +473,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   <Col md={12}>
                     <TextAreaField
                       label="Notes Or Comment"
+                      name="notes_or_comment"
                       placeholder="...."
                     />
                   </Col>
@@ -410,7 +519,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     Cancel
                   </Button>
                   <Button
-                    type="button"
+                    type="submit"
+                    disabled={submitting}
                     style={{
                       background: "#526b89",
                       borderColor: "#526b89",
@@ -419,7 +529,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       height: 45,
                     }}
                   >
-                    Submit
+                    {submitting ? "Saving..." : "Submit"}
                   </Button>
                 </div>
               </div>
@@ -427,6 +537,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
           </Card>
         </Col>
       </Row>
+      </form>
     </div>
   );
 };

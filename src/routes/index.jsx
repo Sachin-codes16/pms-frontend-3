@@ -1,5 +1,6 @@
 import React from "react";
 import { lazy } from "react";
+import { useAuthContext } from "@/context/useAuthContext";
 
 // --- Sidebar Routes ---
 const Dashboard = lazy(
@@ -79,11 +80,16 @@ const ProfileSettingPage = lazy(
 const SignInPage = lazy(() => import("@/app/auth/sign-in/page.jsx"));
 const SignUpPage = lazy(() => import("@/app/auth/sign-up/page.jsx"));
 
+const RootRoute = () => {
+  const { isAuthenticated } = useAuthContext();
+  return isAuthenticated ? <Navigate to="/dashboards" /> : <Navigate to="/auth/sign-in" />;
+};
+
 const initialRoutes = [
   {
     path: "/",
     name: "root",
-    element: <Navigate to="/auth/sign-in" />,
+    element: <RootRoute />,
   },
 ];
 
@@ -187,4 +193,4 @@ export const authRoutes = [
   { name: "Coming Soon", path: "/coming-soon", element: <ComingSoon /> },
 ];
 
-export const appRoutes = [...initialRoutes, ...routes, ...authRoutes];
+export const appRoutes = [...initialRoutes, ...routes];

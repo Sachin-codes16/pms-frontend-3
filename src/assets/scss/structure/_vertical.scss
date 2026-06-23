@@ -68,7 +68,8 @@
           padding-bottom: $spacer;
 
           .scrollbar {
-               height: calc(100% - 136px);
+               height: auto;
+               max-height: calc(100% - 136px);
           }
 
 
@@ -84,6 +85,7 @@
                padding: $main-nav-item-padding-y calc($main-nav-item-padding-x * 1.25);
                transition: all 0.3s ease-in-out;
                height: 36px;
+               margin-top: 6px;
           }
 
           .navbar-nav {

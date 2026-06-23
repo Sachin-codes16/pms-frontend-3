@@ -1,12 +1,188 @@
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import { useEffect, useRef, useState } from "react";
 import { Button, Card, CardBody, Col, Row } from "react-bootstrap";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import Spinner from "@/components/Spinner";
 import useCheckIn from "@/hooks/useCheckIn";
 
-// Paste your API base endpoint here if different, e.g. '/api/check-ins'
-const API_ENDPOINT = "/check-ins";
+// Fields the API expects as a number rather than a string.
+const NUMERIC_FIELDS = [
+  "property_id",
+  "property_assignment_id",
+  "tenant_id",
+  "assigned_employee_id",
+  "recommended_by_id",
+  "approved_by_id",
+  "number_of_occupants",
+];
+
+// GET /checkin-checkout/check_in/get/ returns camelCase keys; the form
+// fields (and create/update payloads) use snake_case. This maps form
+// field name -> response key so fetched records can prefill the form.
+const FIELD_MAP = {
+  property_id: "propertyId",
+  property_assignment_id: "propertyAssignmentId",
+  check_in_date: "checkInDate",
+  check_in_status: "checkInStatus",
+  assigned_employee_id: "assignedEmployeeId",
+  remarks_notes: "remarksNotes",
+  tenant_id: "tenantId",
+  tenant_code: "tenantCode",
+  tenant_name: "tenantName",
+  tenant_type: "tenantType",
+  tenant_mobile_number: "tenantMobileNumber",
+  tenant_email: "tenantEmail",
+  tenant_civil_id: "tenantCivilId",
+  tenant_passport_number: "tenantPassportNumber",
+  tenant_nationality: "tenantNationality",
+  date_of_birth: "dateOfBirth",
+  gender: "gender",
+  marital_status: "maritalStatus",
+  alternate_mobile_number: "alternateMobileNumber",
+  emergency_contact_name: "emergencyContactName",
+  emergency_contact_number: "emergencyContactNumber",
+  profession: "profession",
+  company_name: "companyName",
+  move_in_reason: "moveInReason",
+  number_of_occupants: "numberOfOccupants",
+  property_type: "propertyType",
+  property_code: "propertyCode",
+  building_name: "buildingName",
+  flat_unit_number: "flatUnitNumber",
+  floor_number: "floorNumber",
+  property_status: "propertyStatus",
+  monthly_rent: "monthlyRent",
+  security_deposit: "securityDeposit",
+  advance_rent_received: "advanceRentReceived",
+  first_month_rent_paid: "firstMonthRentPaid",
+  payment_mode: "paymentMode",
+  maintenance_charges: "maintenanceCharges",
+  inspection_required: "inspectionRequired",
+  inspection_date: "inspectionDate",
+  technician_type: "technicianType",
+  manager_approval: "managerApproval",
+  issue_identified: "issueIdentified",
+  supervisor_remarks: "supervisorRemarks",
+  inspection_type: "inspectionType",
+  inspection_duration: "inspectionDuration",
+  next_inspection_due: "nextInspectionDue",
+  repair_required: "repairRequired",
+  quotation_amount: "quotationAmount",
+  inventory_available: "inventoryAvailable",
+  gm_approval: "gmApproval",
+  landlord_consent: "landlordConsent",
+  finance_alert_generated: "financeAlertGenerated",
+  rent_adjustment_amount: "rentAdjustmentAmount",
+  recommended_by_id: "recommendedById",
+  approved_by_id: "approvedById",
+  approved_on: "approvedOn",
+  inspector_comments: "inspectorComments",
+  electricity_meter_reading: "electricityMeterReading",
+  water_meter_reading: "waterMeterReading",
+  gas_meter_reading: "gasMeterReading",
+  agreement_type: "agreementType",
+  agreement_status: "agreementStatus",
+  agreement_start_date: "agreementStartDate",
+  agreement_end_date: "agreementEndDate",
+  agreement_document: "agreementDocument",
+  internal_comments: "internalComments",
+  tenant_remarks: "tenantRemarks",
+  special_instructions: "specialInstructions",
+};
+
+// Maps each section to its dedicated PATCH endpoint
+// (/checkin-checkout/check_in/update/<key>/). There's no single
+// whole-record update endpoint — every section saves independently.
+const SECTION_FIELD_MAP = {
+  information: [
+    "assigned_employee_id",
+    "check_in_date",
+    "check_in_status",
+    "remarks_notes",
+  ],
+  tenant_details: [
+    "tenant_code",
+    "tenant_name",
+    "tenant_type",
+    "tenant_mobile_number",
+    "tenant_email",
+    "tenant_civil_id",
+    "tenant_passport_number",
+    "tenant_nationality",
+    "date_of_birth",
+    "gender",
+    "marital_status",
+    "alternate_mobile_number",
+    "emergency_contact_name",
+    "emergency_contact_number",
+    "profession",
+    "company_name",
+    "move_in_reason",
+    "number_of_occupants",
+  ],
+  property_details: [
+    "property_type",
+    "property_code",
+    "building_name",
+    "flat_unit_number",
+    "floor_number",
+    "property_status",
+  ],
+  rental_details: [
+    "monthly_rent",
+    "security_deposit",
+    "advance_rent_received",
+    "first_month_rent_paid",
+    "payment_mode",
+    "maintenance_charges",
+  ],
+  property_inspection: [
+    "inspection_required",
+    "inspection_date",
+    "technician_type",
+    "manager_approval",
+    "issue_identified",
+    "supervisor_remarks",
+    "inspection_type",
+    "inspection_duration",
+    "next_inspection_due",
+  ],
+  repair_approval: [
+    "repair_required",
+    "quotation_amount",
+    "inventory_available",
+    "gm_approval",
+    "landlord_consent",
+    "finance_alert_generated",
+    "rent_adjustment_amount",
+    "recommended_by_id",
+    "approved_by_id",
+    "approved_on",
+    "inspector_comments",
+  ],
+  utility_meter_readings: [
+    "electricity_meter_reading",
+    "water_meter_reading",
+    "gas_meter_reading",
+  ],
+  agreement_details: [
+    "agreement_type",
+    "agreement_status",
+    "agreement_start_date",
+    "agreement_end_date",
+    "agreement_document",
+  ],
+  key_handover: [
+    "key_number",
+    "key_available",
+    "key_booking_date",
+    "confirmation_received",
+    "key_delivery_date",
+    "key_handover_status",
+  ],
+  comments: ["internal_comments", "tenant_remarks", "special_instructions"],
+};
 
 const fieldStyle = {
   background: "#f9f9fc",
@@ -36,26 +212,41 @@ const sectionTitleStyle = {
   scrollMarginTop: 110,
 };
 
-const FormField = ({ label, placeholder, as = "input", children }) => (
+const FormField = ({
+  label,
+  name,
+  placeholder,
+  as = "input",
+  type = "text",
+  defaultValue,
+  children,
+}) => (
   <div>
     <label style={labelStyle}>{label}</label>
     {as === "select" ? (
-      <select style={fieldStyle} defaultValue="">
+      <select style={fieldStyle} name={name} defaultValue={defaultValue ?? ""}>
         <option value="" disabled>
           {placeholder}
         </option>
         {children}
       </select>
     ) : (
-      <input style={fieldStyle} placeholder={placeholder} />
+      <input
+        style={fieldStyle}
+        name={name}
+        type={type}
+        placeholder={placeholder}
+        defaultValue={defaultValue}
+      />
     )}
   </div>
 );
 
-const TextAreaField = ({ label, placeholder }) => (
+const TextAreaField = ({ label, name, placeholder }) => (
   <div>
     <label style={labelStyle}>{label}</label>
     <textarea
+      name={name}
       placeholder={placeholder}
       style={{
         ...fieldStyle,
@@ -67,11 +258,12 @@ const TextAreaField = ({ label, placeholder }) => (
   </div>
 );
 
-const FileField = ({ label }) => (
+const FileField = ({ label, name }) => (
   <div>
     <label style={labelStyle}>{label}</label>
     <input
       type="file"
+      name={name}
       style={{
         ...fieldStyle,
         padding: "7px 8px",
@@ -80,31 +272,43 @@ const FileField = ({ label }) => (
   </div>
 );
 
-const DateField = ({ label }) => (
+const DateField = ({ label, name, defaultValue }) => (
   <div>
     <label style={labelStyle}>{label}</label>
-    <input type="date" placeholder="dd-mm-yyyy" style={fieldStyle} />
+    <input
+      type="date"
+      name={name}
+      defaultValue={defaultValue}
+      style={fieldStyle}
+    />
   </div>
 );
 
 const CheckInInformationForm = ({ mode = "check-in" }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isCheckOut = mode === "check-out";
   const flowTitle = isCheckOut ? "Check-Out" : "Check-In";
   const dashboardPath = isCheckOut
     ? "/check-out-dashboard"
     : "/check-in-dashboard";
+  const detailsPath = isCheckOut
+    ? "/check-out-details"
+    : "/check-in-information";
 
   // read id from query param ?id=123
   const params = new URLSearchParams(location.search);
   const id = params.get("id");
 
-  const { item, loading, save } = useCheckIn({
-    endpoint: API_ENDPOINT,
-    id,
-  });
+  const { item, loading, create, updateSections, fetchItem } = useCheckIn({ id });
   const formRef = useRef(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const getValue = (name) => {
+    const key = FIELD_MAP[name];
+    const value = key ? item?.[key] : undefined;
+    return value === null || value === undefined ? "" : value;
+  };
 
   useEffect(() => {
     if (!location.hash) return;
@@ -120,17 +324,41 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
     const formData = new FormData(formEl);
     const payload = {};
     for (const [k, v] of formData.entries()) {
-      // handle files and multiple values if needed
-      payload[k] = v;
+      if (v instanceof File) continue; // no uploads in this form yet
+      if (v === "") continue;
+      payload[k] = NUMERIC_FIELDS.includes(k) ? Number(v) : v;
     }
     try {
       setSubmitting(true);
-      await save(payload);
+      if (id) {
+        const sections = {};
+        for (const [sectionKey, fields] of Object.entries(SECTION_FIELD_MAP)) {
+          const body = {};
+          for (const field of fields) {
+            if (payload[field] !== undefined) body[field] = payload[field];
+          }
+          sections[sectionKey] = body;
+        }
+        await updateSections(id, sections);
+        await fetchItem();
+        setSubmitting(false);
+        toast.success(`${flowTitle} updated successfully`);
+        alert(`${flowTitle} updated successfully.`);
+      } else {
+        const res = await create(payload);
+        setSubmitting(false);
+        const newId = res?.data?.check_in_id;
+        toast.success(`${flowTitle} created successfully`);
+        alert(`${flowTitle} created successfully${newId ? ` (ID: ${newId})` : ""}.`);
+        if (newId) navigate(`${detailsPath}?id=${newId}`);
+      }
+    } catch (err) {
       setSubmitting(false);
-      // optional: navigate back or show toast
-    } catch {
-      setSubmitting(false);
-      // error handled by hook; could show notification
+      console.error(`${flowTitle} submit failed`, err);
+      const res = err?.response?.data;
+      const message = res ? JSON.stringify(res) : err?.message || "Something went wrong";
+      toast.error(message);
+      alert(message);
     }
   };
 
@@ -161,7 +389,11 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
         </h4>
       </div>
 
-      <form ref={formRef} onSubmit={handleSubmit}>
+      <form
+        key={loading ? "loading" : id || "new"}
+        ref={formRef}
+        onSubmit={handleSubmit}
+      >
         <Row className="g-4 align-items-start">
           <Col xs={12} lg={3}>
             <Card
@@ -199,17 +431,10 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       style={{ color: "#526b89", fontSize: 14 }}
                     >
                       <span>{item?.tenantEmail || "alishaikh@domain.com"}</span>
-                      <span>{item?.tenantMobile || "+91 102345XX89"}</span>
+                      <span>{item?.tenantMobileNumber || "+91 102345XX89"}</span>
                     </div>
                   </>
                 )}
-                <div
-                  className="d-flex flex-wrap gap-3 mb-4"
-                  style={{ color: "#526b89", fontSize: 14 }}
-                >
-                  <span>alishaikh@domain.com</span>
-                  <span>+91 102345XX89</span>
-                </div>
 
                 <Row className="g-3 mb-4">
                   <Col xs={6}>
@@ -227,7 +452,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       className="mb-0"
                       style={{ color: "#526b89", fontSize: 15 }}
                     >
-                      {item?.checkinDate || "12 April 2026"}
+                      {item?.checkInDate || "12 April 2026"}
                     </p>
                   </Col>
                   <Col xs={6}>
@@ -245,7 +470,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       className="mb-0"
                       style={{ color: "#526b89", fontSize: 15 }}
                     >
-                      {item?.status || "Approved"}
+                      {item?.checkInStatus || "Approved"}
                     </p>
                   </Col>
                 </Row>
@@ -272,7 +497,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                         fontWeight: 700,
                       }}
                     >
-                      Villa
+                      {item?.propertyType || "Villa"}
                     </p>
                   </Col>
                   <Col xs={6}>
@@ -290,7 +515,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                         fontWeight: 700,
                       }}
                     >
-                      Reserved
+                      {item?.propertyStatus || "Reserved"}
                     </p>
                   </Col>
                 </Row>
@@ -359,36 +584,59 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   <Row className="g-3 mb-4">
                     <Col md={4}>
                       <FormField
-                        label={`${flowTitle} Code / ID`}
-                        placeholder="Auto-Generated"
+                        label="Property ID *"
+                        name="property_id"
+                        defaultValue={getValue("property_id")}
+                        type="number"
+                        placeholder="Property ID"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
+                        label="Property Assignment ID"
+                        name="property_assignment_id"
+                        defaultValue={getValue("property_assignment_id")}
+                        type="number"
+                        placeholder="Assignment ID"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <DateField
                         label={`${flowTitle} Date *`}
-                        placeholder="dd-mm-yyyy"
+                        name="check_in_date"
+                        defaultValue={getValue("check_in_date")}
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label={`${flowTitle} Status *`}
+                        name="check_in_status"
+                        defaultValue={getValue("check_in_status")}
                         placeholder="Select Status"
                         as="select"
                       >
-                        <option>Approved</option>
                         <option>Pending</option>
                         <option>In Progress</option>
+                        <option>Key Pending</option>
+                        <option>Active</option>
+                        <option>Completed</option>
+                        <option>Cancelled</option>
                       </FormField>
                     </Col>
                     <Col md={4}>
                       <FormField
-                        label="Assigned Employee *"
-                        placeholder="Employee Name"
+                        label="Assigned Employee ID *"
+                        name="assigned_employee_id"
+                        defaultValue={getValue("assigned_employee_id")}
+                        type="number"
+                        placeholder="Employee ID"
                       />
                     </Col>
                     <Col md={12}>
                       <FormField
                         label="Remarks / Notes"
+                        name="remarks_notes"
+                        defaultValue={getValue("remarks_notes")}
                         placeholder="Enter initial remarks"
                       />
                     </Col>
@@ -399,48 +647,80 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   </h5>
                   <Row className="g-4 mb-4">
                     <Col md={4}>
-                      <FormField label="Tenant ID" placeholder="TXD132456" />
+                      <FormField
+                        label="Tenant ID *"
+                        name="tenant_id"
+                        defaultValue={getValue("tenant_id")}
+                        type="number"
+                        placeholder="Tenant ID"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Tenant Code"
+                        name="tenant_code"
+                        defaultValue={getValue("tenant_code")}
+                        placeholder="TXD132456"
+                      />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Tenant Name"
+                        name="tenant_name"
+                        defaultValue={getValue("tenant_name")}
                         placeholder="Full Name or Company Name"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Tenant Type"
+                        name="tenant_type"
+                        defaultValue={getValue("tenant_type")}
                         placeholder="Select Type"
                         as="select"
                       >
                         <option>Individual</option>
-                        <option>Company</option>
+                        <option>Corporate</option>
                       </FormField>
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Mobile Number"
+                        name="tenant_mobile_number"
+                        defaultValue={getValue("tenant_mobile_number")}
                         placeholder="01 2456 46547"
                       />
                     </Col>
                     <Col md={4}>
-                      <FormField label="Email" placeholder="email@domain.com" />
+                      <FormField
+                        label="Email"
+                        name="tenant_email"
+                        defaultValue={getValue("tenant_email")}
+                        type="email"
+                        placeholder="email@domain.com"
+                      />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Civil ID"
+                        name="tenant_civil_id"
+                        defaultValue={getValue("tenant_civil_id")}
                         placeholder="Civil ID Number"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Passport Number"
+                        name="tenant_passport_number"
+                        defaultValue={getValue("tenant_passport_number")}
                         placeholder="Passport Number"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Nationality"
+                        name="tenant_nationality"
+                        defaultValue={getValue("tenant_nationality")}
                         placeholder="Select Nationality"
                         as="select"
                       >
@@ -448,6 +728,91 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                         <option>India</option>
                         <option>United Arab Emirates</option>
                       </FormField>
+                    </Col>
+                    <Col md={4}>
+                      <DateField label="Date of Birth" name="date_of_birth" />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Gender"
+                        name="gender"
+                        defaultValue={getValue("gender")}
+                        placeholder="Select Gender"
+                        as="select"
+                      >
+                        <option>Male</option>
+                        <option>Female</option>
+                        <option>Other</option>
+                      </FormField>
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Marital Status"
+                        name="marital_status"
+                        defaultValue={getValue("marital_status")}
+                        placeholder="Select Status"
+                        as="select"
+                      >
+                        <option>Single</option>
+                        <option>Married</option>
+                      </FormField>
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Alternate Mobile Number"
+                        name="alternate_mobile_number"
+                        defaultValue={getValue("alternate_mobile_number")}
+                        placeholder="Alternate Mobile Number"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Emergency Contact Name"
+                        name="emergency_contact_name"
+                        defaultValue={getValue("emergency_contact_name")}
+                        placeholder="Emergency Contact Name"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Emergency Contact Number"
+                        name="emergency_contact_number"
+                        defaultValue={getValue("emergency_contact_number")}
+                        placeholder="Emergency Contact Number"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Profession"
+                        name="profession"
+                        defaultValue={getValue("profession")}
+                        placeholder="Profession"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Company Name"
+                        name="company_name"
+                        defaultValue={getValue("company_name")}
+                        placeholder="Company Name"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Move-In Reason"
+                        name="move_in_reason"
+                        defaultValue={getValue("move_in_reason")}
+                        placeholder="Move-In Reason"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Number of Occupants"
+                        name="number_of_occupants"
+                        defaultValue={getValue("number_of_occupants")}
+                        type="number"
+                        placeholder="0"
+                      />
                     </Col>
                   </Row>
 
@@ -458,6 +823,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     <Col md={4}>
                       <FormField
                         label="Property Type"
+                        name="property_type"
+                        defaultValue={getValue("property_type")}
                         placeholder="Select Status"
                         as="select"
                       >
@@ -470,30 +837,40 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     <Col md={4}>
                       <FormField
                         label="Property Code"
+                        name="property_code"
+                        defaultValue={getValue("property_code")}
                         placeholder="PRX123456"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Building Name"
+                        name="building_name"
+                        defaultValue={getValue("building_name")}
                         placeholder="Building Name"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Flat / Unit Number"
+                        name="flat_unit_number"
+                        defaultValue={getValue("flat_unit_number")}
                         placeholder="Unit Number"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Floor Number"
+                        name="floor_number"
+                        defaultValue={getValue("floor_number")}
                         placeholder="Floor Number"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Property Status"
+                        name="property_status"
+                        defaultValue={getValue("property_status")}
                         placeholder="Select Status"
                         as="select"
                       >
@@ -510,41 +887,56 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   </h5>
                   <Row className="g-4 mb-4">
                     <Col md={4}>
-                      <FormField label="Monthly Rent" placeholder="Amount" />
+                      <FormField
+                        label="Monthly Rent"
+                        name="monthly_rent"
+                        defaultValue={getValue("monthly_rent")}
+                        placeholder="Amount"
+                      />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Security Deposit"
+                        name="security_deposit"
+                        defaultValue={getValue("security_deposit")}
                         placeholder="Amount"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Advance Rent Received"
+                        name="advance_rent_received"
+                        defaultValue={getValue("advance_rent_received")}
                         placeholder="Amount"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="First Month Rent Paid"
+                        name="first_month_rent_paid"
+                        defaultValue={getValue("first_month_rent_paid")}
                         placeholder="Amount"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Payment Mode"
+                        name="payment_mode"
+                        defaultValue={getValue("payment_mode")}
                         placeholder="Select Mode"
                         as="select"
                       >
                         <option>Cash</option>
                         <option>Bank Transfer</option>
-                        <option>Card</option>
+                        <option>Online</option>
                         <option>Cheque</option>
                       </FormField>
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Maintenance Charges"
+                        name="maintenance_charges"
+                        defaultValue={getValue("maintenance_charges")}
                         placeholder="Amount"
                       />
                     </Col>
@@ -555,26 +947,85 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   </h5>
                   <Row className="g-4 mb-4">
                     <Col md={4}>
-                      <FormField label="Inspection Required" placeholder="" />
+                      <FormField
+                        label="Inspection Required"
+                        name="inspection_required"
+                        defaultValue={getValue("inspection_required")}
+                        placeholder="Select"
+                        as="select"
+                      >
+                        <option>Yes</option>
+                        <option>No</option>
+                      </FormField>
                     </Col>
                     <Col md={4}>
-                      <FormField label="Inspection Date" placeholder="" />
+                      <DateField
+                        label="Inspection Date"
+                        name="inspection_date"
+                        defaultValue={getValue("inspection_date")}
+                      />
                     </Col>
                     <Col md={4}>
-                      <FormField label="Technician Type" placeholder="" />
+                      <FormField
+                        label="Inspection Type"
+                        name="inspection_type"
+                        defaultValue={getValue("inspection_type")}
+                        placeholder="Select Type"
+                        as="select"
+                      >
+                        <option>Move-In Inspection</option>
+                        <option>Move-Out Inspection</option>
+                      </FormField>
                     </Col>
                     <Col md={4}>
-                      <FormField label="Manager Approval" placeholder="" />
+                      <FormField
+                        label="Technician Type"
+                        name="technician_type"
+                        defaultValue={getValue("technician_type")}
+                        placeholder="Technician Type"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Inspection Duration"
+                        name="inspection_duration"
+                        defaultValue={getValue("inspection_duration")}
+                        placeholder="e.g. 45 mins"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <DateField
+                        label="Next Inspection Due"
+                        name="next_inspection_due"
+                        defaultValue={getValue("next_inspection_due")}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Manager Approval"
+                        name="manager_approval"
+                        defaultValue={getValue("manager_approval")}
+                        placeholder="Select"
+                        as="select"
+                      >
+                        <option>Pending</option>
+                        <option>Approved</option>
+                        <option>Rejected</option>
+                      </FormField>
                     </Col>
                     <Col md={12}>
                       <TextAreaField
                         label="Issue Identified"
+                        name="issue_identified"
+                        defaultValue={getValue("issue_identified")}
                         placeholder="Describe Issues"
                       />
                     </Col>
                     <Col md={12}>
                       <TextAreaField
                         label="Supervisor Remarks"
+                        name="supervisor_remarks"
+                        defaultValue={getValue("supervisor_remarks")}
                         placeholder="Supervisor notes"
                       />
                     </Col>
@@ -587,6 +1038,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     <Col md={4}>
                       <FormField
                         label="Repair Required"
+                        name="repair_required"
+                        defaultValue={getValue("repair_required")}
                         placeholder="Select"
                         as="select"
                       >
@@ -597,15 +1050,16 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     <Col md={4}>
                       <FormField
                         label="Quotation Amount"
+                        name="quotation_amount"
+                        defaultValue={getValue("quotation_amount")}
                         placeholder="Amount"
-                        as="select"
-                      >
-                        <option>Amount</option>
-                      </FormField>
+                      />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Inventory Available"
+                        name="inventory_available"
+                        defaultValue={getValue("inventory_available")}
                         placeholder="Select"
                         as="select"
                       >
@@ -616,28 +1070,34 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     <Col md={4}>
                       <FormField
                         label="GM Approval"
+                        name="gm_approval"
+                        defaultValue={getValue("gm_approval")}
                         placeholder="Select"
                         as="select"
                       >
-                        <option>Approved</option>
                         <option>Pending</option>
+                        <option>Approved</option>
                         <option>Rejected</option>
                       </FormField>
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Landlord Consent"
+                        name="landlord_consent"
+                        defaultValue={getValue("landlord_consent")}
                         placeholder="Select"
                         as="select"
                       >
-                        <option>Received</option>
                         <option>Pending</option>
-                        <option>Not Required</option>
+                        <option>Approved</option>
+                        <option>Rejected</option>
                       </FormField>
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Finance Alert Generated"
+                        name="finance_alert_generated"
+                        defaultValue={getValue("finance_alert_generated")}
                         placeholder="Select"
                         as="select"
                       >
@@ -648,7 +1108,38 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     <Col md={4}>
                       <FormField
                         label="Rent Adjustment Amount"
+                        name="rent_adjustment_amount"
+                        defaultValue={getValue("rent_adjustment_amount")}
                         placeholder="Amount"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Recommended By (Employee ID)"
+                        name="recommended_by_id"
+                        defaultValue={getValue("recommended_by_id")}
+                        type="number"
+                        placeholder="Employee ID"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Approved By (Employee ID)"
+                        name="approved_by_id"
+                        defaultValue={getValue("approved_by_id")}
+                        type="number"
+                        placeholder="Employee ID"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <DateField label="Approved On" name="approved_on" />
+                    </Col>
+                    <Col md={12}>
+                      <TextAreaField
+                        label="Inspector Comments"
+                        name="inspector_comments"
+                        defaultValue={getValue("inspector_comments")}
+                        placeholder="Inspector comments"
                       />
                     </Col>
                   </Row>
@@ -660,23 +1151,29 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     <Col md={4}>
                       <FormField
                         label="Electricity Meter Reading"
+                        name="electricity_meter_reading"
+                        defaultValue={getValue("electricity_meter_reading")}
                         placeholder="Reading Value"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Water Meter Reading"
+                        name="water_meter_reading"
+                        defaultValue={getValue("water_meter_reading")}
                         placeholder="Reading Value"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Gas Meter Reading"
+                        name="gas_meter_reading"
+                        defaultValue={getValue("gas_meter_reading")}
                         placeholder="Reading Value"
                       />
                     </Col>
                     <Col md={12}>
-                      <label style={labelStyle}>Meter Photo Upload</label>
+                      <FileField label="Meter Photo Upload" />
                     </Col>
                   </Row>
 
@@ -687,38 +1184,51 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     <Col md={4}>
                       <FormField
                         label="Agreement Type"
+                        name="agreement_type"
+                        defaultValue={getValue("agreement_type")}
                         placeholder="Select Type"
                         as="select"
                       >
-                        <option>Rental</option>
-                        <option>Lease</option>
+                        <option>Government Agreement</option>
+                        <option>Internal Agreement</option>
                       </FormField>
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Agreement Status"
+                        name="agreement_status"
+                        defaultValue={getValue("agreement_status")}
                         placeholder="Select Status"
                         as="select"
                       >
-                        <option>Draft</option>
-                        <option>Active</option>
-                        <option>Completed</option>
+                        <option>Pending</option>
+                        <option>Prepared</option>
+                        <option>Signed</option>
+                        <option>Executed</option>
+                        <option>Terminated</option>
                       </FormField>
                     </Col>
                     <Col md={4}>
-                      <FormField
+                      <DateField
                         label="Agreement Start Date"
-                        placeholder="dd-mm-yyyy"
+                        name="agreement_start_date"
+                        defaultValue={getValue("agreement_start_date")}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <DateField
+                        label="Agreement End Date"
+                        name="agreement_end_date"
+                        defaultValue={getValue("agreement_end_date")}
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
-                        label="Agreement End Date"
-                        placeholder="dd-mm-yyyy"
+                        label="Agreement Document (URL)"
+                        name="agreement_document"
+                        defaultValue={getValue("agreement_document")}
+                        placeholder="Link to uploaded document"
                       />
-                    </Col>
-                    <Col md={4}>
-                      <FileField label="Agreement Document Upload" />
                     </Col>
                   </Row>
 
@@ -727,27 +1237,33 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   </h5>
                   <Row className="g-4 mb-4">
                     <Col md={4}>
-                      <FormField label="Key Number" placeholder="Key ID" />
+                      <FormField
+                        label="Key Number"
+                        name="key_number"
+                        placeholder="Key ID"
+                      />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Key Available"
+                        name="key_available"
                         placeholder="Select Status"
                         as="select"
                       >
-                        <option>Available</option>
-                        <option>Not Available</option>
+                        <option>Yes</option>
+                        <option>No</option>
                       </FormField>
                     </Col>
                     <Col md={4}>
-                      <FormField
+                      <DateField
                         label="Key Booking Date"
-                        placeholder="dd-mm-yyyy"
+                        name="key_booking_date"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Confirmation Received"
+                        name="confirmation_received"
                         placeholder="Select"
                         as="select"
                       >
@@ -756,19 +1272,22 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       </FormField>
                     </Col>
                     <Col md={4}>
-                      <FormField
+                      <DateField
                         label="Key Delivery Date"
-                        placeholder="dd-mm-yyyy"
+                        name="key_delivery_date"
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Key Handover Status"
+                        name="key_handover_status"
                         placeholder="Select Status"
                         as="select"
                       >
                         <option>Pending</option>
-                        <option>Completed</option>
+                        <option>Booked</option>
+                        <option>Handed Over</option>
+                        <option>Returned</option>
                       </FormField>
                     </Col>
                   </Row>
@@ -800,6 +1319,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     <Col md={12}>
                       <TextAreaField
                         label="Internal Comments"
+                        name="internal_comments"
+                        defaultValue={getValue("internal_comments")}
                         placeholder="For Internal Staff Only"
                       />
                     </Col>
@@ -807,6 +1328,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     <Col md={12}>
                       <TextAreaField
                         label="Tenant Remarks"
+                        name="tenant_remarks"
+                        defaultValue={getValue("tenant_remarks")}
                         placeholder="Feedback or Notes from tenant"
                       />
                     </Col>
@@ -814,52 +1337,48 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     <Col md={12}>
                       <TextAreaField
                         label="Special Instructions"
+                        name="special_instructions"
+                        defaultValue={getValue("special_instructions")}
                         placeholder="Any special instruction for this check-in"
                       />
                     </Col>
                   </Row>
-                  <h5 style={sectionTitleStyle}>L. System Fields (Auto)</h5>
+                  <h5 style={sectionTitleStyle}>L. Property Lifecycle Dates</h5>
 
                   <Row className="g-4 mb-4">
                     <Col md={4}>
-                      <FormField
-                        label="Created By"
-                        placeholder="System Admin"
+                      <DateField
+                        label="Property Created Date"
+                        name="property_created_date"
                       />
                     </Col>
 
                     <Col md={4}>
                       <DateField
-                        label="Created Date"
-                        placeholder="dd-mm-yyyy"
+                        label="Listed For Rent Date"
+                        name="listed_for_rent_date"
                       />
-                    </Col>
-
-                    <Col md={4}>
-                      <FormField label="Updated By" placeholder="Auto" />
                     </Col>
 
                     <Col md={4}>
                       <DateField
-                        label="Updated Date"
-                        placeholder="dd-mm-yyyy"
+                        label="Tenant Assigned Date"
+                        name="tenant_assigned_date"
                       />
                     </Col>
 
-                    <Col md={12}>
-                      <div>
-                        <label style={labelStyle}>Status History</label>
+                    <Col md={4}>
+                      <DateField
+                        label="Assigned To Employee Date"
+                        name="assigned_to_employee_date"
+                      />
+                    </Col>
 
-                        <textarea
-                          style={{
-                            ...fieldStyle,
-                            minHeight: "85px",
-                            resize: "none",
-                            paddingTop: "12px",
-                          }}
-                          defaultValue="Created -> Inspection Pending"
-                        />
-                      </div>
+                    <Col md={4}>
+                      <DateField
+                        label="Property Occupied Date"
+                        name="property_occupied_date"
+                      />
                     </Col>
                   </Row>
                   <div className="d-flex justify-content-end gap-2">

@@ -46,9 +46,12 @@ const inputStyle = {
 
 const selectStyle = {
   ...inputStyle,
+  WebkitAppearance: 'none',
+  MozAppearance: 'none',
+  appearance: 'none',
   borderColor,
   height: 45,
-  padding: '0 14px',
+  padding: '0 40px 0 16px',
 };
 
 const outlineButtonStyle = {
@@ -72,11 +75,26 @@ const SelectField = ({ label, options }) => (
     <label className="d-block mb-2" style={{ color: '#71849c', fontSize: 16, fontWeight: 500 }}>
       {label}
     </label>
-    <select style={selectStyle} defaultValue="All">
-      {options.map((option) => (
-        <option key={option}>{option}</option>
-      ))}
-    </select>
+    <div style={{ position: 'relative' }}>
+      <select style={selectStyle} defaultValue="All">
+        {options.map((option) => (
+          <option key={option}>{option}</option>
+        ))}
+      </select>
+      <IconifyIcon
+        icon="ri:arrow-down-s-line"
+        width={18}
+        height={18}
+        style={{
+          color: pageText,
+          pointerEvents: 'none',
+          position: 'absolute',
+          right: 14,
+          top: '50%',
+          transform: 'translateY(-50%)',
+        }}
+      />
+    </div>
   </Col>
 );
 

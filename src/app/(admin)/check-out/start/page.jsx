@@ -32,7 +32,7 @@ const CheckOutStart = () => {
     [hashKey],
   );
 
-  return <ActiveComponent />;
+  return <ActiveComponent mode="check-out" />;
 };
 
 export default CheckOutStart;

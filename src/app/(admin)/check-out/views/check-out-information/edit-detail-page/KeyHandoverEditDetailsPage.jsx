@@ -89,6 +89,7 @@ const DateField = ({ label }) => (
 const CheckInInformationForm = ({ mode = "check-in" }) => {
   const location = useLocation();
   const isCheckOut = mode === "check-out";
+  const flowTitle = isCheckOut ? "Check-Out" : "Check-In";
   const dashboardPath = isCheckOut
     ? "/check-out-dashboard"
     : "/check-in-dashboard";
@@ -122,7 +123,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
           className="mb-0"
           style={{ color: "#526b89", fontSize: 20, fontWeight: 500 }}
         >
-          Check-In Information &gt; Key Handower information
+          {flowTitle} Information &gt; Key Handower information
         </h4>
       </div>
 
@@ -260,7 +261,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   borderBottom: "1px solid #edf0f3",
                 }}
               >
-                Check-In Information &gt; Key returns information 
+                {flowTitle} Information &gt; Key returns information
               </h3>
 
               <div style={{ padding: "34px 36px" }}>

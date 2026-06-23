@@ -1,42 +1,9 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { Button } from 'react-bootstrap';
+import { fmtDate, fmtMoney, val } from '@/utils/checkInFormat';
 
 const pageText = '#526b89';
 const bodyText = '#202b3c';
-
-const personalInfo = [
-  ['Tenant Type', 'Individual'],
-  ['Date of Birth', '12 Aug 1990'],
-  ['Gender', 'Male'],
-  ['Civil ID', 'CVG-21-564'],
-  ['Passport Number', '95615616115'],
-  ['Nationality', 'Oman'],
-  ['Marital Status', 'Married'],
-];
-
-const contactInfo = [
-  ['Mobile Number', '+91 1234567890'],
-  ['Alternate No', '+91 1234567890'],
-  ['Email', 'bilalahmed@gmail.com'],
-  ['Address', '1 88/11, South West\nBoag Road, T Beside\nMuscat Oman'],
-  ['Emergency No', 'Ahmed Khan (Brother)\n+91 1234567890'],
-];
-
-const additionalInfo = [
-  ['Profession', 'IT Consultants'],
-  ['Monthly Rent', '12500 OMR'],
-  ['Move-In Reason', 'Work'],
-  ['Company Name', 'Tech Solutions LLC'],
-  ['Security Deposit', '5000 OMR'],
-  ['No. Of Occupants', '3'],
-];
-
-const documents = [
-  ['Civil ID .pdf', 'Uploaded on 15 April 2026'],
-  ['Passport .pdf', 'Uploaded on 15 April 2026'],
-  ['SignedAgreement .pdf', 'Uploaded on 15 April 2026'],
-  ['Profile Photo.Png', 'Uploaded on 10 April 2026'],
-];
 
 const cardStyle = {
   border: '1px solid #dfe5eb',
@@ -58,6 +25,8 @@ const rowStyle = {
   gridTemplateColumns: '140px 16px 1fr',
   minHeight: 40,
 };
+
+const emptyTextStyle = { color: pageText, fontSize: 16, padding: '0 32px 28px' };
 
 const InfoRows = ({ items }) => (
   <div>
@@ -108,7 +77,49 @@ const DocumentRow = ({ name, date }) => (
   </div>
 );
 
-const TenantDetailsPage = () => {
+const TenantDetailsPage = ({ record }) => {
+  const tenantDetails = record?.tenantDetails ?? {};
+  const personal = tenantDetails.personalDetails ?? {};
+  const contact = tenantDetails.contactDetails ?? {};
+  const identification = tenantDetails.identificationDetails ?? {};
+  const professional = tenantDetails.professionalDetails ?? {};
+  const occupancy = tenantDetails.occupancyDetails ?? {};
+  const documents = record?.documents ?? [];
+
+  const personalInfo = [
+    ['Tenant Type', val(personal.tenantType)],
+    ['Date of Birth', fmtDate(personal.dateOfBirth)],
+    ['Gender', val(personal.gender)],
+    ['Civil ID', val(identification.tenantCivilId)],
+    ['Passport Number', val(identification.tenantPassportNumber)],
+    ['Nationality', val(personal.tenantNationality)],
+    ['Marital Status', val(personal.maritalStatus)],
+  ];
+
+  const emergencyContact =
+    contact.emergencyContactName || contact.emergencyContactNumber
+      ? [contact.emergencyContactName, contact.emergencyContactNumber].filter(Boolean).join('\n')
+      : val(null);
+
+  const contactInfo = [
+    ['Mobile Number', val(contact.tenantMobileNumber)],
+    ['Alternate No', val(contact.alternateMobileNumber)],
+    ['Email', val(contact.tenantEmail)],
+    ['Address', val(identification.tenantAddress)],
+    ['Emergency No', emergencyContact],
+  ];
+
+  const additionalInfo = [
+    ['Profession', val(professional.profession)],
+    ['Monthly Rent', fmtMoney(record?.monthlyRent)],
+    ['Move-In Reason', val(occupancy.moveInReason)],
+    ['Company Name', val(professional.companyName)],
+    ['Security Deposit', fmtMoney(record?.securityDeposit)],
+    ['No. Of Occupants', val(occupancy.numberOfOccupants)],
+  ];
+
+  const notes = record?.tenantRemarks || record?.internalComments;
+
   return (
     <div style={{ padding: 24 }}>
       <div
@@ -126,30 +137,30 @@ const TenantDetailsPage = () => {
             <div style={{ padding: '28px 55px 40px' }}>
               <div className="d-flex align-items-start gap-4 mb-4">
                 <img
-                  alt="Bilal Ahmed"
+                  alt={val(personal.tenantName, 'Tenant')}
                   src="https://i.pravatar.cc/120?img=12"
                   style={{ borderRadius: '50%', height: 74, objectFit: 'cover', width: 74 }}
                 />
                 <div>
                   <div className="d-flex align-items-center gap-5 mb-3">
                     <h4 className="mb-0" style={{ color: pageText, fontSize: 23, fontWeight: 700 }}>
-                      Bilal Ahmed
+                      {val(personal.tenantName, 'Tenant')}
                     </h4>
-                    <span style={{ color: pageText, fontSize: 15 }}>Active Tenant</span>
+                    <span style={{ color: pageText, fontSize: 15 }}>{val(record?.checkInStatus)}</span>
                   </div>
                   <div className="d-flex flex-wrap align-items-center gap-4 mb-2">
                     <span className="d-inline-flex align-items-center gap-2" style={{ color: pageText, fontSize: 15 }}>
                       <IconifyIcon icon="ri:phone-fill" width={16} height={16} />
-                      +911 1234567890
+                      {val(contact.tenantMobileNumber)}
                     </span>
                     <span className="d-inline-flex align-items-center gap-2" style={{ color: pageText, fontSize: 15 }}>
                       <IconifyIcon icon="logos:google-gmail" width={16} height={16} />
-                      bilalahmed@gmail.com
+                      {val(contact.tenantEmail)}
                     </span>
                   </div>
                   <span className="d-inline-flex align-items-center gap-2" style={{ color: pageText, fontSize: 15 }}>
                     <IconifyIcon icon="ri:user-location-line" width={16} height={16} />
-                    TNT-1245-4698
+                    {val(personal.tenantCode)}
                   </span>
                 </div>
               </div>
@@ -203,31 +214,42 @@ const TenantDetailsPage = () => {
         <div>
           <div className="mb-4" style={cardStyle}>
             <h5 style={titleStyle}>Documents</h5>
-            <div style={{ padding: '30px 46px 26px' }}>
-              {documents.map(([name, date]) => (
-                <DocumentRow key={name} name={name} date={date} />
-              ))}
-            </div>
+            {documents.length > 0 ? (
+              <div style={{ padding: '30px 46px 26px' }}>
+                {documents.map((document, index) => (
+                  <DocumentRow
+                    key={document.id ?? document.name ?? index}
+                    name={val(document.name ?? document.documentType, 'Document')}
+                    date={document.uploadedOn ? `Uploaded on ${fmtDate(document.uploadedOn)}` : 'Not uploaded'}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p style={emptyTextStyle}>No documents uploaded</p>
+            )}
           </div>
 
           <div style={cardStyle}>
             <h5 style={titleStyle}>Additional Notes</h5>
             <div style={{ padding: '20px 20px 20px' }}>
-              <div
-                style={{
-                  background: '#fffaf3',
-                  border: '1px solid #f3d8ad',
-                  borderRadius: 8,
-                  padding: '30px 22px',
-                }}
-              >
-                <p className="mb-3" style={{ color: pageText, fontSize: 16, lineHeight: 1.45 }}>
-                  Tenant has Signed All the required documents and has agreed to the terms and conditions.
+              {notes ? (
+                <div
+                  style={{
+                    background: '#fffaf3',
+                    border: '1px solid #f3d8ad',
+                    borderRadius: 8,
+                    padding: '30px 22px',
+                  }}
+                >
+                  <p className="mb-0" style={{ color: pageText, fontSize: 16, lineHeight: 1.45 }}>
+                    {notes}
+                  </p>
+                </div>
+              ) : (
+                <p className="mb-0" style={{ color: pageText, fontSize: 16 }}>
+                  No additional notes
                 </p>
-                <p className="mb-0" style={{ color: pageText, fontSize: 12 }}>
-                  Added on 29 April 2026 by Ramesh Kumar
-                </p>
-              </div>
+              )}
             </div>
           </div>
         </div>

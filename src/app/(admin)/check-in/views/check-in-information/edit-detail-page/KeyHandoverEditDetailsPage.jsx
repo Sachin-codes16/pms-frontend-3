@@ -1,7 +1,10 @@
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Card, CardBody, Col, Row } from "react-bootstrap";
 import { Link, useLocation } from "react-router-dom";
+import { toast } from "react-toastify";
+import Spinner from "@/components/Spinner";
+import useCheckIn from "@/hooks/useCheckIn";
 
 const fieldStyle = {
   background: "#f9f9fc",
@@ -31,27 +34,29 @@ const sectionTitleStyle = {
   scrollMarginTop: 110,
 };
 
-const FormField = ({ label, placeholder, as = "input", children }) => (
+const FormField = ({ label, name, placeholder, as = "input", defaultValue, children }) => (
   <div>
     <label style={labelStyle}>{label}</label>
     {as === "select" ? (
-      <select style={fieldStyle} defaultValue="">
+      <select style={fieldStyle} name={name} defaultValue={defaultValue ?? ""}>
         <option value="" disabled>
           {placeholder}
         </option>
         {children}
       </select>
     ) : (
-      <input style={fieldStyle} placeholder={placeholder} />
+      <input style={fieldStyle} name={name} placeholder={placeholder} defaultValue={defaultValue} />
     )}
   </div>
 );
 
-const TextAreaField = ({ label, placeholder }) => (
+const TextAreaField = ({ label, name, placeholder, defaultValue }) => (
   <div>
     <label style={labelStyle}>{label}</label>
     <textarea
+      name={name}
       placeholder={placeholder}
+      defaultValue={defaultValue}
       style={{
         ...fieldStyle,
         minHeight: 94,
@@ -75,11 +80,13 @@ const FileField = ({ label }) => (
   </div>
 );
 
-const DateField = ({ label }) => (
+const DateField = ({ label, name, defaultValue }) => (
   <div>
     <label style={labelStyle}>{label}</label>
     <input
       type="date"
+      name={name}
+      defaultValue={defaultValue}
       placeholder="dd-mm-yyyy"
       style={fieldStyle}
     />
@@ -93,11 +100,48 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
     ? "/check-out-dashboard"
     : "/check-in-dashboard";
 
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");
+
+  const { item, loading, updateSections, fetchItem } = useCheckIn({ id });
+  const formRef = useRef(null);
+  const [submitting, setSubmitting] = useState(false);
+
   useEffect(() => {
     if (!location.hash) return;
     const section = document.getElementById(location.hash.slice(1));
     section?.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [location.hash]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formRef.current) return;
+    if (!id) {
+      alert('Cannot submit: no check-in id in the URL (open this page via "Edit Details" on an existing check-in, not a fresh "Create Check-Ins").');
+      return;
+    }
+    const formData = new FormData(formRef.current);
+    const payload = {};
+    for (const [k, v] of formData.entries()) {
+      if (v === "") continue;
+      payload[k] = v;
+    }
+    try {
+      setSubmitting(true);
+      await updateSections(id, { key_handover: payload });
+      await fetchItem();
+      setSubmitting(false);
+      toast.success("Key handover details updated successfully");
+      alert("Key handover details updated successfully.");
+    } catch (err) {
+      setSubmitting(false);
+      console.error("Key handover submit failed", err);
+      const res = err?.response?.data;
+      const message = res ? JSON.stringify(res) : err?.message || "Something went wrong";
+      toast.error(message);
+      alert(message);
+    }
+  };
 
   return (
     <div>
@@ -126,6 +170,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
         </h4>
       </div>
 
+      <form ref={formRef} onSubmit={handleSubmit}>
       <Row className="g-4 align-items-start">
         {/* Left Sidebar */}
         <Col xs={12} lg={3}>
@@ -137,19 +182,27 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
             }}
           >
             <CardBody style={{ padding: 24 }}>
-              <h5
-                className="mb-2"
-                style={{ color: "#526b89", fontSize: 18, fontWeight: 700 }}
-              >
-                Ali Z Shaikh
-              </h5>
-              <div
-                className="d-flex flex-wrap gap-3 mb-4"
-                style={{ color: "#526b89", fontSize: 14 }}
-              >
-                <span>alishaikh@domain.com</span>
-                <span>+91 102345XX89</span>
-              </div>
+              {loading ? (
+                <div style={{ padding: 24, display: "flex", justifyContent: "center" }}>
+                  <Spinner />
+                </div>
+              ) : (
+                <>
+                  <h5
+                    className="mb-2"
+                    style={{ color: "#526b89", fontSize: 18, fontWeight: 700 }}
+                  >
+                    {item?.tenantDetails?.personalDetails?.tenantName || "Ali Z Shaikh"}
+                  </h5>
+                  <div
+                    className="d-flex flex-wrap gap-3 mb-4"
+                    style={{ color: "#526b89", fontSize: 14 }}
+                  >
+                    <span>{item?.tenantDetails?.contactDetails?.tenantEmail || "alishaikh@domain.com"}</span>
+                    <span>{item?.tenantDetails?.contactDetails?.tenantMobileNumber || "+91 102345XX89"}</span>
+                  </div>
+                </>
+              )}
 
               <Row className="g-3 mb-4">
                 <Col xs={6}>
@@ -223,7 +276,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   Cancel
                 </Button>
                 <Button
-                  type="button"
+                  type="submit"
+                  disabled={submitting}
                   className="w-50"
                   style={{
                     background: "#526b89",
@@ -232,7 +286,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     height: 40,
                   }}
                 >
-                  Submit
+                  {submitting ? "Saving..." : "Submit"}
                 </Button>
               </div>
             </CardBody>
@@ -273,6 +327,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   <Col md={4}>
     <FormField
       label="Key Return Status"
+      name="key_handover_status"
       placeholder="Completed"
     />
   </Col>
@@ -280,6 +335,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   <Col md={4}>
     <FormField
       label="Key Number"
+      name="key_number"
       placeholder="KH-1321-5648"
     />
   </Col>
@@ -287,6 +343,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   <Col md={4}>
     <FormField
       label="Key Type"
+      name="key_type"
       placeholder="Main Door Key"
       as="select"
     >
@@ -300,6 +357,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   <Col md={4}>
     <FormField
       label="Key Available"
+      name="key_available"
       placeholder="Yes"
       as="select"
     >
@@ -315,15 +373,15 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                 </h5>
               <Row className="g-4 mb-4">
   <Col md={4}>
-    <DateField label="Key Return Date & Time" />
+    <DateField label="Key Return Date & Time" name="key_delivery_date" />
   </Col>
 
   <Col md={4}>
-    <DateField label="Expected Return Date & Time" />
+    <DateField label="Expected Return Date & Time" name="expected_handover_date" />
   </Col>
 
   <Col md={4}>
-    <DateField label="Actual Key Return Date & Time" />
+    <DateField label="Actual Key Return Date & Time" name="handover_completed_on" />
   </Col>
 
   <Col md={4}>
@@ -350,6 +408,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   <Col md={4}>
     <FormField
       label="Confirmation Received"
+      name="confirmation_received"
       placeholder="Yes"
       as="select"
     >
@@ -478,6 +537,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   <Col md={12}>
     <TextAreaField
       label="Notes"
+      name="tenant_confirmation_notes"
       placeholder="Feedback or Notes from tenant"
     />
   </Col>
@@ -569,7 +629,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     Cancel
                   </Button>
                   <Button
-                    type="button"
+                    type="submit"
+                    disabled={submitting}
                     style={{
                       background: "#526b89",
                       borderColor: "#526b89",
@@ -578,7 +639,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       height: 45,
                     }}
                   >
-                    Submit
+                    {submitting ? "Saving..." : "Submit"}
                   </Button>
                 </div>
               </div>
@@ -586,6 +647,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
           </Card>
         </Col>
       </Row>
+      </form>
     </div>
   );
 };

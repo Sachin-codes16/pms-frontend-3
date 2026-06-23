@@ -1,7 +1,7 @@
 ﻿import axios from "axios";
 import { deleteCookie, getCookie } from "cookies-next";
 
-const api = axios.create({
+const checkInApi = axios.create({
   baseURL: "https://alw.checkour.work",
 });
 
@@ -65,7 +65,7 @@ const getStoredToken = () => {
   return undefined;
 };
 
-api.interceptors.request.use((config) => {
+checkInApi.interceptors.request.use((config) => {
   const token = getStoredToken();
 
   if (token) {
@@ -75,28 +75,5 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const status = error?.response?.status;
-    const data = error?.response?.data;
-    const message =
-      typeof data === "string"
-        ? data
-        : data?.message || data?.detail || data?.error || "";
 
-    if (
-      status === 401 ||
-      (typeof message === "string" &&
-        /token (has expired|is invalid)|invalid (access )?token/i.test(message))
-    ) {
-      deleteCookie(authSessionKey);
-      if (typeof window !== "undefined") {
-        window.location.href = "/auth/sign-in";
-      }
-    }
-
-    return Promise.reject(error);
-  },
-);
-export default api;
+export default checkInApi;

@@ -147,6 +147,12 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
         google_map_location: toStr(values.map_url) || '-',
         available_from: toApiDate(values.available_from),
         internal_notes: toStr(values.internal_notes) || '-',
+        state: toStr(values.state) || 'N/A',
+        year_of_construction:
+          (type === 'villa' && toNum(values.total_floors)) || new Date().getFullYear(),
+        late_fee_type: toStr(values.late_fee_type) || 'Fixed',
+        late_fee_value: toStr(values.late_fee_value) || '0',
+        created_by_id: toNum(values.assigned_to_user_id) || 36,
       };
 
       const payload = {
@@ -170,7 +176,8 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
 
       if (type==='flat') {
         payload.flat_data = {
-          flat_number: toStr(values.flat_no),
+          flat_number: toStr(values.flat_no) || 'N/A',
+          flat_configuration: toStr(values.flat_configuration) || 'N/A',
           floor_number: toNum(values.floor_number),
           building_block: toStr(values.building_block),
           no_of_bathrooms: toNum(values.bathrooms),
