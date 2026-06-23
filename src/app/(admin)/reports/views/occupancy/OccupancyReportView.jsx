@@ -95,7 +95,7 @@ const OccupancyReportView = () => {
           }
 
           .occupancy-report-page .report-table {
-            table-layout: fixed;
+            table-layout: auto;
             width: 100%;
           }
 
@@ -108,6 +108,21 @@ const OccupancyReportView = () => {
           .occupancy-report-page .report-table .status-cell,
           .occupancy-report-page .report-table .action-cell {
             white-space: nowrap;
+          }
+
+          .occupancy-report-page .report-table th:nth-child(1),
+          .occupancy-report-page .report-table td:nth-child(1) {
+            width: 5%;
+          }
+
+          .occupancy-report-page .report-table th:nth-child(2),
+          .occupancy-report-page .report-table td:nth-child(2) {
+            width: 7%;
+          }
+
+          .occupancy-report-page .report-table th:nth-child(6),
+          .occupancy-report-page .report-table td:nth-child(6) {
+            width: 8%;
           }
         `}
       </style>

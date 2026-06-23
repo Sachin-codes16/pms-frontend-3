@@ -32,7 +32,7 @@ const CheckInStart = () => {
     [hashKey],
   );
 
-  return <ActiveComponent />;
+  return <ActiveComponent mode="check-in" />;
 };
 
 export default CheckInStart;

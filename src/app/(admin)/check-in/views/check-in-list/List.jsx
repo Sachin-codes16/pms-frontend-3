@@ -1,12 +1,18 @@
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
+import checkInApi from "@/helpers/checkInApi";
+import { useEffect, useState } from "react";
 import { Button } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 
 const pageText = "#526b89";
 const detailsPath = "/check-in-information";
-const editPath = "/check-in-start#check-in-information";
+const editPathFor = (id) => `/check-in-start?id=${id}#check-in-information`;
 
-const checkInRows = [
+const API_ENDPOINT = "/checkin-checkout/check_in/get_all/";
+// Until the fetch resolves (or while it's unreachable), the table below
+// shows this demo data so the UI keeps working.
+
+const fallbackRows = [
   {
     srNo: 1,
     tenantId: "12345",
@@ -113,6 +119,26 @@ const checkInRows = [
   },
 ];
 
+// GET /checkin-checkout/check_in/get_all/ response shape:
+// { data: { data: CheckInListItem[], presentPage, totalPage } }
+const getRecordsFromResponse = (data) => data?.data?.data ?? [];
+
+// Maps a CheckInListItem (response) to the table row shape.
+const mapRow = (item, idx) => ({
+  id: item.checkInId,
+  srNo: idx + 1,
+  tenantId: item.tenantId ?? "",
+  tenantName: item.tenantName || "",
+  property: item.buildingName || "",
+  unitNo: item.flatUnitNumber || "",
+  checkinDate: item.checkInDate || "",
+  rent: item.monthlyRent || "",
+  assignmentStatus: item.managerApproval || "",
+  keyStatus: item.keyHandoverStatus || "",
+  status: item.checkInStatus || "",
+  assignedTo: item.assignedEmployee?.name || "",
+});
+
 const panelStyle = {
   background: "#fff",
   borderRadius: 6,
@@ -186,6 +212,32 @@ const ActionButton = ({ icon, label, to, bg = "#f4f7fa" }) => (
 
 const List = () => {
   const navigate = useNavigate();
+  const [rows, setRows] = useState(fallbackRows);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCheckIns = async () => {
+      try {
+        const res = await checkInApi.get(API_ENDPOINT);
+        const records = getRecordsFromResponse(res.data);
+        if (!cancelled && records.length > 0) {
+          setRows(records.map(mapRow));
+        }
+      } catch (err) {
+        // Endpoint not wired up / unreachable yet — keep showing demo data.
+        console.error(
+          "Check-in list API not available yet, showing demo data:",
+          err?.response?.status || err?.message,
+        );
+      }
+    };
+
+    loadCheckIns();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div style={{ ...panelStyle, overflow: "hidden", width: "100%" }}>
@@ -229,10 +281,10 @@ const List = () => {
             </tr>
           </thead>
           <tbody>
-            {checkInRows.map((row) => (
+            {rows.map((row) => (
               <tr
-                key={`${row.srNo}-${row.tenantName}`}
-                onClick={() => navigate(detailsPath)}
+                key={`${row.id}-${row.srNo}-${row.tenantName}`}
+                onClick={() => navigate(`${detailsPath}?id=${row.id}`)}
                 style={{ borderBottom: "1px solid #eef1f5", cursor: "pointer" }}
               >
                 <td style={{ ...tableCellStyle, textAlign: "center" }}>
@@ -247,7 +299,7 @@ const List = () => {
                   }}
                 >
                   <Link
-                    to={detailsPath}
+                    to={`${detailsPath}?id=${row.id}`}
                     style={{ color: "inherit", textDecoration: "none" }}
                   >
                     {row.tenantName}
@@ -290,12 +342,12 @@ const List = () => {
                     <ActionButton
                       icon="solar:eye-broken"
                       label="View check-in details"
-                      to={detailsPath}
+                      to={`${detailsPath}?id=${row.id}`}
                     />
                     <ActionButton
                       icon="solar:pen-2-broken"
                       label="Edit check-in"
-                      to={editPath}
+                      to={editPathFor(row.id)}
                       bg="#f5f0ff"
                     />
                   </div>

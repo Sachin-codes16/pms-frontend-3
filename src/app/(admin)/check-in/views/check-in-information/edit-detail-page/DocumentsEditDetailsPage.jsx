@@ -1,7 +1,23 @@
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Card, CardBody, Col, Row } from "react-bootstrap";
 import { Link, useLocation } from "react-router-dom";
+import { toast } from "react-toastify";
+import Spinner from "@/components/Spinner";
+import useCheckIn from "@/hooks/useCheckIn";
+import checkInApi from "@/helpers/checkInApi";
+
+// POST /checkin-checkout/check_in/document/upload/ (Section J) is a JSON
+// endpoint, not multipart — the file is sent as a base64 string.
+const DOCUMENT_UPLOAD_ENDPOINT = "/checkin-checkout/check_in/document/upload/";
+
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
 const fieldStyle = {
   background: "#f9f9fc",

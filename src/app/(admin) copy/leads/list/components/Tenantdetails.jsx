@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardBody, Col, Row, Spinner } from 'react-bootstrap';
 import { Icon as IconifyIcon } from '@iconify/react';
@@ -96,7 +96,7 @@ const StatusBadge = ({ status }) => {
 /* ─── Property Linked Row ────────────────────────────────────────────────── */
 const PropertyRow = ({ assignment, isLast }) => {
   const prop = assignment.property || {};
-  const API_ORIGIN = 'https://essdemo.alwijha.net';
+  const API_ORIGIN = 'https://alw.checkour.work';
 
   // Build photo URL
   const photos = prop.photos || [];

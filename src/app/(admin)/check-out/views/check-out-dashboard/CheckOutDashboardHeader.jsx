@@ -1,6 +1,6 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { Button } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const CheckOutDashboardHeader = () => {
   const navigate = useNavigate();
@@ -27,7 +27,8 @@ const CheckOutDashboardHeader = () => {
           Back
         </Button>
         <Button
-          type="button"
+          as={Link}
+          to="/check-out-start"
           variant="primary"
           style={{ backgroundColor: '#604ae3', borderColor: '#604ae3', borderRadius: 4, minWidth: 100, padding: '10px 18px' }}
         >

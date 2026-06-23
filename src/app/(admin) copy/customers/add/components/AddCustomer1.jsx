@@ -1,4 +1,4 @@
-import TextAreaFormInput from '@/components/from/TextAreaFormInput';
+﻿import TextAreaFormInput from '@/components/from/TextAreaFormInput';
 import TextFormInput from '@/components/from/TextFormInput';
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import ReactSelect from 'react-select';
@@ -11,7 +11,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as yup from 'yup';
 
-const IMAGE_BASE_URL = 'https://essdemo.alwijha.net/media/';
+const IMAGE_BASE_URL = 'https://alw.checkour.work/media/';
 
 const ChoicesFormInput = (props) => <select {...props} />;
 

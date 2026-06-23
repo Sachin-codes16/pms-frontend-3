@@ -1,8 +1,8 @@
-import avatar2 from '@/assets/images/users/dummy1.jpg';
+﻿import avatar2 from '@/assets/images/users/dummy1.jpg';
 import { Card, CardBody, Col, Row } from 'react-bootstrap';
 
 // ─── Must match the base URL used by the API server ───────────────────────────
-const IMAGE_BASE_URL = 'https://essdemo.alwijha.net/media/';
+const IMAGE_BASE_URL = 'https://alw.checkour.work/media/';
 
 function resolveImageSrc(raw) {
   if (!raw || typeof raw !== 'string' || raw.trim() === '') return null;

@@ -1,7 +1,22 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Card, CardBody, Col, Row } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import Spinner from '@/components/Spinner';
+import useCheckIn from '@/hooks/useCheckIn';
+
+// Fields the API expects as a number rather than a string.
+const NUMERIC_FIELDS = ['assigned_employee_id'];
+
+// GET /checkin-checkout/check_in/get/ returns camelCase keys; map to the
+// snake_case form field names used here.
+const FIELD_MAP = {
+  check_in_date: 'checkInDate',
+  check_in_status: 'checkInStatus',
+  assigned_employee_id: 'assignedEmployeeId',
+  remarks_notes: 'remarksNotes',
+};
 
 const fieldStyle = {
   background: '#f9f9fc',
@@ -31,18 +46,18 @@ const sectionTitleStyle = {
   scrollMarginTop: 110,
 };
 
-const FormField = ({ label, placeholder, as = 'input', children }) => (
+const FormField = ({ label, name, placeholder, as = 'input', type = 'text', defaultValue, children }) => (
   <div>
     <label style={labelStyle}>{label}</label>
     {as === 'select' ? (
-      <select style={fieldStyle} defaultValue="">
+      <select style={fieldStyle} name={name} defaultValue={defaultValue ?? ''}>
         <option value="" disabled>
           {placeholder}
         </option>
         {children}
       </select>
     ) : (
-      <input style={fieldStyle} placeholder={placeholder} />
+      <input style={fieldStyle} name={name} type={type} placeholder={placeholder} defaultValue={defaultValue} />
     )}
   </div>
 );
@@ -75,10 +90,10 @@ const FileField = ({ label }) => (
   </div>
 );
 
-const DateField = ({ label }) => (
+const DateField = ({ label, name, defaultValue }) => (
   <div>
     <label style={labelStyle}>{label}</label>
-    <input type="date" placeholder="dd-mm-yyyy" style={fieldStyle} />
+    <input type="date" name={name} defaultValue={defaultValue} placeholder="dd-mm-yyyy" style={fieldStyle} />
   </div>
 );
 
@@ -88,12 +103,55 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
   const flowTitle = isCheckOut ? 'Check-Out' : 'Check-In';
   const dashboardPath = isCheckOut ? '/check-out-dashboard' : '/check-in-dashboard';
 
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id');
+
+  const { item, loading, updateSections, fetchItem } = useCheckIn({ id });
+  const formRef = useRef(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const getValue = (name) => {
+    const key = FIELD_MAP[name];
+    const value = key ? item?.[key] : undefined;
+    return value === null || value === undefined ? '' : value;
+  };
+
   useEffect(() => {
     if (!location.hash) return;
 
     const section = document.getElementById(location.hash.slice(1));
     section?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }, [location.hash]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formRef.current) return;
+    if (!id) {
+      alert('Cannot submit: no check-in id in the URL (open this page via "Edit Details" on an existing check-in, not a fresh "Create Check-Ins").');
+      return;
+    }
+    const formData = new FormData(formRef.current);
+    const payload = {};
+    for (const [k, v] of formData.entries()) {
+      if (v === '') continue;
+      payload[k] = NUMERIC_FIELDS.includes(k) ? Number(v) : v;
+    }
+    try {
+      setSubmitting(true);
+      await updateSections(id, { information: payload });
+      await fetchItem();
+      setSubmitting(false);
+      toast.success(`${flowTitle} information updated successfully`);
+      alert(`${flowTitle} information updated successfully.`);
+    } catch (err) {
+      setSubmitting(false);
+      console.error('Check-in information submit failed', err);
+      const res = err?.response?.data;
+      const message = res ? JSON.stringify(res) : err?.message || 'Something went wrong';
+      toast.error(message);
+      alert(message);
+    }
+  };
 
   return (
     <div>
@@ -119,6 +177,7 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
         </h4>
       </div>
 
+      <form ref={formRef} onSubmit={handleSubmit}>
       <Row className="g-4 align-items-start">
         <Col xs={12} lg={3}>
           <Card
@@ -126,13 +185,21 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
             style={{ borderRadius: 10, boxShadow: '0 10px 30px rgba(16, 24, 40, 0.07)' }}
           >
             <CardBody style={{ padding: 24 }}>
-              <h5 className="mb-2" style={{ color: '#526b89', fontSize: 18, fontWeight: 700 }}>
-                Ali Z Shaikh
-              </h5>
-              <div className="d-flex flex-wrap gap-3 mb-4" style={{ color: '#526b89', fontSize: 14 }}>
-                <span>alishaikh@domain.com</span>
-                <span>+91 102345XX89</span>
-              </div>
+              {loading ? (
+                <div style={{ padding: 24, display: 'flex', justifyContent: 'center' }}>
+                  <Spinner />
+                </div>
+              ) : (
+                <>
+                  <h5 className="mb-2" style={{ color: '#526b89', fontSize: 18, fontWeight: 700 }}>
+                    {item?.tenantName || 'Ali Z Shaikh'}
+                  </h5>
+                  <div className="d-flex flex-wrap gap-3 mb-4" style={{ color: '#526b89', fontSize: 14 }}>
+                    <span>{item?.tenantEmail || 'alishaikh@domain.com'}</span>
+                    <span>{item?.tenantMobileNumber || '+91 102345XX89'}</span>
+                  </div>
+                </>
+              )}
 
               <Row className="g-3 mb-4">
                 <Col xs={6}>
@@ -140,7 +207,7 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
                     {flowTitle} Date
                   </p>
                   <p className="mb-0" style={{ color: '#526b89', fontSize: 15 }}>
-                    12 April 2026
+                    {item?.checkInDate || '12 April 2026'}
                   </p>
                 </Col>
                 <Col xs={6}>
@@ -148,7 +215,7 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
                     {flowTitle} Status
                   </p>
                   <p className="mb-0" style={{ color: '#526b89', fontSize: 15 }}>
-                    Approved
+                    {item?.checkInStatus || 'Approved'}
                   </p>
                 </Col>
               </Row>
@@ -162,7 +229,7 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
                     Property Type
                   </p>
                   <p className="mb-0" style={{ color: '#526b89', fontSize: 15, fontWeight: 700 }}>
-                    Villa
+                    {item?.propertyType || 'Villa'}
                   </p>
                 </Col>
                 <Col xs={6}>
@@ -170,7 +237,7 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
                     Property Status
                   </p>
                   <p className="mb-0" style={{ color: '#526b89', fontSize: 15, fontWeight: 700 }}>
-                    Reserved
+                    {item?.propertyStatus || 'Reserved'}
                   </p>
                 </Col>
               </Row>
@@ -186,11 +253,12 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
                   Cancel
                 </Button>
                 <Button
-                  type="button"
+                  type="submit"
+                  disabled={submitting}
                   className="w-50"
                   style={{ background: '#526b89', borderColor: '#526b89', borderRadius: 5, height: 40 }}
                 >
-                  Submit
+                  {submitting ? 'Saving...' : 'Submit'}
                 </Button>
               </div>
             </CardBody>
@@ -223,20 +291,40 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
                     <FormField label={`${flowTitle} Code / ID`} placeholder="Auto-Generated" />
                   </Col>
                   <Col md={4}>
-                    <FormField label={`${flowTitle} Date *`} placeholder="dd-mm-yyyy" />
+                    <DateField label={`${flowTitle} Date *`} name="check_in_date" defaultValue={getValue('check_in_date')} />
                   </Col>
                   <Col md={4}>
-                    <FormField label={`${flowTitle} Status *`} placeholder="Select Status" as="select">
-                      <option>Approved</option>
+                    <FormField
+                      label={`${flowTitle} Status *`}
+                      name="check_in_status"
+                      defaultValue={getValue('check_in_status')}
+                      placeholder="Select Status"
+                      as="select"
+                    >
                       <option>Pending</option>
                       <option>In Progress</option>
+                      <option>Key Pending</option>
+                      <option>Active</option>
+                      <option>Completed</option>
+                      <option>Cancelled</option>
                     </FormField>
                   </Col>
                   <Col md={4}>
-                    <FormField label="Assigned Employee *" placeholder="Employee Name" />
+                    <FormField
+                      label="Assigned Employee ID *"
+                      name="assigned_employee_id"
+                      defaultValue={getValue('assigned_employee_id')}
+                      type="number"
+                      placeholder="Employee ID"
+                    />
                   </Col>
                   <Col md={12}>
-                    <FormField label="Remarks / Notes" placeholder="Enter initial remarks" />
+                    <FormField
+                      label="Remarks / Notes"
+                      name="remarks_notes"
+                      defaultValue={getValue('remarks_notes')}
+                      placeholder="Enter initial remarks"
+                    />
                   </Col>
                 </Row>
 
@@ -584,10 +672,11 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
                     Cancel
                   </Button>
                   <Button
-                    type="button"
+                    type="submit"
+                    disabled={submitting}
                     style={{ background: '#526b89', borderColor: '#526b89', borderRadius: 5, minWidth: 200, height: 45 }}
                   >
-                    Submit
+                    {submitting ? 'Saving...' : 'Submit'}
                   </Button>
                 </div>
               </div>
@@ -595,6 +684,7 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
           </Card>
         </Col>
       </Row>
+      </form>
     </div>
   );
 };

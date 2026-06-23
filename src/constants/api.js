@@ -1,6 +1,6 @@
-import { getCookie, setCookie, deleteCookie } from "cookies-next";
+﻿import { getCookie, setCookie, deleteCookie } from "cookies-next";
 
-export const API_BASE_URL = "https://essdemo.alwijha.net";
+export const API_BASE_URL = "https://alw.checkour.work";
 const authSessionKey = "_LAHOMES_AUTH_KEY_";
 
 const readToken = () => {
@@ -32,6 +32,8 @@ const readToken = () => {
 export let AUTH_TOKEN = readToken();
 
 export const setAuthToken = (token) => {
+  if (!token || typeof token !== "string") return;
+
   try {
     AUTH_TOKEN = token;
     if (typeof localStorage !== "undefined") {

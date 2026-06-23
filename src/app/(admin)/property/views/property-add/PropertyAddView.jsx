@@ -1,5 +1,4 @@
 import FileUpload from '@/components/FileUpload';
-import PageTitle from '@/components/PageTitle';
 import { Col, Row } from 'react-bootstrap';
 import { usePropertyAddController } from '../../controllers/usePropertyAddController';
 import PropertyAdd from '../../add/components/PropertyAdd';
@@ -10,7 +9,7 @@ const PropertyAddView = () => {
 
   return (
     <>
-      <PageTitle title="Add Property" subName="" />
+      <h4 className="mb-3 fw-semibold">Add Property</h4>
       <Row>
         <PropertyAddCard />
         <Col xl={9} lg={8}>

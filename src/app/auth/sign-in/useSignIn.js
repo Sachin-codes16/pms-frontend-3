@@ -1,5 +1,5 @@
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import * as yup from 'yup';
@@ -12,7 +12,7 @@ const useSignIn = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { saveSession } = useAuthContext();
+  const { saveSession, isAuthenticated } = useAuthContext();
   const [searchParams] = useSearchParams();
   const { showNotification } = useNotificationContext();
 
@@ -32,8 +32,14 @@ const useSignIn = () => {
   const redirectUser = () => {
     const redirectLink = searchParams.get('redirectTo');
     if (redirectLink) navigate(redirectLink);
-    else navigate('/');
+    else navigate('/dashboards');
   };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      redirectUser();
+    }
+  }, [isAuthenticated]);
 
   const login = handleSubmit(async (values) => {
     setLoading(true);
@@ -46,7 +52,13 @@ const useSignIn = () => {
       const userData = res.data;
 
       // Update the live AUTH_TOKEN so all existing API calls use the new token
-      setAuthToken(userData.token);
+      const token =
+        userData.token ||
+        userData.access_token ||
+        userData.accessToken ||
+        userData.access ||
+        userData.data?.token;
+      setAuthToken(token);
 
       // Save full user data to cookie session
       saveSession(userData);

@@ -1,4 +1,4 @@
-import IconifyIcon from "@/components/wrappers/IconifyIcon";
+﻿import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import api from "@/helpers/api";
 import { propertyData } from "@/assets/data/other";
 import { useEffect, useState } from "react";
@@ -63,11 +63,11 @@ const getPropertyImage = (item, fallbackImage) => {
   }
 
   if (typeof image === "string" && image.startsWith("/")) {
-    return `https://essdemo.alwijha.net${image}`;
+    return `https://alw.checkour.work${image}`;
   }
 
   if (typeof image === "string" && !image.startsWith("http")) {
-    return `https://essdemo.alwijha.net/${image.replace(/^\/+/, "")}`;
+    return `https://alw.checkour.work/${image.replace(/^\/+/, "")}`;
   }
 
   return image;

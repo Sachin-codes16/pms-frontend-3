@@ -1,68 +1,8 @@
-import property1 from '@/assets/images/properties/p-11.jpg';
-import property2 from '@/assets/images/properties/p-2.jpg';
-import property3 from '@/assets/images/properties/p-3.jpg';
-import property4 from '@/assets/images/properties/p-4.jpg';
-import property5 from '@/assets/images/properties/p-5.jpg';
+import { resolvePhotoSrc } from '@/utils/imageStorage';
+import { fmtDate, fmtMoney, val, yesNo } from '@/utils/checkInFormat';
 
 const pageText = '#526b89';
 const bodyText = '#111';
-
-const gallery = [property1, property2, property3, property4, property5];
-
-const basicInfo = [
-  ['PROPERTY TYPE', 'Villa'],
-  ['PROPERTY CODE', 'PRP-10234'],
-  ['PROJECT / SOCIETY', 'Green Valley'],
-  ['VILLA NAME / NO', 'Villa 12A'],
-  ['TOTAL FLOORS', '2'],
-  ['YEAR BUILT', '2023'],
-];
-
-const configurationInfo = [
-  ['BHK', '4'],
-  ['CARPET AREA', '2200 sq.ft'],
-  ['BUILT-UP AREA', '2800 sq.ft'],
-  ['PLOT AREA', '4000 sq.ft'],
-  ['BATHROOMS', '4'],
-  ['FACING', 'EAST'],
-];
-
-const financialInfo = [
-  ['MONTHLY RENT', 'OMR 8,500'],
-  ['SECURITY DEPOSIT', 'OMR 100,000'],
-  ['MAINTENANCE', 'OMR 1000'],
-  ['ELECTRICITY', 'Metered'],
-  ['WATER CHARGES', 'Included'],
-];
-
-const ownershipInfo = [['LANDLORD NAME', 'Mr.Rajesh Mehta']];
-
-const amenities = ['Parking', 'Private Garden', 'Swimming Pool', 'Power Backup', 'CCTV', 'Gated Community'];
-
-const tenantPreferenceInfo = [
-  ['RENTAL PURPOSE', 'Residential'],
-  ['TENANT TYPE', 'Family / Company Lease'],
-  ['PETS ALLOWED', 'Yes'],
-];
-
-const availabilityInfo = [
-  ['STATUS', 'Vacant'],
-  ['AVAILABLE FROM', '15 Mar 2026'],
-  ['CURRENT TENANT', '---'],
-];
-
-const residentialAddressInfo = [
-  ['CITY', 'Muskat'],
-  ['STATE', 'Muskat'],
-  ['PO BOX', '401000'],
-  ['GOOGLE MAP', 'View Location'],
-];
-
-const systemInfo = [
-  ['CREATED BY', 'Admin'],
-  ['CREATED ON', '10 Feb 2026'],
-  ['LAST UPDATED', '02 Mar 2026'],
-];
 
 const cardStyle = {
   background: '#fff',
@@ -117,44 +57,50 @@ const PropertyInfoCard = ({ title, items }) => (
   </div>
 );
 
-const AmenitiesCard = () => (
+const AmenitiesCard = ({ amenities }) => (
   <div style={cardStyle}>
     <div style={{ padding: '28px 30px' }}>
       <h4 style={sectionTitleStyle}>Amenities &amp; Facilities</h4>
       <div style={{ borderTop: '1px solid #d7d7d7', paddingTop: 22 }}>
-        <div
-          style={{
-            display: 'grid',
-            gap: '18px 28px',
-            gridTemplateColumns: 'repeat(6, minmax(150px, 1fr))',
-            overflowX: 'auto',
-          }}
-        >
-          {amenities.map((item) => (
-            <span
-              key={item}
-              style={{
-                background: '#f3f4f6',
-                borderRadius: 6,
-                color: bodyText,
-                display: 'inline-block',
-                fontSize: 15,
-                fontWeight: 500,
-                padding: '12px 12px',
-                textTransform: 'uppercase',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {item}
-            </span>
-          ))}
-        </div>
+        {amenities.length > 0 ? (
+          <div
+            style={{
+              display: 'grid',
+              gap: '18px 28px',
+              gridTemplateColumns: 'repeat(6, minmax(150px, 1fr))',
+              overflowX: 'auto',
+            }}
+          >
+            {amenities.map((item) => (
+              <span
+                key={item}
+                style={{
+                  background: '#f3f4f6',
+                  borderRadius: 6,
+                  color: bodyText,
+                  display: 'inline-block',
+                  fontSize: 15,
+                  fontWeight: 500,
+                  padding: '12px 12px',
+                  textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="mb-0" style={{ color: bodyText, fontSize: 15 }}>
+            No amenities listed
+          </p>
+        )}
       </div>
     </div>
   </div>
 );
 
-const AddressCard = () => (
+const AddressCard = ({ address, items }) => (
   <div style={cardStyle}>
     <div style={{ padding: '28px 30px' }}>
       <h4 style={sectionTitleStyle}>Residential Address</h4>
@@ -167,7 +113,7 @@ const AddressCard = () => (
             ADDRESS
           </p>
           <p className="mb-0" style={{ color: bodyText, fontSize: 16, fontWeight: 600 }}>
-            Green Valley Society, Muskat, Oman
+            {address}
           </p>
         </div>
 
@@ -179,7 +125,7 @@ const AddressCard = () => (
             overflowX: 'auto',
           }}
         >
-          {residentialAddressInfo.map(([label, value]) => (
+          {items.map(([label, value]) => (
             <div key={label}>
               <p
                 className="mb-2"
@@ -187,9 +133,9 @@ const AddressCard = () => (
               >
                 {label}
               </p>
-              {label === 'GOOGLE MAP' ? (
-                <a href="#" style={{ color: bodyText, fontSize: 16, fontWeight: 600, textDecoration: 'none' }}>
-                  {value}
+              {label === 'GOOGLE MAP' && value !== '—' ? (
+                <a href={value} style={{ color: bodyText, fontSize: 16, fontWeight: 600, textDecoration: 'none' }}>
+                  View Location
                 </a>
               ) : (
                 <p className="mb-0" style={{ color: bodyText, fontSize: 16, fontWeight: 600 }}>
@@ -204,33 +150,106 @@ const AddressCard = () => (
   </div>
 );
 
-const PropertyDetailsPage = () => {
+const PropertyDetailsPage = ({ record }) => {
+  const propertyDetails = record?.propertyDetails ?? {};
+  const basicInformation = propertyDetails.basicInformation ?? {};
+  const configurationAndArea = propertyDetails.configurationAndArea ?? {};
+  const rentalAndFinancialDetails = propertyDetails.rentalAndFinancialDetails ?? {};
+  const ownership = propertyDetails.ownership ?? {};
+  const amenities = propertyDetails.amenitiesAndFacilities ?? [];
+  const rentalDetails = propertyDetails.rentalDetails ?? {};
+  const agreementDetails = propertyDetails.agreementDetails ?? {};
+  const residentialAddress = propertyDetails.residentialAddress ?? {};
+  const systemInformation = propertyDetails.systemInformation ?? {};
+  const photos = propertyDetails.photos ?? [];
+
+  const basicInfo = [
+    ['PROPERTY TYPE', val(basicInformation.propertyType)],
+    ['PROPERTY CODE', val(basicInformation.propertyCode)],
+    ['PROJECT / SOCIETY', val(basicInformation.projectOrSociety)],
+    ['NAME / NUMBER', val(basicInformation.nameOrNumber)],
+    ['TOTAL FLOORS', val(basicInformation.totalFloors)],
+    ['YEAR BUILT', val(basicInformation.yearBuilt)],
+  ];
+
+  const configurationInfo = [
+    ['CONFIGURATION', val(configurationAndArea.configuration)],
+    ['CARPET AREA', configurationAndArea.carpetAreaSqft != null ? `${configurationAndArea.carpetAreaSqft} sq.ft` : '—'],
+    ['BUILT-UP AREA', configurationAndArea.builtupAreaSqft != null ? `${configurationAndArea.builtupAreaSqft} sq.ft` : '—'],
+    ['PLOT AREA', configurationAndArea.plotAreaSqft != null ? `${configurationAndArea.plotAreaSqft} sq.ft` : '—'],
+    ['BATHROOMS', val(configurationAndArea.bathrooms)],
+    ['FACING', val(configurationAndArea.facing)],
+  ];
+
+  const financialInfo = [
+    ['MONTHLY RENT', fmtMoney(rentalAndFinancialDetails.monthlyRent)],
+    ['SECURITY DEPOSIT', fmtMoney(rentalAndFinancialDetails.securityDeposit)],
+    ['MAINTENANCE', fmtMoney(rentalAndFinancialDetails.maintenance)],
+    ['ELECTRICITY', val(rentalAndFinancialDetails.electricity)],
+    ['WATER CHARGES', val(rentalAndFinancialDetails.waterCharges)],
+  ];
+
+  const ownershipInfo = [['LANDLORD NAME', val(ownership.landlordName)]];
+
+  const rentalDetailInfo = [
+    ['RENT START DATE', fmtDate(rentalDetails.rentStartDate)],
+    ['RENT END DATE', fmtDate(rentalDetails.rentEndDate)],
+    ['AGREEMENT DURATION', val(rentalDetails.agreementDuration)],
+    ['MAINTENANCE REQUIRED', yesNo(rentalDetails.maintenanceRequired)],
+    ['MAINTENANCE STATUS', val(rentalDetails.maintenanceStatus)],
+  ];
+
+  const agreementInfo = [
+    ['AGREEMENT TYPE', val(agreementDetails.agreementType)],
+    ['PREPARED BY', val(agreementDetails.agreementPreparedBy)],
+    ['AGREEMENT STATUS', val(agreementDetails.agreementStatus)],
+  ];
+
+  const residentialAddressInfo = [
+    ['CITY', val(residentialAddress.city)],
+    ['STATE', val(residentialAddress.state)],
+    ['PO BOX', val(residentialAddress.poBox)],
+    ['GOOGLE MAP', residentialAddress.googleMap && residentialAddress.googleMap !== '-' ? residentialAddress.googleMap : '—'],
+  ];
+
+  const systemInfo = [
+    ['CREATED BY', val(systemInformation.createdBy)],
+    ['CREATED ON', fmtDate(systemInformation.createdOn)],
+    ['LAST UPDATED', fmtDate(systemInformation.lastUpdated)],
+  ];
+
   return (
     <div style={{ padding: '24px 24px 36px' }}>
       <div style={{ ...cardStyle, padding: 24 }}>
-        <div
-          style={{
-            display: 'grid',
-            gap: 20,
-            gridTemplateColumns: 'repeat(5, minmax(200px, 1fr))',
-            overflowX: 'auto',
-          }}
-        >
-          {gallery.map((image, index) => (
-            <img
-              key={image}
-              alt={`Property ${index + 1}`}
-              src={image}
-              style={{
-                borderRadius: 5,
-                height: 350,
-                minWidth: 200,
-                objectFit: 'cover',
-                width: '100%',
-              }}
-            />
-          ))}
-        </div>
+        {photos.length > 0 ? (
+          <div
+            style={{
+              display: 'grid',
+              gap: 20,
+              gridTemplateColumns: 'repeat(5, minmax(200px, 1fr))',
+              overflowX: 'auto',
+            }}
+          >
+            {photos.map((photo, index) => (
+              <img
+                key={photo}
+                alt={`Property ${index + 1}`}
+                src={resolvePhotoSrc(photo)}
+                style={{
+                  borderRadius: 5,
+                  height: 350,
+                  minWidth: 200,
+                  objectFit: 'cover',
+                  width: '100%',
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="mb-0" style={{ color: pageText, fontSize: 15 }}>
+            No photos available
+          </p>
+        )}
 
         <div
           className="d-flex flex-column flex-md-row justify-content-between gap-3"
@@ -238,16 +257,16 @@ const PropertyDetailsPage = () => {
         >
           <div>
             <h2 className="mb-2" style={{ color: pageText, fontSize: 28, fontWeight: 700 }}>
-              Green Valley Villa 12A
+              {val(propertyDetails.propertyName, 'Property')}
             </h2>
             <p className="mb-0" style={{ color: pageText, fontSize: 16 }}>
-              Green Valley Society, Muskat, Oman, 4100001
+              {val(propertyDetails.address)}
             </p>
           </div>
 
           <div className="text-md-end">
             <h2 className="mb-2" style={{ color: pageText, fontSize: 28, fontWeight: 700 }}>
-              OMR 8,500
+              {fmtMoney(propertyDetails.monthlyRent)}
             </h2>
             <p className="mb-0" style={{ color: pageText, fontSize: 16 }}>
               per month + maintenance
@@ -259,10 +278,10 @@ const PropertyDetailsPage = () => {
         <PropertyInfoCard title="Configuration & Area" items={configurationInfo} />
         <PropertyInfoCard title="Rental & Financial Details" items={financialInfo} />
         <PropertyInfoCard title="Ownership" items={ownershipInfo} />
-        <AmenitiesCard />
-        <PropertyInfoCard title="Tenant Preference" items={tenantPreferenceInfo} />
-        <PropertyInfoCard title="Availability & Status" items={availabilityInfo} />
-        <AddressCard />
+        <AmenitiesCard amenities={amenities} />
+        <PropertyInfoCard title="Rental Details" items={rentalDetailInfo} />
+        <PropertyInfoCard title="Agreement Details" items={agreementInfo} />
+        <AddressCard address={val(propertyDetails.address)} items={residentialAddressInfo} />
         <PropertyInfoCard title="System Information" items={systemInfo} />
       </div>
     </div>
