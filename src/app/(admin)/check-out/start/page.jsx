@@ -12,7 +12,7 @@ import KeyHandoverEditDetailsPage from "../views/check-out-information/edit-deta
 import DocumentsEditDetailsPage from "../views/check-out-information/edit-detail-page/DocumentsEditDetailsPage.jsx";
 
 const sectionMap = {
-  "check-out-information": OverviewEditDetailsPage,
+  "check-out-information": CheckOutInformationForm,
   "tenant-details": TenantDetailsEditDetailsPage,
   "property-details": PropertyDetailsEditDetailsPage,
   "property-inspection": InspectionEditDetailsPage,

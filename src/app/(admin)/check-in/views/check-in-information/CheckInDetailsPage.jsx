@@ -16,9 +16,6 @@ import UtilityReadingsPage from "./pages/UtilityReadingsPage";
 const pageText = "#526b89";
 const darkButton = "#30375f";
 
-// ===== Paste your backend API endpoint here, e.g. '/check-ins' =====
-const API_ENDPOINT = "/check-ins";
-// =====================================================================
 // Until a record loads from the API (or while it's unreachable), the
 // summary below shows this demo data so the UI keeps working.
 
@@ -49,14 +46,14 @@ const buildDetailItems = (item) => {
   if (!item) return fallbackDetailItems;
 
   return [
-    { label: "Tenant", value: getFirstValue(item, ["tenant_name", "tenantName"], fallbackDetailItems[0].value) },
-    { label: "Property", value: getFirstValue(item, ["property_name", "propertyName", "property"], fallbackDetailItems[1].value) },
-    { label: "Unit No", value: getFirstValue(item, ["unit_no", "unitNo"], fallbackDetailItems[2].value) },
-    { label: "Check-in Date", value: getFirstValue(item, ["check_in_date", "checkInDate"], fallbackDetailItems[3].value) },
-    { label: "Assigned To", value: getFirstValue(item, ["assigned_to", "assignedTo"], fallbackDetailItems[4].value) },
-    { label: "Check-in Status", value: getFirstValue(item, ["check_in_status", "status"], fallbackDetailItems[5].value) },
-    { label: "Mobile No.", value: getFirstValue(item, ["mobile_no", "mobileNo", "phone"], fallbackDetailItems[6].value) },
-    { label: "Tenant Type", value: getFirstValue(item, ["tenant_type", "tenantType"], fallbackDetailItems[7].value) },
+    { label: "Tenant", value: item.tenantName || "–" },
+    { label: "Property", value: item.buildingName || item.propertyDetails?.propertyName || "–" },
+    { label: "Unit No", value: item.flatUnitNumber || "–" },
+    { label: "Check-in Date", value: item.checkInDate || "–" },
+    { label: "Assigned To", value: item.assignedEmployee?.name || "–" },
+    { label: "Check-in Status", value: item.checkInStatus || "–" },
+    { label: "Mobile No.", value: item.tenantMobileNumber || "–" },
+    { label: "Tenant Type", value: item.tenantType || "–" },
   ];
 };
 
@@ -186,11 +183,11 @@ const CheckInDetailsPage = () => {
   const [activeTab, setActiveTab] = useState(tabs[0].key);
   const location = useLocation();
   const id = new URLSearchParams(location.search).get("id");
-  const { item } = useCheckIn({ endpoint: API_ENDPOINT, id });
+  const { item } = useCheckIn({ id });
 
   const detailItems = buildDetailItems(item);
-  const statusLabel = getFirstValue(item, ["check_in_status", "status"], fallbackStatus);
-  const recordCode = getFirstValue(item, ["check_in_code", "code", "id"], fallbackCode);
+  const statusLabel = item?.checkInStatus || fallbackStatus;
+  const recordCode = item?.checkInCode || fallbackCode;
 
   const ActivePage =
     tabs.find((tab) => tab.key === activeTab)?.component ?? OverviewPage;

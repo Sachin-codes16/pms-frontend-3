@@ -86,37 +86,45 @@ const TenantDetailsPage = ({ record }) => {
   const occupancy = tenantDetails.occupancyDetails ?? {};
   const documents = record?.documents ?? [];
 
+  // Helper: prefer nested API structure, fall back to flat top-level field
+  const p = (nested, flat) => nested || flat || null;
+
   const personalInfo = [
-    ['Tenant Type', val(personal.tenantType)],
-    ['Date of Birth', fmtDate(personal.dateOfBirth)],
-    ['Gender', val(personal.gender)],
-    ['Civil ID', val(identification.tenantCivilId)],
-    ['Passport Number', val(identification.tenantPassportNumber)],
-    ['Nationality', val(personal.tenantNationality)],
-    ['Marital Status', val(personal.maritalStatus)],
+    ['Tenant Type',    val(p(personal.tenantType,            record?.tenantType))],
+    ['Date of Birth',  fmtDate(p(personal.dateOfBirth,       record?.dateOfBirth))],
+    ['Gender',         val(p(personal.gender,                record?.gender))],
+    ['Civil ID',       val(p(identification.tenantCivilId,   record?.tenantCivilId))],
+    ['Passport No.',   val(p(identification.tenantPassportNumber, record?.tenantPassportNumber))],
+    ['Nationality',    val(p(personal.tenantNationality,     record?.tenantNationality))],
+    ['Marital Status', val(p(personal.maritalStatus,         record?.maritalStatus))],
   ];
 
+  const ecName = p(contact.emergencyContactName, record?.emergencyContactName);
+  const ecNumber = p(contact.emergencyContactNumber, record?.emergencyContactNumber);
   const emergencyContact =
-    contact.emergencyContactName || contact.emergencyContactNumber
-      ? [contact.emergencyContactName, contact.emergencyContactNumber].filter(Boolean).join('\n')
+    ecName || ecNumber
+      ? [ecName, ecNumber].filter(Boolean).join('\n')
       : val(null);
 
   const contactInfo = [
-    ['Mobile Number', val(contact.tenantMobileNumber)],
-    ['Alternate No', val(contact.alternateMobileNumber)],
-    ['Email', val(contact.tenantEmail)],
-    ['Address', val(identification.tenantAddress)],
-    ['Emergency No', emergencyContact],
+    ['Mobile Number', val(p(contact.tenantMobileNumber,    record?.tenantMobileNumber))],
+    ['Alternate No',  val(p(contact.alternateMobileNumber, record?.alternateMobileNumber))],
+    ['Email',         val(p(contact.tenantEmail,           record?.tenantEmail))],
+    ['Address',       val(p(identification.tenantAddress,  record?.tenantAddress))],
+    ['Emergency No',  emergencyContact],
   ];
 
   const additionalInfo = [
-    ['Profession', val(professional.profession)],
-    ['Monthly Rent', fmtMoney(record?.monthlyRent)],
-    ['Move-In Reason', val(occupancy.moveInReason)],
-    ['Company Name', val(professional.companyName)],
+    ['Profession',       val(p(professional.profession,             record?.profession))],
+    ['Monthly Rent',     fmtMoney(record?.monthlyRent)],
+    ['Move-In Reason',   val(p(occupancy.moveInReason,              record?.moveInReason))],
+    ['Company Name',     val(p(professional.companyName,            record?.companyName))],
     ['Security Deposit', fmtMoney(record?.securityDeposit)],
-    ['No. Of Occupants', val(occupancy.numberOfOccupants)],
+    ['No. Of Occupants', val(p(occupancy.numberOfOccupants,         record?.numberOfOccupants))],
   ];
+
+  const tenantName = p(personal.tenantName, record?.tenantName);
+  const tenantCode = p(personal.tenantCode, record?.tenantCode);
 
   const notes = record?.tenantRemarks || record?.internalComments;
 
@@ -136,32 +144,35 @@ const TenantDetailsPage = ({ record }) => {
 
             <div style={{ padding: '28px 55px 40px' }}>
               <div className="d-flex align-items-start gap-4 mb-4">
-                <img
-                  alt={val(personal.tenantName, 'Tenant')}
-                  src="https://i.pravatar.cc/120?img=12"
-                  style={{ borderRadius: '50%', height: 74, objectFit: 'cover', width: 74 }}
-                />
+                <div
+                  className="d-inline-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ background: '#dce8f5', borderRadius: '50%', fontSize: 26, fontWeight: 700, color: pageText, height: 74, width: 74 }}
+                >
+                  {tenantName ? tenantName.charAt(0).toUpperCase() : '?'}
+                </div>
                 <div>
                   <div className="d-flex align-items-center gap-5 mb-3">
                     <h4 className="mb-0" style={{ color: pageText, fontSize: 23, fontWeight: 700 }}>
-                      {val(personal.tenantName, 'Tenant')}
+                      {val(tenantName)}
                     </h4>
                     <span style={{ color: pageText, fontSize: 15 }}>{val(record?.checkInStatus)}</span>
                   </div>
                   <div className="d-flex flex-wrap align-items-center gap-4 mb-2">
                     <span className="d-inline-flex align-items-center gap-2" style={{ color: pageText, fontSize: 15 }}>
                       <IconifyIcon icon="ri:phone-fill" width={16} height={16} />
-                      {val(contact.tenantMobileNumber)}
+                      {val(p(contact.tenantMobileNumber, record?.tenantMobileNumber))}
                     </span>
                     <span className="d-inline-flex align-items-center gap-2" style={{ color: pageText, fontSize: 15 }}>
                       <IconifyIcon icon="logos:google-gmail" width={16} height={16} />
-                      {val(contact.tenantEmail)}
+                      {val(p(contact.tenantEmail, record?.tenantEmail))}
                     </span>
                   </div>
-                  <span className="d-inline-flex align-items-center gap-2" style={{ color: pageText, fontSize: 15 }}>
-                    <IconifyIcon icon="ri:user-location-line" width={16} height={16} />
-                    {val(personal.tenantCode)}
-                  </span>
+                  {tenantCode && (
+                    <span className="d-inline-flex align-items-center gap-2" style={{ color: pageText, fontSize: 15 }}>
+                      <IconifyIcon icon="ri:id-card-line" width={16} height={16} />
+                      {tenantCode}
+                    </span>
+                  )}
                 </div>
               </div>
 

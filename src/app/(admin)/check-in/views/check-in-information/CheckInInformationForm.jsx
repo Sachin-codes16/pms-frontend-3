@@ -1,4 +1,5 @@
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
+import checkInApi from "@/helpers/checkInApi";
 import { useEffect, useRef, useState } from "react";
 import { Button, Card, CardBody, Col, Row } from "react-bootstrap";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -89,6 +90,12 @@ const FIELD_MAP = {
   internal_comments: "internalComments",
   tenant_remarks: "tenantRemarks",
   special_instructions: "specialInstructions",
+  key_number: "keyNumber",
+  key_available: "keyAvailable",
+  key_booking_date: "keyBookingDate",
+  confirmation_received: "confirmationReceived",
+  key_delivery_date: "keyDeliveryDate",
+  key_handover_status: "keyHandoverStatus",
 };
 
 // Maps each section to its dedicated PATCH endpoint
@@ -242,12 +249,13 @@ const FormField = ({
   </div>
 );
 
-const TextAreaField = ({ label, name, placeholder }) => (
+const TextAreaField = ({ label, name, placeholder, defaultValue }) => (
   <div>
     <label style={labelStyle}>{label}</label>
     <textarea
       name={name}
       placeholder={placeholder}
+      defaultValue={defaultValue}
       style={{
         ...fieldStyle,
         minHeight: 94,
@@ -303,6 +311,113 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   const { item, loading, create, updateSections, fetchItem } = useCheckIn({ id });
   const formRef = useRef(null);
   const [submitting, setSubmitting] = useState(false);
+  const [properties, setProperties] = useState([]);
+  const [propertiesLoading, setPropertiesLoading] = useState(true);
+  const [selectedPropertyId, setSelectedPropertyId] = useState("");
+  const [tenants, setTenants] = useState([]);
+  const [tenantsLoading, setTenantsLoading] = useState(true);
+  const [selectedTenantId, setSelectedTenantId] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    checkInApi
+      .get("/property/get_all/")
+      .then((res) => {
+        if (!cancelled) setProperties(res.data?.data?.data ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setProperties([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPropertiesLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchAllTenants = async () => {
+      try {
+        const base = "/lead/get_all/?filter_key=purpose&filter_value=tenant";
+        const first = await checkInApi.get(base);
+        const payload = first.data?.data ?? {};
+        const totalPages = payload.totalPage ?? 1;
+        let all = payload.data ?? [];
+        if (totalPages > 1) {
+          const rest = await Promise.all(
+            Array.from({ length: totalPages - 1 }, (_, i) =>
+              checkInApi.get(`${base}&page_num=${i + 2}`).then((r) => r.data?.data?.data ?? [])
+            )
+          );
+          all = all.concat(...rest);
+        }
+        if (!cancelled) setTenants(all);
+      } catch {
+        if (!cancelled) setTenants([]);
+      } finally {
+        if (!cancelled) setTenantsLoading(false);
+      }
+    };
+    fetchAllTenants();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Sync dropdowns with loaded item in edit mode (runs after item is fetched)
+  useEffect(() => {
+    if (item?.propertyId) setSelectedPropertyId(String(item.propertyId));
+  }, [item?.propertyId]);
+
+  useEffect(() => {
+    if (item?.tenantId) setSelectedTenantId(String(item.tenantId));
+  }, [item?.tenantId]);
+
+  const handlePropertyChange = (e) => {
+    const pid = e.target.value;
+    setSelectedPropertyId(pid);
+
+    const property = properties.find((p) => String(p.propertyId) === pid);
+    if (!property || !formRef.current) return;
+
+    const setField = (name, value) => {
+      const el = formRef.current.elements[name];
+      if (el && value !== null && value !== undefined && value !== "") {
+        el.value = String(value);
+      }
+    };
+
+    setField("assigned_employee_id", property.assignedTo?.userId);
+    setField("property_type", property.rentalType);
+    setField("building_name", property.buildingDetails || property.propertyDetails?.buildingName);
+    setField("flat_unit_number", property.flatNumber ?? property.flatData?.flatNumber);
+    setField("floor_number", property.floor ?? property.flatData?.floorNumber);
+    setField("property_status", property.propertyDetails?.currentStatus);
+    setField("monthly_rent", property.propertyDetails?.monthlyRent ?? property.expectedRent);
+    setField("security_deposit", property.propertyDetails?.securityDepositAmount);
+    setField("advance_rent_received", property.advanceAmountRent || property.propertyDetails?.advanceAmountRent);
+    setField("maintenance_charges", property.propertyDetails?.otherCharges);
+  };
+
+  const handleTenantChange = (e) => {
+    const tid = e.target.value;
+    setSelectedTenantId(tid);
+
+    const tenant = tenants.find((t) => String(t.leadId) === tid);
+    if (!tenant || !formRef.current) return;
+
+    const setField = (name, value) => {
+      const el = formRef.current.elements[name];
+      if (el && value !== null && value !== undefined && value !== "") {
+        el.value = String(value);
+      }
+    };
+
+    const fullName = [tenant.firstName, tenant.lastName].filter(Boolean).join(" ");
+    setField("tenant_name", fullName);
+    setField("tenant_mobile_number", tenant.phoneNumber);
+    setField("tenant_civil_id", tenant.civil_id);
+    setField("tenant_passport_number", tenant.passportOrId);
+    setField("tenant_nationality", tenant.nationality);
+  };
 
   const getValue = (name) => {
     const key = FIELD_MAP[name];
@@ -583,13 +698,27 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   </h5>
                   <Row className="g-3 mb-4">
                     <Col md={4}>
-                      <FormField
-                        label="Property ID *"
-                        name="property_id"
-                        defaultValue={getValue("property_id")}
-                        type="number"
-                        placeholder="Property ID"
-                      />
+                      <div>
+                        <label style={labelStyle}>Property ID *</label>
+                        <select
+                          name="property_id"
+                          style={fieldStyle}
+                          value={selectedPropertyId}
+                          onChange={handlePropertyChange}
+                        >
+                          <option value="" disabled>
+                            {propertiesLoading ? "Loading properties…" : "Select Property ID"}
+                          </option>
+                          {!propertiesLoading && properties.length === 0 && (
+                            <option disabled>No properties available</option>
+                          )}
+                          {properties.map((p) => (
+                            <option key={p.propertyId} value={String(p.propertyId)}>
+                              {p.propertyId} – {p.buildingDetails || p.propertyDetails?.buildingName || ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </Col>
                     <Col md={4}>
                       <FormField
@@ -647,13 +776,27 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   </h5>
                   <Row className="g-4 mb-4">
                     <Col md={4}>
-                      <FormField
-                        label="Tenant ID *"
-                        name="tenant_id"
-                        defaultValue={getValue("tenant_id")}
-                        type="number"
-                        placeholder="Tenant ID"
-                      />
+                      <div>
+                        <label style={labelStyle}>Tenant ID *</label>
+                        <select
+                          name="tenant_id"
+                          style={fieldStyle}
+                          value={selectedTenantId}
+                          onChange={handleTenantChange}
+                        >
+                          <option value="" disabled>
+                            {tenantsLoading ? "Loading tenants…" : "Select Tenant ID"}
+                          </option>
+                          {!tenantsLoading && tenants.length === 0 && (
+                            <option disabled>No tenants available</option>
+                          )}
+                          {tenants.map((t) => (
+                            <option key={t.leadId} value={String(t.leadId)}>
+                              {t.leadId} – {[t.firstName, t.lastName].filter(Boolean).join(" ")}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </Col>
                     <Col md={4}>
                       <FormField
@@ -730,7 +873,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       </FormField>
                     </Col>
                     <Col md={4}>
-                      <DateField label="Date of Birth" name="date_of_birth" />
+                      <DateField label="Date of Birth" name="date_of_birth" defaultValue={getValue("date_of_birth")} />
                     </Col>
                     <Col md={4}>
                       <FormField
@@ -829,7 +972,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                         as="select"
                       >
                         <option>Villa</option>
-                        <option>Apartment</option>
+                        <option>Warehouse</option>
                         <option>Flat</option>
                         <option>Commercial</option>
                       </FormField>
@@ -1132,7 +1275,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       />
                     </Col>
                     <Col md={4}>
-                      <DateField label="Approved On" name="approved_on" />
+                      <DateField label="Approved On" name="approved_on" defaultValue={getValue("approved_on")} />
                     </Col>
                     <Col md={12}>
                       <TextAreaField
@@ -1240,6 +1383,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       <FormField
                         label="Key Number"
                         name="key_number"
+                        defaultValue={getValue("key_number")}
                         placeholder="Key ID"
                       />
                     </Col>
@@ -1247,6 +1391,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       <FormField
                         label="Key Available"
                         name="key_available"
+                        defaultValue={getValue("key_available")}
                         placeholder="Select Status"
                         as="select"
                       >
@@ -1258,12 +1403,14 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       <DateField
                         label="Key Booking Date"
                         name="key_booking_date"
+                        defaultValue={getValue("key_booking_date")}
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Confirmation Received"
                         name="confirmation_received"
+                        defaultValue={getValue("confirmation_received")}
                         placeholder="Select"
                         as="select"
                       >
@@ -1275,12 +1422,14 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       <DateField
                         label="Key Delivery Date"
                         name="key_delivery_date"
+                        defaultValue={getValue("key_delivery_date")}
                       />
                     </Col>
                     <Col md={4}>
                       <FormField
                         label="Key Handover Status"
                         name="key_handover_status"
+                        defaultValue={getValue("key_handover_status")}
                         placeholder="Select Status"
                         as="select"
                       >

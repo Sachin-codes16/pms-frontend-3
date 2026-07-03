@@ -1,3 +1,4 @@
+// @refresh reset
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import checkInApi from "@/helpers/checkInApi";
 import { useEffect, useState } from "react";
@@ -9,115 +10,6 @@ const detailsPath = "/check-in-information";
 const editPathFor = (id) => `/check-in-start?id=${id}#check-in-information`;
 
 const API_ENDPOINT = "/checkin-checkout/check_in/get_all/";
-// Until the fetch resolves (or while it's unreachable), the table below
-// shows this demo data so the UI keeps working.
-
-const fallbackRows = [
-  {
-    srNo: 1,
-    tenantId: "12345",
-    tenantName: "Aylin Huynh",
-    property: "Silver Oak Residency",
-    unitNo: "A-101",
-    checkinDate: "21 May 2015",
-    rent: "1500 OMR",
-    assignmentStatus: "Approved",
-    keyStatus: "Handed Over",
-    status: "Completed",
-    assignedTo: "Ahmed Al-Harthi",
-  },
-  {
-    srNo: 2,
-    tenantId: "12345",
-    tenantName: "Louise Morton",
-    property: "Green Valley Heights",
-    unitNo: "B-204",
-    checkinDate: "21 May 2018",
-    rent: "2500 OMR",
-    assignmentStatus: "Approved",
-    keyStatus: "Handed Over",
-    status: "In Progress",
-    assignedTo: "Salim Al-Balushi",
-  },
-  {
-    srNo: 3,
-    tenantId: "12345",
-    tenantName: "Analia Huffman",
-    property: "Sunrise Meadows",
-    unitNo: "C-307",
-    checkinDate: "21 May 2011",
-    rent: "3500 OMR",
-    assignmentStatus: "Pending",
-    keyStatus: "Pending",
-    status: "In Progress",
-    assignedTo: "Khalid Al-Rawahi",
-  },
-  {
-    srNo: 4,
-    tenantId: "12345",
-    tenantName: "Novah Gibson",
-    property: "Blue Horizon Towers",
-    unitNo: "D-402",
-    checkinDate: "21 May 2011",
-    rent: "3500 OMR",
-    assignmentStatus: "Approved",
-    keyStatus: "Pending",
-    status: "Active",
-    assignedTo: "Aarav Sharma",
-  },
-  {
-    srNo: 5,
-    tenantId: "12345",
-    tenantName: "Kavya Joshi",
-    property: "Maple Leaf Villas",
-    unitNo: "E-509",
-    checkinDate: "21 May 2018",
-    rent: "2700 OMR",
-    assignmentStatus: "Pending",
-    keyStatus: "Pending",
-    status: "In Progress",
-    assignedTo: "Rohan Patel",
-  },
-  {
-    srNo: 6,
-    tenantId: "12345",
-    tenantName: "Rahul Mehta",
-    property: "Golden Crest Villa",
-    unitNo: "F-603",
-    checkinDate: "21 May 2018",
-    rent: "5800 OMR",
-    assignmentStatus: "Approved",
-    keyStatus: "Handed Over",
-    status: "Completed",
-    assignedTo: "Ananya Iyer",
-  },
-  {
-    srNo: 7,
-    tenantId: "12345",
-    tenantName: "Sneha Nair",
-    property: "Riverstone Enclave",
-    unitNo: "G-708",
-    checkinDate: "21 May 2018",
-    rent: "4600 OMR",
-    assignmentStatus: "Approved",
-    keyStatus: "Handed Over",
-    status: "Completed",
-    assignedTo: "Karan Singh",
-  },
-  {
-    srNo: 8,
-    tenantId: "12345",
-    tenantName: "Arjun Reddy",
-    property: "Palm Grove Estate",
-    unitNo: "H-812",
-    checkinDate: "21 May 2018",
-    rent: "2500 OMR",
-    assignmentStatus: "Pending",
-    keyStatus: "Pending",
-    status: "Key Pending",
-    assignedTo: "Neha Gupta",
-  },
-];
 
 // GET /checkin-checkout/check_in/get_all/ response shape:
 // { data: { data: CheckInListItem[], presentPage, totalPage } }
@@ -210,26 +102,48 @@ const ActionButton = ({ icon, label, to, bg = "#f4f7fa" }) => (
   </Button>
 );
 
-const List = () => {
+const List = ({ propertyType = 'All' }) => {
   const navigate = useNavigate();
-  const [rows, setRows] = useState(fallbackRows);
+  const [rows, setRows] = useState([]);
+  const [totalCount, setTotalCount] = useState(null);
+  const [loadingList, setLoadingList] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
+    setLoadingList(true);
+    setFetchError(null);
 
     const loadCheckIns = async () => {
       try {
-        const res = await checkInApi.get(API_ENDPOINT);
+        const params = {};
+        if (propertyType && propertyType !== 'All') {
+          params.filter_key = 'rental_type';
+          params.filter_value = propertyType.toLowerCase();
+        }
+        const res = await checkInApi.get(API_ENDPOINT, { params });
         const records = getRecordsFromResponse(res.data);
-        if (!cancelled && records.length > 0) {
-          setRows(records.map(mapRow));
+        if (!cancelled) {
+          const mapped = records.map(mapRow);
+          setRows(mapped);
+          setTotalCount(mapped.length);
         }
       } catch (err) {
-        // Endpoint not wired up / unreachable yet — keep showing demo data.
-        console.error(
-          "Check-in list API not available yet, showing demo data:",
-          err?.response?.status || err?.message,
-        );
+        const status = err?.response?.status;
+        const detail =
+          err?.response?.data?.detail ||
+          err?.response?.data?.message ||
+          err?.message ||
+          "Unknown error";
+        const msg = status ? `HTTP ${status}: ${detail}` : detail;
+        console.error("Check-in list fetch failed:", msg);
+        if (!cancelled) {
+          setRows([]);
+          setTotalCount(0);
+          setFetchError(msg);
+        }
+      } finally {
+        if (!cancelled) setLoadingList(false);
       }
     };
 
@@ -237,7 +151,7 @@ const List = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [propertyType]);
 
   return (
     <div style={{ ...panelStyle, overflow: "hidden", width: "100%" }}>
@@ -251,7 +165,7 @@ const List = () => {
           padding: "15px 20px",
         }}
       >
-        Check-in List (123)
+        Check-in List {totalCount !== null ? `(${totalCount})` : ""}
       </h5>
       <div
         style={{
@@ -281,7 +195,25 @@ const List = () => {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {loadingList ? (
+              <tr>
+                <td colSpan={13} style={{ ...tableCellStyle, textAlign: "center", padding: "40px 0" }}>
+                  Loading...
+                </td>
+              </tr>
+            ) : fetchError ? (
+              <tr>
+                <td colSpan={13} style={{ ...tableCellStyle, textAlign: "center", padding: "40px 0", color: "#e05252" }}>
+                  Failed to load check-ins: {fetchError}
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={13} style={{ ...tableCellStyle, textAlign: "center", padding: "40px 0", color: "#8a96a8" }}>
+                  No check-ins available.
+                </td>
+              </tr>
+            ) : rows.map((row) => (
               <tr
                 key={`${row.id}-${row.srNo}-${row.tenantName}`}
                 onClick={() => navigate(`${detailsPath}?id=${row.id}`)}
@@ -354,7 +286,7 @@ const List = () => {
                 </td>
               </tr>
             ))}
-          </tbody>
+            </tbody>
         </table>
       </div>
 

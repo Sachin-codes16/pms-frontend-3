@@ -87,6 +87,7 @@ api.interceptors.response.use(
 
     if (
       status === 401 ||
+      status === 403 ||
       (typeof message === "string" &&
         /token (has expired|is invalid)|invalid (access )?token/i.test(message))
     ) {

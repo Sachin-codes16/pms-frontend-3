@@ -95,8 +95,8 @@ const UtilityReadingsPage = ({ record }) => {
                 <table style={{ borderCollapse: 'collapse', width: '100%' }}>
                   <thead>
                     <tr style={{ background: '#fbfcfd' }}>
-                      {['Utility', 'Meter No', 'Check-In Reading', 'Consumption', 'Unit', 'Rate/Unit', 'Charges', 'Status'].map((head) => (
-                        <th key={head} style={{ color: pageText, fontSize: 16, fontWeight: 700, padding: '20px 18px', textAlign: 'left' }}>
+                      {['Utility', 'Meter No', 'Check-In Readings', 'Consumption', 'Unit', 'Rate/Unit', 'Charges', 'Status', 'Actions'].map((head) => (
+                        <th key={head} style={{ color: pageText, fontSize: 15, fontWeight: 700, padding: '16px 18px', textAlign: 'left' }}>
                           {head}
                         </th>
                       ))}
@@ -104,18 +104,23 @@ const UtilityReadingsPage = ({ record }) => {
                   </thead>
                   <tbody>
                     {readingsList.map((row, index) => (
-                      <tr key={row.id ?? index}>
-                        <td style={{ color: pageText, fontSize: 15, padding: '16px 18px' }}>
-                          <IconifyIcon icon="ri:checkbox-circle-line" width={16} height={16} style={{ color: '#2f7ee6', marginRight: 12 }} />
-                          {val(row.utility)}
+                      <tr key={row.checkInUtilityReadingId ?? row.id ?? index} style={{ borderTop: '1px solid #f0f2f5' }}>
+                        <td style={{ color: pageText, fontSize: 15, padding: '14px 18px' }}>
+                          <span className="d-inline-flex align-items-center gap-2">
+                            <IconifyIcon icon="ri:checkbox-circle-line" width={16} height={16} style={{ color: '#2f7ee6' }} />
+                            {val(row.utility)}
+                          </span>
                         </td>
-                        <td style={{ color: pageText, fontSize: 15, padding: '16px 18px' }}>{val(row.meterNo)}</td>
-                        <td style={{ color: pageText, fontSize: 15, padding: '16px 18px' }}>{val(row.checkInReading)}</td>
-                        <td style={{ color: pageText, fontSize: 15, padding: '16px 18px' }}>{val(row.consumption)}</td>
-                        <td style={{ color: pageText, fontSize: 15, padding: '16px 18px' }}>{val(row.unit)}</td>
-                        <td style={{ color: pageText, fontSize: 15, padding: '16px 18px' }}>{fmtMoney(row.ratePerUnit)}</td>
-                        <td style={{ color: pageText, fontSize: 15, padding: '16px 18px' }}>{fmtMoney(row.charges)}</td>
-                        <td style={{ color: pageText, fontSize: 15, padding: '16px 18px' }}>{val(row.status)}</td>
+                        <td style={{ color: pageText, fontSize: 15, padding: '14px 18px' }}>{val(row.meterNo)}</td>
+                        <td style={{ color: pageText, fontSize: 15, padding: '14px 18px' }}>{val(row.checkInReading)}</td>
+                        <td style={{ color: pageText, fontSize: 15, padding: '14px 18px' }}>{val(row.consumption)}</td>
+                        <td style={{ color: pageText, fontSize: 15, padding: '14px 18px' }}>{val(row.unit)}</td>
+                        <td style={{ color: pageText, fontSize: 15, padding: '14px 18px' }}>{fmtMoney(row.ratePerUnit)}</td>
+                        <td style={{ color: pageText, fontSize: 15, padding: '14px 18px' }}>{fmtMoney(row.charges)}</td>
+                        <td style={{ color: pageText, fontSize: 15, padding: '14px 18px' }}>{val(row.status)}</td>
+                        <td style={{ padding: '14px 18px' }}>
+                          <span style={{ color: '#2f7ee6', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>view</span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -145,15 +150,24 @@ const UtilityReadingsPage = ({ record }) => {
             <h5 style={titleStyle}>Check-In Reading Overview</h5>
             {readingOverview.length > 0 ? (
               <div style={{ padding: '18px 58px 32px' }}>
-                {readingOverview.map((item, index) => (
-                  <div key={item.utility ?? index} style={{ alignItems: 'center', display: 'grid', gap: 18, gridTemplateColumns: '140px 1fr 70px', minHeight: 45 }}>
-                    <span style={{ color: pageText, fontSize: 16 }}>{val(item.utility)}</span>
-                    <span style={{ background: '#d7d7d7', borderRadius: 999, display: 'block', height: 7, overflow: 'hidden' }}>
-                      <span style={{ background: item.color ?? '#545579', borderRadius: 999, display: 'block', height: '100%', width: `${item.percentage ?? 0}%` }} />
-                    </span>
-                    <span style={{ color: pageText, fontSize: 15, textAlign: 'right' }}>{fmtMoney(item.amount)}</span>
-                  </div>
-                ))}
+                {(() => {
+                  const BAR_COLORS = ['#ef4444', '#ec4899', '#84cc16', '#f97316', '#06b6d4', '#6366f1', '#8b5cf6', '#f43f5e'];
+                  const maxCharge = Math.max(...readingOverview.map((r) => r.charges ?? r.amount ?? 0), 1);
+                  return readingOverview.map((item, index) => {
+                    const amount = item.charges ?? item.amount ?? 0;
+                    const pct = Math.round((amount / maxCharge) * 100);
+                    const color = item.color ?? BAR_COLORS[index % BAR_COLORS.length];
+                    return (
+                      <div key={item.utility ?? index} style={{ alignItems: 'center', display: 'grid', gap: 18, gridTemplateColumns: '140px 1fr 80px', minHeight: 45 }}>
+                        <span style={{ color: pageText, fontSize: 16 }}>{val(item.utility)}</span>
+                        <span style={{ background: '#d7d7d7', borderRadius: 999, display: 'block', height: 7, overflow: 'hidden' }}>
+                          <span style={{ background: color, borderRadius: 999, display: 'block', height: '100%', width: `${pct}%` }} />
+                        </span>
+                        <span style={{ color: pageText, fontSize: 15, textAlign: 'right' }}>{fmtMoney(amount)}</span>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             ) : (
               <p style={emptyTextStyle}>No reading data available</p>

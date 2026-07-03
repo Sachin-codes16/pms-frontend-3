@@ -76,4 +76,33 @@ checkInApi.interceptors.request.use((config) => {
   return config;
 });
 
+checkInApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const data = error?.response?.data;
+    const message =
+      typeof data === "string"
+        ? data
+        : data?.message || data?.detail || data?.error || "";
+
+    if (
+      status === 401 ||
+      status === 403 ||
+      (typeof message === "string" &&
+        /token (has expired|is invalid)|invalid (access )?token/i.test(message))
+    ) {
+      deleteCookie(authSessionKey);
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem("token");
+      }
+      if (typeof window !== "undefined") {
+        window.location.href = "/auth/sign-in";
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
+
 export default checkInApi;

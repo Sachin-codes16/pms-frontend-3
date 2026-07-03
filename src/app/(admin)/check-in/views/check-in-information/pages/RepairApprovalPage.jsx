@@ -119,15 +119,17 @@ const RepairApprovalPage = ({ record }) => {
                   </thead>
                   <tbody>
                     {issueList.map((issue, index) => (
-                      <tr key={issue.id ?? index}>
+                      <tr key={issue.issueId ?? issue.id ?? index} style={{ borderTop: '1px solid #f0f2f5' }}>
                         <td style={{ color: pageText, fontSize: 15, padding: "16px 24px" }}>
-                          <IconifyIcon icon="ri:checkbox-circle-line" width={16} height={16} style={{ color: "#2f7ee6", marginRight: 12 }} />
-                          {val(issue.issueId ?? issue.id)}
+                          <span className="d-inline-flex align-items-center gap-2">
+                            <IconifyIcon icon="ri:checkbox-circle-line" width={16} height={16} style={{ color: "#2f7ee6" }} />
+                            {val(issue.issueId ?? issue.id)}
+                          </span>
                         </td>
                         <td style={{ color: pageText, fontSize: 15, padding: "16px 24px" }}>{val(issue.category)}</td>
-                        <td style={{ color: pageText, fontSize: 15, padding: "16px 24px" }}>{val(issue.description)}</td>
+                        <td style={{ color: pageText, fontSize: 15, padding: "16px 24px" }}>{val(issue.issueDescription ?? issue.description)}</td>
                         <td style={{ color: pageText, fontSize: 15, padding: "16px 24px" }}>{val(issue.status)}</td>
-                        <td style={{ color: pageText, fontSize: 15, padding: "16px 24px" }}>{val(issue.assignedTo)}</td>
+                        <td style={{ color: pageText, fontSize: 15, padding: "16px 24px" }}>{val(issue.assignedTo) || '—'}</td>
                         <td style={{ color: pageText, fontSize: 15, padding: "16px 24px" }}>{fmtDate(issue.targetDate)}</td>
                       </tr>
                     ))}
@@ -158,21 +160,21 @@ const RepairApprovalPage = ({ record }) => {
               </div>
               {resolvedIssues.length > 0 ? (
                 resolvedIssues.map((issue, index) => (
-                  <div key={issue.id ?? index} className="d-flex align-items-center justify-content-between mb-3">
+                  <div key={issue.checkInInspectionItemId ?? issue.id ?? index} className="d-flex align-items-center justify-content-between mb-3">
                     <div className="d-flex align-items-center gap-3">
                       {issue.photo && (
-                        <img alt={issue.title} src={resolvePhotoSrc(issue.photo)} style={{ height: 32, objectFit: "cover", width: 32 }} />
+                        <img alt={issue.itemName ?? issue.title} src={resolvePhotoSrc(issue.photo)} style={{ height: 32, objectFit: "cover", width: 32 }} />
                       )}
                       <div>
                         <p className="mb-1" style={{ color: pageText, fontSize: 15 }}>
-                          {val(issue.title)}
+                          {val(issue.itemName ?? issue.title)}
                         </p>
                         <p className="mb-0" style={{ color: pageText, fontSize: 15 }}>
                           {val(issue.category)}
                         </p>
                       </div>
                     </div>
-                    <span style={{ color: pageText, fontSize: 16 }}>Done</span>
+                    <span style={{ color: '#1a9e5c', fontSize: 15, fontWeight: 600 }}>{val(issue.status) || 'Done'}</span>
                   </div>
                 ))
               ) : (
@@ -203,7 +205,7 @@ const RepairApprovalPage = ({ record }) => {
             {pendingRepairs.length > 0 ? (
               <div style={{ padding: "18px 42px 22px" }}>
                 {pendingRepairs.map((repair, index) => (
-                  <div key={repair.id ?? index} className="d-flex align-items-center justify-content-between gap-3 mb-4">
+                  <div key={repair.checkInInspectionItemId ?? repair.id ?? index} className="d-flex align-items-center justify-content-between gap-3 mb-4">
                     <div className="d-flex align-items-center gap-4">
                       <span
                         className="d-inline-flex align-items-center justify-content-center"
@@ -213,14 +215,14 @@ const RepairApprovalPage = ({ record }) => {
                       </span>
                       <div>
                         <p className="mb-2" style={{ color: pageText, fontSize: 15 }}>
-                          {val(repair.title)}
+                          {val(repair.itemName ?? repair.title)}
                         </p>
                         <p className="mb-0" style={{ color: pageText, fontSize: 15 }}>
-                          {val(repair.location)}
+                          {val(repair.property ?? repair.location)}
                         </p>
                       </div>
                     </div>
-                    <span style={{ color: "#bd2d3a", fontSize: 15 }}>{val(repair.priority)}</span>
+                    <span style={{ color: "#bd2d3a", fontSize: 15 }}>{val(repair.severity ?? repair.priority)}</span>
                   </div>
                 ))}
               </div>

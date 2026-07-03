@@ -1,10 +1,41 @@
+// @refresh reset
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Button, Card, CardBody, Col, Row } from "react-bootstrap";
 import { Link, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import Spinner from "@/components/Spinner";
 import useCheckIn from "@/hooks/useCheckIn";
+import checkInApi from "@/helpers/checkInApi";
+
+const KEY_UPDATE_ENDPOINT = "/checkin-checkout/check_in/key/update/";
+
+// Fields submitted to PATCH /update/key_handover/
+const FIELD_PATHS = {
+  key_handover_status:      ["keyHandover", "keyHandoverInformation", "keyHandoverStatus"],
+  key_number:               ["keyHandover", "keyHandoverInformation", "keyNumber"],
+  key_type:                 ["keyHandover", "keyHandoverInformation", "keyType"],
+  key_available:            ["keyHandover", "keyHandoverInformation", "keyAvailable"],
+  key_booking_date:         ["keyHandover", "keyHandoverInformation", "keyBookingDate"],
+  expected_handover_date:   ["keyHandover", "keyHandoverInformation", "expectedHandoverDate"],
+  key_delivery_date:        ["keyHandover", "keyHandoverInformation", "keyHandoverDate"],
+  confirmation_received:    ["keyHandover", "keyHandoverInformation", "confirmationReceived"],
+  handover_notes:           ["keyHandover", "keyHandoverInformation", "handoverNotes"],
+  tenant_confirmation_notes: [],  // flat: tenantConfirmationNotes
+};
+
+const getValue = (item, name) => {
+  const path = FIELD_PATHS[name];
+  if (path && path.length > 0) {
+    const nested = path.reduce((acc, key) => acc?.[key], item);
+    if (nested !== null && nested !== undefined) return nested;
+  }
+  const camelKey = name.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+  const flat = item?.[camelKey];
+  return flat === null || flat === undefined ? "" : flat;
+};
+
+const toDateString = (iso) => (iso ? String(iso).split("T")[0] : "");
 
 const fieldStyle = {
   background: "#f9f9fc",
@@ -15,6 +46,13 @@ const fieldStyle = {
   height: 46,
   padding: "10px 14px",
   width: "100%",
+};
+
+const readOnlyStyle = {
+  ...fieldStyle,
+  background: "#f3f4f8",
+  color: "#8a96a8",
+  cursor: "not-allowed",
 };
 
 const labelStyle = {
@@ -34,112 +72,106 @@ const sectionTitleStyle = {
   scrollMarginTop: 110,
 };
 
-const FormField = ({ label, name, placeholder, as = "input", defaultValue, children }) => (
+const Field = ({ label, name, type = "text", defaultValue, readOnly }) => (
   <div>
     <label style={labelStyle}>{label}</label>
-    {as === "select" ? (
-      <select style={fieldStyle} name={name} defaultValue={defaultValue ?? ""}>
-        <option value="" disabled>
-          {placeholder}
-        </option>
-        {children}
-      </select>
-    ) : (
-      <input style={fieldStyle} name={name} placeholder={placeholder} defaultValue={defaultValue} />
-    )}
+    <input
+      type={type}
+      name={name}
+      defaultValue={defaultValue ?? ""}
+      readOnly={readOnly}
+      style={readOnly ? readOnlyStyle : fieldStyle}
+    />
   </div>
 );
 
-const TextAreaField = ({ label, name, placeholder, defaultValue }) => (
+const SelectField = ({ label, name, defaultValue, options }) => (
+  <div>
+    <label style={labelStyle}>{label}</label>
+    <select name={name} defaultValue={defaultValue ?? ""} style={fieldStyle}>
+      <option value="">— Select —</option>
+      {options.map((o) => (
+        <option key={o} value={o}>{o}</option>
+      ))}
+    </select>
+  </div>
+);
+
+const TextArea = ({ label, name, defaultValue }) => (
   <div>
     <label style={labelStyle}>{label}</label>
     <textarea
       name={name}
-      placeholder={placeholder}
-      defaultValue={defaultValue}
-      style={{
-        ...fieldStyle,
-        minHeight: 94,
-        height: "auto",
-        resize: "none",
-      }}
+      defaultValue={defaultValue ?? ""}
+      style={{ ...fieldStyle, height: "auto", minHeight: 94, resize: "none" }}
     />
   </div>
 );
 
-const FileField = ({ label }) => (
-  <div>
-    <label style={labelStyle}>{label}</label>
-    <input
-      type="file"
-      style={{
-        ...fieldStyle,
-        padding: "7px 8px",
-      }}
-    />
-  </div>
-);
-
-const DateField = ({ label, name, defaultValue }) => (
-  <div>
-    <label style={labelStyle}>{label}</label>
-    <input
-      type="date"
-      name={name}
-      defaultValue={defaultValue}
-      placeholder="dd-mm-yyyy"
-      style={fieldStyle}
-    />
-  </div>
-);
-
-const CheckInInformationForm = ({ mode = "check-in" }) => {
-  const location = useLocation();
+const KeyHandoverEditDetailsPage = ({ mode = "check-in" }) => {
+  const location   = useLocation();
   const isCheckOut = mode === "check-out";
-  const dashboardPath = isCheckOut
-    ? "/check-out-dashboard"
-    : "/check-in-dashboard";
+  const flowTitle  = isCheckOut ? "Check-Out" : "Check-In";
+  const backPath   = isCheckOut ? "/check-out-dashboard" : "/check-in-dashboard";
 
   const params = new URLSearchParams(location.search);
-  const id = params.get("id");
+  const id     = params.get("id");
 
   const { item, loading, updateSections, fetchItem } = useCheckIn({ id });
-  const formRef = useRef(null);
+  const formRef    = useRef(null);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!location.hash) return;
-    const section = document.getElementById(location.hash.slice(1));
-    section?.scrollIntoView({ block: "start", behavior: "smooth" });
-  }, [location.hash]);
+  const gv       = (name) => getValue(item, name);
+  const keyRows  = item?.keyHandover?.keyDetails ?? [];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formRef.current) return;
     if (!id) {
-      alert('Cannot submit: no check-in id in the URL (open this page via "Edit Details" on an existing check-in, not a fresh "Create Check-Ins").');
+      alert("Cannot submit: no check-in id in the URL.");
       return;
     }
+
     const formData = new FormData(formRef.current);
-    const payload = {};
+    const values   = {};
     for (const [k, v] of formData.entries()) {
-      if (v === "") continue;
-      payload[k] = v;
+      if (v !== "") values[k] = v;
     }
+
+    // Build key_handover section payload (known fields only)
+    const SECTION_FIELDS = Object.keys(FIELD_PATHS);
+    const sectionBody = {};
+    for (const field of SECTION_FIELDS) {
+      if (values[field] !== undefined) sectionBody[field] = values[field];
+    }
+
+    // Build per-key update payloads from key_{id}_* prefixed fields
+    const keyPayloads = keyRows
+      .map((row) => {
+        const kid    = row.checkInKeyId;
+        const status = values[`key_${kid}_status`];
+        return status ? { check_in_key_id: kid, key_status: status } : null;
+      })
+      .filter(Boolean);
+
     try {
       setSubmitting(true);
-      await updateSections(id, { key_handover: payload });
+      const requests = [];
+      if (Object.keys(sectionBody).length > 0) {
+        requests.push(updateSections(id, { key_handover: sectionBody }));
+      }
+      keyPayloads.forEach((body) => {
+        requests.push(checkInApi.patch(KEY_UPDATE_ENDPOINT, body));
+      });
+      await Promise.all(requests);
       await fetchItem();
       setSubmitting(false);
       toast.success("Key handover details updated successfully");
-      alert("Key handover details updated successfully.");
     } catch (err) {
       setSubmitting(false);
-      console.error("Key handover submit failed", err);
-      const res = err?.response?.data;
+      const res     = err?.response?.data;
       const message = res ? JSON.stringify(res) : err?.message || "Something went wrong";
       toast.error(message);
-      alert(message);
     }
   };
 
@@ -148,508 +180,293 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
       <div className="d-flex align-items-center gap-3 mb-4">
         <Button
           as={Link}
-          to={dashboardPath}
+          to={backPath}
           variant="link"
           className="p-0 d-flex align-items-center justify-content-center"
-          style={{
-            width: 32,
-            height: 32,
-            border: "1px solid #8a96a8",
-            borderRadius: "50%",
-            color: "#2f3848",
-            textDecoration: "none",
-          }}
+          style={{ border: "1px solid #8a96a8", borderRadius: "50%", color: "#2f3848", height: 32, textDecoration: "none", width: 32 }}
         >
           <IconifyIcon icon="ri:arrow-left-s-line" width={20} height={20} />
         </Button>
-        <h4
-          className="mb-0"
-          style={{ color: "#526b89", fontSize: 20, fontWeight: 500 }}
-        >
-          Check-In Information &gt; Key Handower information
+        <h4 className="mb-0" style={{ color: "#526b89", fontSize: 20, fontWeight: 500 }}>
+          {flowTitle} Information
         </h4>
       </div>
 
-      <form ref={formRef} onSubmit={handleSubmit}>
-      <Row className="g-4 align-items-start">
-        {/* Left Sidebar */}
-        <Col xs={12} lg={3}>
-          <Card
-            className="border-0 shadow-sm"
-            style={{
-              borderRadius: 10,
-              boxShadow: "0 10px 30px rgba(16, 24, 40, 0.07)",
-            }}
-          >
-            <CardBody style={{ padding: 24 }}>
-              {loading ? (
-                <div style={{ padding: 24, display: "flex", justifyContent: "center" }}>
-                  <Spinner />
-                </div>
-              ) : (
-                <>
-                  <h5
-                    className="mb-2"
-                    style={{ color: "#526b89", fontSize: 18, fontWeight: 700 }}
-                  >
-                    {item?.tenantDetails?.personalDetails?.tenantName || "Ali Z Shaikh"}
-                  </h5>
-                  <div
-                    className="d-flex flex-wrap gap-3 mb-4"
-                    style={{ color: "#526b89", fontSize: 14 }}
-                  >
-                    <span>{item?.tenantDetails?.contactDetails?.tenantEmail || "alishaikh@domain.com"}</span>
-                    <span>{item?.tenantDetails?.contactDetails?.tenantMobileNumber || "+91 102345XX89"}</span>
+      <form key={loading ? "loading" : id || "new"} ref={formRef} onSubmit={handleSubmit}>
+        <Row className="g-4 align-items-start">
+
+          {/* ── Sidebar ─────────────────────────────────────────────────── */}
+          <Col xs={12} lg={3}>
+            <Card className="border-0 shadow-sm" style={{ borderRadius: 10, boxShadow: "0 10px 30px rgba(16,24,40,0.07)" }}>
+              <CardBody style={{ padding: 24 }}>
+                {loading ? (
+                  <div className="d-flex justify-content-center" style={{ padding: 24 }}>
+                    <Spinner />
                   </div>
-                </>
-              )}
+                ) : (
+                  <>
+                    <h5 className="mb-1" style={{ color: "#526b89", fontSize: 18, fontWeight: 700 }}>
+                      {item?.tenantName || "—"}
+                    </h5>
+                    <div className="d-flex flex-column gap-1 mb-4" style={{ color: "#526b89", fontSize: 14 }}>
+                      <span>{item?.tenantEmail || item?.tenantDetails?.contactDetails?.tenantEmail || "—"}</span>
+                      <span>{item?.tenantMobileNumber || item?.tenantDetails?.contactDetails?.tenantMobileNumber || "—"}</span>
+                    </div>
 
-              <Row className="g-3 mb-4">
-                <Col xs={6}>
-                  <p
-                    className="mb-2"
-                    style={{ color: "#526b89", fontSize: 16, fontWeight: 700 }}
-                  >
-                    Check-in Date
-                  </p>
-                  <p className="mb-0" style={{ color: "#526b89", fontSize: 15 }}>
-                    12 April 2026
-                  </p>
-                </Col>
-                <Col xs={6}>
-                  <p
-                    className="mb-2"
-                    style={{ color: "#526b89", fontSize: 16, fontWeight: 700 }}
-                  >
-                    Check-in Status
-                  </p>
-                  <p className="mb-0" style={{ color: "#526b89", fontSize: 15 }}>
-                    Approved
-                  </p>
-                </Col>
-              </Row>
+                    <Row className="g-3 mb-4">
+                      <Col xs={6}>
+                        <p className="mb-1" style={{ color: "#526b89", fontSize: 15, fontWeight: 700 }}>{flowTitle} Date</p>
+                        <p className="mb-0" style={{ color: "#526b89", fontSize: 14 }}>{item?.checkInDate || "—"}</p>
+                      </Col>
+                      <Col xs={6}>
+                        <p className="mb-1" style={{ color: "#526b89", fontSize: 15, fontWeight: 700 }}>Status</p>
+                        <p className="mb-0" style={{ color: "#526b89", fontSize: 14 }}>{item?.checkInStatus || "—"}</p>
+                      </Col>
+                    </Row>
 
-              <h6
-                className="mb-3"
-                style={{ color: "#526b89", fontSize: 17, fontWeight: 700 }}
-              >
-                Property Details
-              </h6>
-              <Row className="g-3 mb-4">
-                <Col xs={6}>
-                  <p className="mb-1" style={{ color: "#526b89", fontSize: 15 }}>
-                    Property Type
-                  </p>
-                  <p
-                    className="mb-0"
-                    style={{ color: "#526b89", fontSize: 15, fontWeight: 700 }}
-                  >
-                    Villa
-                  </p>
-                </Col>
-                <Col xs={6}>
-                  <p className="mb-1" style={{ color: "#526b89", fontSize: 15 }}>
-                    Property Status
-                  </p>
-                  <p
-                    className="mb-0"
-                    style={{ color: "#526b89", fontSize: 15, fontWeight: 700 }}
-                  >
-                    Reserved
-                  </p>
-                </Col>
-              </Row>
+                    <h6 className="mb-3" style={{ color: "#526b89", fontSize: 15, fontWeight: 700 }}>Property Details</h6>
+                    <Row className="g-3 mb-4">
+                      <Col xs={6}>
+                        <p className="mb-1" style={{ color: "#526b89", fontSize: 14 }}>Type</p>
+                        <p className="mb-0" style={{ color: "#526b89", fontSize: 14, fontWeight: 700 }}>{item?.propertyType || "—"}</p>
+                      </Col>
+                      <Col xs={6}>
+                        <p className="mb-1" style={{ color: "#526b89", fontSize: 14 }}>Status</p>
+                        <p className="mb-0" style={{ color: "#526b89", fontSize: 14, fontWeight: 700 }}>{item?.propertyStatus || "—"}</p>
+                      </Col>
+                    </Row>
+                  </>
+                )}
 
-              <div className="d-flex gap-2">
-                <Button
-                  as={Link}
-                  to={dashboardPath}
-                  variant="outline-secondary"
-                  className="w-50"
-                  style={{
-                    borderColor: "#526b89",
-                    color: "#526b89",
-                    borderRadius: 5,
-                    height: 40,
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-50"
-                  style={{
-                    background: "#526b89",
-                    borderColor: "#526b89",
-                    borderRadius: 5,
-                    height: 40,
-                  }}
-                >
-                  {submitting ? "Saving..." : "Submit"}
-                </Button>
-              </div>
-            </CardBody>
-          </Card>
-        </Col>
-
-        {/* Main Form */}
-        <Col xs={12} lg={9}>
-          <Card
-            className="border-0 shadow-sm"
-            style={{
-              borderRadius: 10,
-              boxShadow: "0 10px 30px rgba(16, 24, 40, 0.07)",
-              overflow: "hidden",
-            }}
-          >
-            <CardBody style={{ padding: 0 }}>
-              <h3
-                className="mb-0"
-                style={{
-                  color: "#526b89",
-                  fontSize: 26,
-                  fontWeight: 700,
-                  padding: "30px 36px 28px",
-                  borderBottom: "1px solid #edf0f3",
-                }}
-              >
-                Check-In Information &gt; Key Handover information 
-              </h3>
-
-              <div style={{ padding: "34px 36px" }}>
-
-                {/* Agreement Details */}
-                <h5 id="agreement-details" style={sectionTitleStyle}>
-                  Key Handover information
-                </h5>
-                <Row className="g-4 mb-4">
-  <Col md={4}>
-    <FormField
-      label="Key Return Status"
-      name="key_handover_status"
-      placeholder="Completed"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Key Number"
-      name="key_number"
-      placeholder="KH-1321-5648"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Key Type"
-      name="key_type"
-      placeholder="Main Door Key"
-      as="select"
-    >
-      <option>Main Door Key</option>
-      <option>Bedroom Key</option>
-      <option>Parking Key</option>
-      <option>Office Key</option>
-    </FormField>
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Key Available"
-      name="key_available"
-      placeholder="Yes"
-      as="select"
-    >
-      <option>Yes</option>
-      <option>No</option>
-    </FormField>
-  </Col>
-</Row>
-
-                {/* Documents Upload */}
-                <h5 id="documents-upload" style={sectionTitleStyle}>
-                  Dates & time details
-                </h5>
-              <Row className="g-4 mb-4">
-  <Col md={4}>
-    <DateField label="Key Return Date & Time" name="key_delivery_date" />
-  </Col>
-
-  <Col md={4}>
-    <DateField label="Expected Return Date & Time" name="expected_handover_date" />
-  </Col>
-
-  <Col md={4}>
-    <DateField label="Actual Key Return Date & Time" name="handover_completed_on" />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Handed Over By"
-      placeholder="Ramesh Kumar"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Received By (Tenant)"
-      placeholder="Bilal Ahmed"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Tenant Contact Number"
-      placeholder="+965 5555 1234"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Confirmation Received"
-      name="confirmation_received"
-      placeholder="Yes"
-      as="select"
-    >
-      <option>Yes</option>
-      <option>No</option>
-    </FormField>
-  </Col>
-</Row>
-
-                {/* Agreement Notes */}
-                <h5 id="agreement-notes" style={sectionTitleStyle}>
-                  Key details & multiple emteries
-                </h5>
-               <Row className="g-4 mb-4">
-  <Col md={4}>
-    <FormField
-      label="1 Key Number"
-      placeholder="KH-1234-5671"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Key Type"
-      placeholder="Main Door Key"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Key Status"
-      placeholder="Handovered"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="2 Key Number"
-      placeholder="KH-1234-5671"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Key Type"
-      placeholder="Mail Box Key"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Key Status"
-      placeholder="Handovered"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="3 Key Number"
-      placeholder="KH-1234-5671"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Key Type"
-      placeholder="Utility Room Key"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Key Status"
-      placeholder="Handovered"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="4 Key Number"
-      placeholder="KH-1234-5671"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Key Type"
-      placeholder="Basement Parking Key"
-    />
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Key Status"
-      placeholder="Handovered"
-    />
-  </Col>
-</Row>
-
-                {/* Agreement Timeline */}
-                <h5 id="agreement-timeline" style={sectionTitleStyle}>
-                  Documents Upload
-                </h5>
-               <Row className="g-4 mb-4">
-  <Col md={4}>
-    <FileField label="Key Return Photo" />
-  </Col>
-
-  <Col md={4}>
-    <FileField label="Tenant ID Proof" />
-  </Col>
-
-  <Col md={4}>
-    <FileField label="Key Receipt" />
-  </Col>
-
-  <Col md={4}>
-    <FileField label="Main Door Key" />
-  </Col>
-</Row>
-<h5 id="tenant-confirmation" style={sectionTitleStyle}>
-  Tenant Confirmation
-</h5>
-
-<Row className="g-4 mb-4">
-  <Col md={12}>
-    <TextAreaField
-      label="Notes"
-      name="tenant_confirmation_notes"
-      placeholder="Feedback or Notes from tenant"
-    />
-  </Col>
-</Row>
-
-<h5 id="system-fields" style={sectionTitleStyle}>
-  System Fields (Auto)
-</h5>
-
-<Row className="g-4 mb-4">
-  <Col md={4}>
-    <FormField
-      label="Created By"
-      placeholder="System Admin"
-    />
-  </Col>
-
-  <Col md={4}>
-    <div>
-      <label style={labelStyle}>Created Date</label>
-
-      <div style={{ position: "relative" }}>
-        <input
-          type="text"
-          placeholder="dd-mm-yyyy"
-          style={fieldStyle}
-        />
-
-        <IconifyIcon
-          icon="mdi:calendar-month-outline"
-          style={{
-            position: "absolute",
-            right: 12,
-            top: 13,
-            fontSize: 20,
-            color: "#526b89",
-          }}
-        />
-      </div>
-    </div>
-  </Col>
-
-  <Col md={4}>
-    <FormField
-      label="Updated By"
-      placeholder="Auto"
-    />
-  </Col>
-
-  <Col md={4}>
-    <div>
-      <label style={labelStyle}>Updated Date</label>
-
-      <div style={{ position: "relative" }}>
-        <input
-          type="text"
-          placeholder="dd-mm-yyyy"
-          style={fieldStyle}
-        />
-
-        <IconifyIcon
-          icon="mdi:calendar-month-outline"
-          style={{
-            position: "absolute",
-            right: 12,
-            top: 13,
-            fontSize: 20,
-            color: "#526b89",
-          }}
-        />
-      </div>
-    </div>
-  </Col>
-</Row>
-                {/* Bottom Buttons */}
-                <div className="d-flex justify-content-end gap-2">
+                <div className="d-flex gap-2">
                   <Button
                     as={Link}
-                    to={dashboardPath}
+                    to={backPath}
                     variant="outline-secondary"
-                    style={{
-                      borderColor: "#526b89",
-                      color: "#526b89",
-                      borderRadius: 5,
-                      minWidth: 200,
-                      height: 45,
-                    }}
+                    className="w-50"
+                    style={{ borderColor: "#526b89", borderRadius: 5, color: "#526b89", height: 40 }}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
                     disabled={submitting}
-                    style={{
-                      background: "#526b89",
-                      borderColor: "#526b89",
-                      borderRadius: 5,
-                      minWidth: 200,
-                      height: 45,
-                    }}
+                    className="w-50"
+                    style={{ background: "#526b89", borderColor: "#526b89", borderRadius: 5, height: 40 }}
                   >
-                    {submitting ? "Saving..." : "Submit"}
+                    {submitting ? "Saving…" : "Submit"}
                   </Button>
                 </div>
-              </div>
-            </CardBody>
-          </Card>
-        </Col>
-      </Row>
+              </CardBody>
+            </Card>
+          </Col>
+
+          {/* ── Main form ───────────────────────────────────────────────── */}
+          <Col xs={12} lg={9}>
+            <Card className="border-0 shadow-sm" style={{ borderRadius: 10, boxShadow: "0 10px 30px rgba(16,24,40,0.07)", overflow: "hidden" }}>
+              <CardBody style={{ padding: 0 }}>
+                <h3 className="mb-0" style={{ borderBottom: "1px solid #edf0f3", color: "#526b89", fontSize: 26, fontWeight: 700, padding: "30px 36px 28px" }}>
+                  Key Handover Details
+                </h3>
+
+                <div style={{ padding: "34px 36px" }}>
+
+                  {/* Section A — Key Handover Information */}
+                  <h5 id="key-handover-info" style={sectionTitleStyle}>A. Key Handover Information</h5>
+                  <Row className="g-4 mb-5">
+                    <Col md={4}>
+                      <SelectField
+                        label="Key Handover Status"
+                        name="key_handover_status"
+                        defaultValue={gv("key_handover_status")}
+                        options={["Pending", "Booked", "Handed Over"]}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Field
+                        label="Key Number"
+                        name="key_number"
+                        defaultValue={gv("key_number")}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <SelectField
+                        label="Key Type"
+                        name="key_type"
+                        defaultValue={gv("key_type")}
+                        options={["Main Door Key", "Mail Box Key", "Utility Room Key", "Basement Parking Key", "Terrace Key", "Bedroom Key", "Parking Key"]}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <SelectField
+                        label="Key Available"
+                        name="key_available"
+                        defaultValue={gv("key_available")}
+                        options={["Yes", "No"]}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <SelectField
+                        label="Confirmation Received"
+                        name="confirmation_received"
+                        defaultValue={gv("confirmation_received")}
+                        options={["Yes", "No"]}
+                      />
+                    </Col>
+                  </Row>
+
+                  {/* Section B — Dates */}
+                  <h5 id="dates" style={sectionTitleStyle}>B. Dates &amp; Time</h5>
+                  <Row className="g-4 mb-5">
+                    <Col md={4}>
+                      <Field
+                        label="Key Booking Date"
+                        name="key_booking_date"
+                        type="date"
+                        defaultValue={toDateString(gv("key_booking_date"))}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Field
+                        label="Expected Handover Date"
+                        name="expected_handover_date"
+                        type="date"
+                        defaultValue={toDateString(gv("expected_handover_date"))}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Field
+                        label="Key Handover Date"
+                        name="key_delivery_date"
+                        type="date"
+                        defaultValue={toDateString(gv("key_delivery_date"))}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Field
+                        label="Handed Over By"
+                        defaultValue={item?.keyHandover?.keyHandoverInformation?.handoveredBy ?? ""}
+                        readOnly
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Field
+                        label="Received By (Tenant)"
+                        defaultValue={item?.keyHandover?.keyHandoverInformation?.receivedByTenant ?? ""}
+                        readOnly
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Field
+                        label="Tenant Contact"
+                        defaultValue={item?.keyHandover?.keyHandoverInformation?.tenantContact ?? ""}
+                        readOnly
+                      />
+                    </Col>
+                  </Row>
+
+                  {/* Section C — Key Details (per-key status) */}
+                  <h5 id="key-details" style={sectionTitleStyle}>C. Key Details</h5>
+                  {keyRows.length === 0 ? (
+                    <p style={{ color: "#526b89", fontSize: 15, marginBottom: 40 }}>No individual key records found.</p>
+                  ) : (
+                    <div style={{ border: "1px solid #e4e8ed", borderRadius: 8, marginBottom: 40, overflow: "hidden" }}>
+                      <table style={{ borderCollapse: "collapse", width: "100%" }}>
+                        <thead>
+                          <tr style={{ background: "#fbfcfd" }}>
+                            {["#", "Key Number", "Key Type", "Key Status"].map((h) => (
+                              <th key={h} style={{ color: "#526b89", fontSize: 15, fontWeight: 700, padding: "14px 20px", textAlign: "left" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {keyRows.map((row, index) => (
+                            <tr key={row.checkInKeyId ?? index} style={{ borderTop: "1px solid #f0f2f5" }}>
+                              <td style={{ color: "#526b89", fontSize: 15, padding: "12px 20px" }}>{index + 1}</td>
+                              <td style={{ color: "#526b89", fontSize: 15, padding: "12px 20px" }}>{row.keyNumber}</td>
+                              <td style={{ color: "#526b89", fontSize: 15, padding: "12px 20px" }}>{row.keyType}</td>
+                              <td style={{ padding: "12px 20px" }}>
+                                <select
+                                  name={`key_${row.checkInKeyId}_status`}
+                                  defaultValue={row.status ?? ""}
+                                  style={{ ...fieldStyle, height: 38, padding: "6px 10px", width: 160 }}
+                                >
+                                  <option value="">— Select —</option>
+                                  {["Pending", "Booked", "Handovered", "Handed Over"].map((o) => (
+                                    <option key={o} value={o}>{o}</option>
+                                  ))}
+                                </select>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Section D — Handover Notes */}
+                  <h5 id="notes" style={sectionTitleStyle}>D. Notes</h5>
+                  <Row className="g-4 mb-5">
+                    <Col md={12}>
+                      <TextArea
+                        label="Handover Notes"
+                        name="handover_notes"
+                        defaultValue={gv("handover_notes")}
+                      />
+                    </Col>
+                  </Row>
+
+                  {/* Section E — Tenant Confirmation */}
+                  <h5 id="tenant-confirmation" style={sectionTitleStyle}>E. Tenant Confirmation</h5>
+                  <Row className="g-4 mb-5">
+                    <Col md={12}>
+                      <TextArea
+                        label="Confirmation Notes"
+                        name="tenant_confirmation_notes"
+                        defaultValue={item?.keyHandover?.tenantConfirmation ?? item?.tenantConfirmationNotes ?? ""}
+                      />
+                    </Col>
+                  </Row>
+
+                  {/* Section F — System Fields */}
+                  <h5 id="system-fields" style={sectionTitleStyle}>F. System Fields</h5>
+                  <Row className="g-4 mb-4">
+                    <Col md={4}>
+                      <Field label="Created By" defaultValue={item?.createdBy?.name ?? item?.createdBy ?? ""} readOnly />
+                    </Col>
+                    <Col md={4}>
+                      <Field label="Created On" defaultValue={toDateString(item?.createdAt)} readOnly />
+                    </Col>
+                    <Col md={4}>
+                      <Field label="Last Updated" defaultValue={toDateString(item?.updatedAt)} readOnly />
+                    </Col>
+                  </Row>
+
+                  <div className="d-flex justify-content-end gap-2 mt-2">
+                    <Button
+                      as={Link}
+                      to={backPath}
+                      variant="outline-secondary"
+                      style={{ borderColor: "#526b89", borderRadius: 5, color: "#526b89", height: 45, minWidth: 200 }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      style={{ background: "#526b89", borderColor: "#526b89", borderRadius: 5, height: 45, minWidth: 200 }}
+                    >
+                      {submitting ? "Saving…" : "Submit"}
+                    </Button>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          </Col>
+        </Row>
       </form>
     </div>
   );
 };
 
-export default CheckInInformationForm;
+export default KeyHandoverEditDetailsPage;

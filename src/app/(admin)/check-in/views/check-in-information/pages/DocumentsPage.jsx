@@ -96,10 +96,10 @@ const DocumentsPage = ({ record }) => {
                   </thead>
                   <tbody>
                     {allDocuments.map((doc, index) => (
-                      <tr key={doc.id ?? index}>
+                      <tr key={doc.documentId ?? doc.id ?? index}>
                         <td style={{ color: pageText, fontSize: 15, padding: '14px 24px' }}>{index + 1}</td>
-                        <td style={{ color: pageText, fontSize: 15, padding: '14px 24px' }}>{val(doc.name)}</td>
-                        <td style={{ color: pageText, fontSize: 15, padding: '14px 24px' }}>{val(doc.category)}</td>
+                        <td style={{ color: pageText, fontSize: 15, padding: '14px 24px' }}>{val(doc.documentName ?? doc.name)}</td>
+                        <td style={{ color: pageText, fontSize: 15, padding: '14px 24px' }}>{val(doc.documentType ?? doc.category)}</td>
                         <td style={{ color: pageText, fontSize: 15, padding: '14px 24px' }}>{val(doc.linkedTo)}</td>
                         <td style={{ color: pageText, fontSize: 15, padding: '14px 24px' }}>{val(doc.uploadedBy)}</td>
                         <td style={{ color: pageText, fontSize: 15, padding: '14px 24px' }}>{fmtDate(doc.uploadedOn)}</td>

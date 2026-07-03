@@ -163,60 +163,73 @@ const PropertyDetailsPage = ({ record }) => {
   const systemInformation = propertyDetails.systemInformation ?? {};
   const photos = propertyDetails.photos ?? [];
 
+  // Prefer nested API path, fall back to flat top-level field
+  const p = (nested, flat) => (nested !== null && nested !== undefined ? nested : flat ?? null);
+
   const basicInfo = [
-    ['PROPERTY TYPE', val(basicInformation.propertyType)],
-    ['PROPERTY CODE', val(basicInformation.propertyCode)],
-    ['PROJECT / SOCIETY', val(basicInformation.projectOrSociety)],
-    ['NAME / NUMBER', val(basicInformation.nameOrNumber)],
-    ['TOTAL FLOORS', val(basicInformation.totalFloors)],
-    ['YEAR BUILT', val(basicInformation.yearBuilt)],
+    ['PROPERTY TYPE',    val(p(basicInformation.propertyType,     record?.propertyType))],
+    ['PROPERTY CODE',    val(p(basicInformation.propertyCode,     record?.propertyCode))],
+    ['PROJECT / SOCIETY',val(basicInformation.projectOrSociety)],
+    ['NAME / NUMBER',    val(p(basicInformation.nameOrNumber,     record?.buildingName))],
+    ['UNIT / FLAT',      val(p(basicInformation.unitNumber,       record?.flatUnitNumber))],
+    ['FLOOR',            val(p(basicInformation.floorNumber,      record?.floorNumber))],
   ];
 
   const configurationInfo = [
     ['CONFIGURATION', val(configurationAndArea.configuration)],
-    ['CARPET AREA', configurationAndArea.carpetAreaSqft != null ? `${configurationAndArea.carpetAreaSqft} sq.ft` : '—'],
+    ['CARPET AREA',   configurationAndArea.carpetAreaSqft  != null ? `${configurationAndArea.carpetAreaSqft} sq.ft`  : '—'],
     ['BUILT-UP AREA', configurationAndArea.builtupAreaSqft != null ? `${configurationAndArea.builtupAreaSqft} sq.ft` : '—'],
-    ['PLOT AREA', configurationAndArea.plotAreaSqft != null ? `${configurationAndArea.plotAreaSqft} sq.ft` : '—'],
-    ['BATHROOMS', val(configurationAndArea.bathrooms)],
-    ['FACING', val(configurationAndArea.facing)],
+    ['PLOT AREA',     configurationAndArea.plotAreaSqft    != null ? `${configurationAndArea.plotAreaSqft} sq.ft`    : '—'],
+    ['BATHROOMS',     val(configurationAndArea.bathrooms)],
+    ['FACING',        val(configurationAndArea.facing)],
   ];
 
   const financialInfo = [
-    ['MONTHLY RENT', fmtMoney(rentalAndFinancialDetails.monthlyRent)],
-    ['SECURITY DEPOSIT', fmtMoney(rentalAndFinancialDetails.securityDeposit)],
-    ['MAINTENANCE', fmtMoney(rentalAndFinancialDetails.maintenance)],
-    ['ELECTRICITY', val(rentalAndFinancialDetails.electricity)],
-    ['WATER CHARGES', val(rentalAndFinancialDetails.waterCharges)],
+    ['MONTHLY RENT',     fmtMoney(p(rentalAndFinancialDetails.monthlyRent,    record?.monthlyRent))],
+    ['SECURITY DEPOSIT', fmtMoney(p(rentalAndFinancialDetails.securityDeposit,record?.securityDeposit))],
+    ['MAINTENANCE',      fmtMoney(p(rentalAndFinancialDetails.maintenance,    record?.maintenanceCharges))],
+    ['ADVANCE RENT',     fmtMoney(p(rentalAndFinancialDetails.advanceRent,    record?.advanceRentReceived))],
+    ['ELECTRICITY',      val(rentalAndFinancialDetails.electricity)],
+    ['WATER CHARGES',    val(rentalAndFinancialDetails.waterCharges)],
   ];
 
-  const ownershipInfo = [['LANDLORD NAME', val(ownership.landlordName)]];
+  const ownershipInfo = [
+    ['LANDLORD NAME',   val(p(ownership.landlordName,   record?.landlordName))],
+    ['PROPERTY STATUS', val(p(ownership.propertyStatus, record?.propertyStatus))],
+  ];
 
   const rentalDetailInfo = [
-    ['RENT START DATE', fmtDate(rentalDetails.rentStartDate)],
-    ['RENT END DATE', fmtDate(rentalDetails.rentEndDate)],
-    ['AGREEMENT DURATION', val(rentalDetails.agreementDuration)],
-    ['MAINTENANCE REQUIRED', yesNo(rentalDetails.maintenanceRequired)],
-    ['MAINTENANCE STATUS', val(rentalDetails.maintenanceStatus)],
+    ['RENT START DATE',       fmtDate(p(rentalDetails.rentStartDate,    record?.agreementStartDate))],
+    ['RENT END DATE',         fmtDate(p(rentalDetails.rentEndDate,      record?.agreementEndDate))],
+    ['AGREEMENT DURATION',    val(rentalDetails.agreementDuration)],
+    ['MAINTENANCE REQUIRED',  yesNo(rentalDetails.maintenanceRequired)],
+    ['MAINTENANCE STATUS',    val(rentalDetails.maintenanceStatus)],
+    ['PAYMENT MODE',          val(p(rentalDetails.paymentMode,          record?.paymentMode))],
   ];
 
   const agreementInfo = [
-    ['AGREEMENT TYPE', val(agreementDetails.agreementType)],
-    ['PREPARED BY', val(agreementDetails.agreementPreparedBy)],
-    ['AGREEMENT STATUS', val(agreementDetails.agreementStatus)],
+    ['AGREEMENT TYPE',   val(p(agreementDetails.agreementType,   record?.agreementType))],
+    ['PREPARED BY',      val(agreementDetails.agreementPreparedBy)],
+    ['AGREEMENT STATUS', val(p(agreementDetails.agreementStatus, record?.agreementStatus))],
   ];
 
   const residentialAddressInfo = [
-    ['CITY', val(residentialAddress.city)],
-    ['STATE', val(residentialAddress.state)],
-    ['PO BOX', val(residentialAddress.poBox)],
+    ['CITY',       val(residentialAddress.city)],
+    ['STATE',      val(residentialAddress.state)],
+    ['PO BOX',     val(residentialAddress.poBox)],
     ['GOOGLE MAP', residentialAddress.googleMap && residentialAddress.googleMap !== '-' ? residentialAddress.googleMap : '—'],
   ];
 
   const systemInfo = [
-    ['CREATED BY', val(systemInformation.createdBy)],
-    ['CREATED ON', fmtDate(systemInformation.createdOn)],
-    ['LAST UPDATED', fmtDate(systemInformation.lastUpdated)],
+    ['CREATED BY',   val(p(systemInformation.createdBy,    record?.createdBy?.name))],
+    ['CREATED ON',   fmtDate(p(systemInformation.createdOn, record?.createdAt))],
+    ['LAST UPDATED', fmtDate(p(systemInformation.lastUpdated, record?.updatedAt))],
   ];
+
+  const propertyName = p(propertyDetails.propertyName, record?.buildingName);
+  const propertyAddress = p(propertyDetails.address, record?.flatUnitNumber
+    ? `${record?.buildingName ?? ''} – Unit ${record.flatUnitNumber}`
+    : record?.buildingName);
 
   return (
     <div style={{ padding: '24px 24px 36px' }}>
@@ -257,16 +270,16 @@ const PropertyDetailsPage = ({ record }) => {
         >
           <div>
             <h2 className="mb-2" style={{ color: pageText, fontSize: 28, fontWeight: 700 }}>
-              {val(propertyDetails.propertyName, 'Property')}
+              {val(propertyName)}
             </h2>
             <p className="mb-0" style={{ color: pageText, fontSize: 16 }}>
-              {val(propertyDetails.address)}
+              {val(propertyAddress)}
             </p>
           </div>
 
           <div className="text-md-end">
             <h2 className="mb-2" style={{ color: pageText, fontSize: 28, fontWeight: 700 }}>
-              {fmtMoney(propertyDetails.monthlyRent)}
+              {fmtMoney(p(propertyDetails.monthlyRent, record?.monthlyRent))}
             </h2>
             <p className="mb-0" style={{ color: pageText, fontSize: 16 }}>
               per month + maintenance

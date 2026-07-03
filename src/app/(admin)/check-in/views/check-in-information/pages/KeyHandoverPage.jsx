@@ -194,9 +194,9 @@ const KeyHandoverPage = ({ record }) => {
             <h5 style={titleStyle}>Key Handover Timeline</h5>
             {timeline.length > 0 ? (
               <div style={{ padding: '22px 32px 24px' }}>
-                {timeline.map((item, index) => (
+                {timeline.map((entry, index) => (
                   <div
-                    key={item.title ?? index}
+                    key={entry.event ?? index}
                     style={{
                       display: 'grid',
                       gap: 20,
@@ -224,18 +224,18 @@ const KeyHandoverPage = ({ record }) => {
                     </span>
                     <div>
                       <p className="mb-2" style={{ color: pageText, fontSize: 16, fontWeight: 700 }}>
-                        {val(item.title)}
+                        {val(entry.event ?? entry.title)}
                       </p>
                       <p className="mb-0" style={{ color: bodyText, fontSize: 15 }}>
-                        {val(item.description)}
+                        {val(entry.description)}
                       </p>
                     </div>
                     <div className="text-end">
                       <p className="mb-2" style={{ color: bodyText, fontSize: 15 }}>
-                        {fmtDateTime(item.date)}
+                        {fmtDateTime(entry.timestamp ?? entry.date)}
                       </p>
                       <p className="mb-0" style={{ color: bodyText, fontSize: 15 }}>
-                        {val(item.by)}
+                        {val(entry.actor ?? entry.by)}
                       </p>
                     </div>
                   </div>

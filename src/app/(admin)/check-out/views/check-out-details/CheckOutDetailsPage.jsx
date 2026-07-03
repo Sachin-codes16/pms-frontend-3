@@ -1,7 +1,8 @@
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
+import useCheckOut from "@/hooks/useCheckOut";
 import { useState } from "react";
 import { Button } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import DocumentsPage from "./pages/DocumentsPage";
 import FinancePage from "./pages/FinancePage";
 import InspectionPage from "./pages/InspectionPage";
@@ -15,16 +16,30 @@ import UtilityReadingsPage from "./pages/UtilityReadingsPage";
 const pageText = "#526b89";
 const darkButton = "#30375f";
 
-const detailItems = [
-  { label: "Tenant", value: "Bilal Ahmed" },
-  { label: "Property", value: "A-401, Ocean View" },
-  { label: "Unit No", value: "A-401" },
-  { label: "Check-Out Date", value: "29 May 2025" },
-  { label: "Assigned To", value: "Ramesh Kumar" },
-  { label: "Check-Out Status", value: "Completed" },
-  { label: "Mobile No.", value: "+911 1234567890" },
-  { label: "Tenant Type", value: "Individual" },
+const fallbackDetailItems = [
+  { label: "Tenant",          value: "—" },
+  { label: "Property",        value: "—" },
+  { label: "Unit No",         value: "—" },
+  { label: "Check-Out Date",  value: "—" },
+  { label: "Assigned To",     value: "—" },
+  { label: "Check-Out Status", value: "—" },
+  { label: "Mobile No.",      value: "—" },
+  { label: "Tenant Type",     value: "—" },
 ];
+
+const buildDetailItems = (item) => {
+  if (!item) return fallbackDetailItems;
+  return [
+    { label: "Tenant",          value: item.tenantName || "–" },
+    { label: "Property",        value: item.buildingName || "–" },
+    { label: "Unit No",         value: item.flatUnitNumber || "–" },
+    { label: "Check-Out Date",  value: item.checkOutDate || "–" },
+    { label: "Assigned To",     value: item.assignedEmployee?.name || "–" },
+    { label: "Check-Out Status", value: item.checkOutStatus || "–" },
+    { label: "Mobile No.",      value: item.tenantMobileNumber || "–" },
+    { label: "Tenant Type",     value: item.tenantType || "–" },
+  ];
+};
 
 const tabs = [
   {
@@ -132,9 +147,20 @@ const primaryButtonStyle = {
 
 const CheckOutDetailsPage = () => {
   const [activeTab, setActiveTab] = useState(tabs[0].key);
+  const location = useLocation();
+  const id = new URLSearchParams(location.search).get("id");
+  const { item } = useCheckOut({ id });
+
+  const detailItems = buildDetailItems(item);
+  const statusLabel = item?.checkOutStatus || "Pending";
+  const recordCode  = item?.checkOutCode   || "—";
+
   const ActivePage =
     tabs.find((tab) => tab.key === activeTab)?.component ?? OverviewPage;
   const editSection = editSectionByTab[activeTab] ?? editSectionByTab.overview;
+  const editPath = id
+    ? `/check-out-start?id=${id}#${editSection}`
+    : `/check-out-start#${editSection}`;
 
   return (
     <div style={shellStyle}>
@@ -165,11 +191,7 @@ const CheckOutDetailsPage = () => {
             <IconifyIcon icon="ri:arrow-left-s-line" width={18} height={18} />
             <span>Back</span>
           </Button>
-          <Button
-            as={Link}
-            to={`/check-out-start#${editSection}`}
-            style={primaryButtonStyle}
-          >
+          <Button as={Link} to={editPath} style={primaryButtonStyle}>
             Edit Details
           </Button>
         </div>
@@ -192,10 +214,10 @@ const CheckOutDetailsPage = () => {
                 padding: "8px 16px",
               }}
             >
-              Completed
+              {statusLabel}
             </span>
             <span style={{ color: pageText, fontSize: 17, fontWeight: 700 }}>
-              CL-12345665
+              {recordCode}
             </span>
           </div>
 
@@ -267,7 +289,7 @@ const CheckOutDetailsPage = () => {
         </div>
 
         <div style={{ ...cardStyle, minHeight: 290 }}>
-          <ActivePage />
+          <ActivePage record={item} />
         </div>
       </div>
     </div>

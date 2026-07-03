@@ -1,4 +1,5 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
+import { useState } from 'react';
 import { Button, Col, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import List from './List';
@@ -8,7 +9,7 @@ const darkButton = '#292f57';
 const borderColor = '#b8c5d7';
 
 const filterOptions = {
-  propertyType: ['All', 'Apartment', 'Villa', 'Flat', 'Commercial'],
+  propertyType: ['All', 'Villa', 'Warehouse', 'Flat', 'Commercial'],
   building: ['All', 'Pearl Residency', 'AZ Apartment', 'Royal Villa', 'Star Studio'],
   status: ['All', 'Pending', 'In Progress', 'Completed'],
   assignedEmployee: ['All', 'John D.', 'Shounak S.', 'Kartik D.', 'Pranit P.'],
@@ -70,13 +71,13 @@ const primaryButtonStyle = {
   minWidth: 116,
 };
 
-const SelectField = ({ label, options }) => (
+const SelectField = ({ label, options, value, onChange }) => (
   <Col xs={12} sm={6} lg={4} xl={2}>
     <label className="d-block mb-2" style={{ color: '#71849c', fontSize: 16, fontWeight: 500 }}>
       {label}
     </label>
     <div style={{ position: 'relative' }}>
-      <select style={selectStyle} defaultValue="All">
+      <select style={selectStyle} value={value} onChange={onChange}>
         {options.map((option) => (
           <option key={option}>{option}</option>
         ))}
@@ -110,6 +111,8 @@ const DateFilterButton = ({ label }) => (
 );
 
 const CheckInListView = () => {
+  const [propertyType, setPropertyType] = useState('All');
+
   return (
     <div style={shellStyle}>
       <div
@@ -169,7 +172,12 @@ const CheckInListView = () => {
 
         <div className="mb-4" style={{ ...panelStyle, padding: '20px 20px' }}>
           <Row className="g-4">
-            <SelectField label="Property Type" options={filterOptions.propertyType} />
+            <SelectField
+              label="Property Type"
+              options={filterOptions.propertyType}
+              value={propertyType}
+              onChange={(e) => setPropertyType(e.target.value)}
+            />
             <SelectField label="Building" options={filterOptions.building} />
             <SelectField label="Status" options={filterOptions.status} />
             <SelectField label="Assigned Employee" options={filterOptions.assignedEmployee} />
@@ -178,7 +186,7 @@ const CheckInListView = () => {
           </Row>
         </div>
 
-        <List />
+        <List propertyType={propertyType} />
       </div>
     </div>
   );
