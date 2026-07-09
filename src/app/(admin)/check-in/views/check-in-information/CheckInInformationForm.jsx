@@ -10,7 +10,6 @@ import useCheckIn from "@/hooks/useCheckIn";
 // Fields the API expects as a number rather than a string.
 const NUMERIC_FIELDS = [
   "property_id",
-  "property_assignment_id",
   "tenant_id",
   "assigned_employee_id",
   "recommended_by_id",
@@ -23,7 +22,6 @@ const NUMERIC_FIELDS = [
 // field name -> response key so fetched records can prefill the form.
 const FIELD_MAP = {
   property_id: "propertyId",
-  property_assignment_id: "propertyAssignmentId",
   check_in_date: "checkInDate",
   check_in_status: "checkInStatus",
   assigned_employee_id: "assignedEmployeeId",
@@ -107,11 +105,11 @@ const SECTION_FIELD_MAP = {
     "check_in_date",
     "check_in_status",
     "remarks_notes",
+    "property_id",
   ],
   tenant_details: [
     "tenant_code",
     "tenant_name",
-    "tenant_type",
     "tenant_mobile_number",
     "tenant_email",
     "tenant_civil_id",
@@ -317,13 +315,23 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   const [tenants, setTenants] = useState([]);
   const [tenantsLoading, setTenantsLoading] = useState(true);
   const [selectedTenantId, setSelectedTenantId] = useState("");
+  const [employees, setEmployees] = useState([]);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     checkInApi
       .get("/property/get_all/")
       .then((res) => {
-        if (!cancelled) setProperties(res.data?.data?.data ?? []);
+        if (!cancelled) {
+          const all = res.data?.data?.data ?? [];
+          const unassigned = all.filter((p) => {
+            const status = p.propertyDetails?.currentStatus ?? p.currentStatus ?? "";
+            return !status || status === "Available" || status === "Vacant";
+          });
+          setProperties(unassigned);
+        }
       })
       .catch(() => {
         if (!cancelled) setProperties([]);
@@ -362,6 +370,22 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    checkInApi
+      .get("/marketing/manager/get_all/")
+      .then((res) => {
+        if (!cancelled) setEmployees(res.data?.data?.data ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setEmployees([]);
+      })
+      .finally(() => {
+        if (!cancelled) setEmployeesLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   // Sync dropdowns with loaded item in edit mode (runs after item is fetched)
   useEffect(() => {
     if (item?.propertyId) setSelectedPropertyId(String(item.propertyId));
@@ -370,6 +394,10 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   useEffect(() => {
     if (item?.tenantId) setSelectedTenantId(String(item.tenantId));
   }, [item?.tenantId]);
+
+  useEffect(() => {
+    if (item?.assignedEmployeeId) setSelectedEmployeeId(String(item.assignedEmployeeId));
+  }, [item?.assignedEmployeeId]);
 
   const handlePropertyChange = (e) => {
     const pid = e.target.value;
@@ -385,7 +413,9 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
       }
     };
 
-    setField("assigned_employee_id", property.assignedTo?.userId);
+    if (property.assignedTo?.userId) {
+      setSelectedEmployeeId(String(property.assignedTo.userId));
+    }
     setField("property_type", property.rentalType);
     setField("building_name", property.buildingDetails || property.propertyDetails?.buildingName);
     setField("flat_unit_number", property.flatNumber ?? property.flatData?.flatNumber);
@@ -397,26 +427,53 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
     setField("maintenance_charges", property.propertyDetails?.otherCharges);
   };
 
-  const handleTenantChange = (e) => {
+  const handleTenantChange = async (e) => {
     const tid = e.target.value;
     setSelectedTenantId(tid);
 
-    const tenant = tenants.find((t) => String(t.leadId) === tid);
-    if (!tenant || !formRef.current) return;
+    const summary = tenants.find((t) => String(t.leadId) === tid);
+    if (!summary || !formRef.current) return;
 
     const setField = (name, value) => {
-      const el = formRef.current.elements[name];
+      const el = formRef.current?.elements[name];
       if (el && value !== null && value !== undefined && value !== "") {
         el.value = String(value);
       }
     };
 
-    const fullName = [tenant.firstName, tenant.lastName].filter(Boolean).join(" ");
-    setField("tenant_name", fullName);
-    setField("tenant_mobile_number", tenant.phoneNumber);
-    setField("tenant_civil_id", tenant.civil_id);
-    setField("tenant_passport_number", tenant.passportOrId);
-    setField("tenant_nationality", tenant.nationality);
+    // Prefill from list data immediately (fields available in get_all)
+    const fullName = [summary.firstName, summary.lastName].filter(Boolean).join(" ");
+    setField("tenant_name",          fullName);
+    setField("tenant_mobile_number", summary.phoneNumber);
+    setField("tenant_civil_id",      summary.civil_id);
+    setField("tenant_passport_number", summary.passportOrId);
+    setField("tenant_nationality",   summary.nationality);
+
+    // Fetch full lead record for fields not returned by get_all
+    try {
+      const res = await checkInApi.get(`/lead/get/?lead_id=${tid}`);
+      const lead = res.data?.data ?? res.data ?? {};
+      // Defer DOM writes until after React's render cycle triggered by setSelectedTenantId
+      setTimeout(() => {
+        if (!formRef.current) return;
+        setField("tenant_code",              lead.tenantCode);
+        setField("tenant_email",             lead.email);
+        setField("tenant_civil_id",          lead.civil_id          ?? lead.civilId);
+        setField("tenant_passport_number",   lead.passportOrId);
+        setField("tenant_nationality",       lead.nationality);
+        setField("tenant_type",              lead.leadCategory);
+        setField("date_of_birth",            lead.dateOfBirth);
+        setField("gender",                   lead.gender);
+        setField("marital_status",           lead.maritalStatus);
+        setField("alternate_mobile_number",  lead.alternateMobileNumber);
+        setField("emergency_contact_name",   lead.emergencyContactName);
+        setField("emergency_contact_number", lead.emergencyContactNumber);
+        setField("profession",               lead.profession);
+        setField("company_name",             lead.companyName);
+      }, 0);
+    } catch {
+      // full record unavailable — list-level fields already filled above
+    }
   };
 
   const getValue = (name) => {
@@ -693,86 +750,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
 
                 <div style={{ padding: "34px 36px" }}>
                   {/* error UI removed to keep page clean; check hook `error` for debugging */}
-                  <h5 id="check-in-information" style={sectionTitleStyle}>
-                    A. {flowTitle} Information
-                  </h5>
-                  <Row className="g-3 mb-4">
-                    <Col md={4}>
-                      <div>
-                        <label style={labelStyle}>Property ID *</label>
-                        <select
-                          name="property_id"
-                          style={fieldStyle}
-                          value={selectedPropertyId}
-                          onChange={handlePropertyChange}
-                        >
-                          <option value="" disabled>
-                            {propertiesLoading ? "Loading properties…" : "Select Property ID"}
-                          </option>
-                          {!propertiesLoading && properties.length === 0 && (
-                            <option disabled>No properties available</option>
-                          )}
-                          {properties.map((p) => (
-                            <option key={p.propertyId} value={String(p.propertyId)}>
-                              {p.propertyId} – {p.buildingDetails || p.propertyDetails?.buildingName || ""}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </Col>
-                    <Col md={4}>
-                      <FormField
-                        label="Property Assignment ID"
-                        name="property_assignment_id"
-                        defaultValue={getValue("property_assignment_id")}
-                        type="number"
-                        placeholder="Assignment ID"
-                      />
-                    </Col>
-                    <Col md={4}>
-                      <DateField
-                        label={`${flowTitle} Date *`}
-                        name="check_in_date"
-                        defaultValue={getValue("check_in_date")}
-                      />
-                    </Col>
-                    <Col md={4}>
-                      <FormField
-                        label={`${flowTitle} Status *`}
-                        name="check_in_status"
-                        defaultValue={getValue("check_in_status")}
-                        placeholder="Select Status"
-                        as="select"
-                      >
-                        <option>Pending</option>
-                        <option>In Progress</option>
-                        <option>Key Pending</option>
-                        <option>Active</option>
-                        <option>Completed</option>
-                        <option>Cancelled</option>
-                      </FormField>
-                    </Col>
-                    <Col md={4}>
-                      <FormField
-                        label="Assigned Employee ID *"
-                        name="assigned_employee_id"
-                        defaultValue={getValue("assigned_employee_id")}
-                        type="number"
-                        placeholder="Employee ID"
-                      />
-                    </Col>
-                    <Col md={12}>
-                      <FormField
-                        label="Remarks / Notes"
-                        name="remarks_notes"
-                        defaultValue={getValue("remarks_notes")}
-                        placeholder="Enter initial remarks"
-                      />
-                    </Col>
-                  </Row>
-
                   <h5 id="tenant-details" style={sectionTitleStyle}>
-                    B. Tenant Details
+                    A. Tenant Details
                   </h5>
                   <Row className="g-4 mb-4">
                     <Col md={4}>
@@ -816,14 +795,14 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     </Col>
                     <Col md={4}>
                       <FormField
-                        label="Tenant Type"
+                        label="Tenant Category"
                         name="tenant_type"
                         defaultValue={getValue("tenant_type")}
-                        placeholder="Select Type"
+                        placeholder="Select Category"
                         as="select"
                       >
-                        <option>Individual</option>
-                        <option>Corporate</option>
+                        <option>Married</option>
+                        <option>Bachelor</option>
                       </FormField>
                     </Col>
                     <Col md={4}>
@@ -955,6 +934,89 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                         defaultValue={getValue("number_of_occupants")}
                         type="number"
                         placeholder="0"
+                      />
+                    </Col>
+                  </Row>
+
+                  <h5 id="check-in-information" style={sectionTitleStyle}>
+                    B. {flowTitle} Information
+                  </h5>
+                  <Row className="g-3 mb-4">
+                    <Col md={4}>
+                      <div>
+                        <label style={labelStyle}>Property ID *</label>
+                        <select
+                          name="property_id"
+                          style={fieldStyle}
+                          value={selectedPropertyId}
+                          onChange={handlePropertyChange}
+                        >
+                          <option value="" disabled>
+                            {propertiesLoading ? "Loading properties…" : "Select Property ID"}
+                          </option>
+                          {!propertiesLoading && properties.length === 0 && (
+                            <option disabled>No properties available</option>
+                          )}
+                          {properties.map((p) => (
+                            <option key={p.propertyId} value={String(p.propertyId)}>
+                              {p.propertyId} – {p.buildingDetails || p.propertyDetails?.buildingName || ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </Col>
+                    <Col md={4}>
+                      <DateField
+                        label={`${flowTitle} Date *`}
+                        name="check_in_date"
+                        defaultValue={getValue("check_in_date") || (!id ? new Date().toISOString().split("T")[0] : "")}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label={`${flowTitle} Status *`}
+                        name="check_in_status"
+                        defaultValue={getValue("check_in_status")}
+                        placeholder="Select Status"
+                        as="select"
+                      >
+                        <option>Pending</option>
+                        <option>In Progress</option>
+                        <option>Key Pending</option>
+                        <option>Active</option>
+                        <option>Completed</option>
+                        <option>Cancelled</option>
+                      </FormField>
+                    </Col>
+                    <Col md={4}>
+                      <div>
+                        <label style={labelStyle}>Assigned Employee *</label>
+                        <select
+                          name="assigned_employee_id"
+                          style={fieldStyle}
+                          value={selectedEmployeeId}
+                          onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                        >
+                          <option value="" disabled>
+                            {employeesLoading ? "Loading employees…" : "Select Employee"}
+                          </option>
+                          {!employeesLoading && employees.length === 0 && (
+                            <option disabled>No employees available</option>
+                          )}
+                          {employees.map((emp) => (
+                            <option key={emp.managerId ?? emp.userId} value={String(emp.managerId ?? emp.userId)}>
+                              {emp.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </Col>
+                    <Col md={12}>
+                      <FormField
+                        label="Remarks / Notes"
+                        name="remarks_notes"
+                        defaultValue={getValue("remarks_notes")}
+                        placeholder="Enter initial remarks"
                       />
                     </Col>
                   </Row>
@@ -1258,7 +1320,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     </Col>
                     <Col md={4}>
                       <FormField
-                        label="Recommended By (Employee ID)"
+                        label="Assigned Repair Employee"
                         name="recommended_by_id"
                         defaultValue={getValue("recommended_by_id")}
                         type="number"
@@ -1273,9 +1335,6 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                         type="number"
                         placeholder="Employee ID"
                       />
-                    </Col>
-                    <Col md={4}>
-                      <DateField label="Approved On" name="approved_on" defaultValue={getValue("approved_on")} />
                     </Col>
                     <Col md={12}>
                       <TextAreaField
@@ -1314,9 +1373,6 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                         defaultValue={getValue("gas_meter_reading")}
                         placeholder="Reading Value"
                       />
-                    </Col>
-                    <Col md={12}>
-                      <FileField label="Meter Photo Upload" />
                     </Col>
                   </Row>
 
@@ -1511,15 +1567,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
 
                     <Col md={4}>
                       <DateField
-                        label="Tenant Assigned Date"
-                        name="tenant_assigned_date"
-                      />
-                    </Col>
-
-                    <Col md={4}>
-                      <DateField
-                        label="Assigned To Employee Date"
-                        name="assigned_to_employee_date"
+                        label="Tenant Created Date"
+                        name="tenant_created_date"
                       />
                     </Col>
 

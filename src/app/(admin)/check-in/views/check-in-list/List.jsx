@@ -29,6 +29,7 @@ const mapRow = (item, idx) => ({
   keyStatus: item.keyHandoverStatus || "",
   status: item.checkInStatus || "",
   assignedTo: item.assignedEmployee?.name || "",
+  requestFrom: item.requestFrom || "",
 });
 
 const panelStyle = {
@@ -190,6 +191,7 @@ const List = ({ propertyType = 'All' }) => {
               <th style={tableHeaderStyle}>Key Status</th>
               <th style={tableHeaderStyle}>Status</th>
               <th style={tableHeaderStyle}>Assigned To</th>
+              <th style={tableHeaderStyle}>Request From</th>
               <th style={tableHeaderStyle}>Request</th>
               <th style={tableHeaderStyle}>Action</th>
             </tr>
@@ -197,19 +199,19 @@ const List = ({ propertyType = 'All' }) => {
           <tbody>
             {loadingList ? (
               <tr>
-                <td colSpan={13} style={{ ...tableCellStyle, textAlign: "center", padding: "40px 0" }}>
+                <td colSpan={14} style={{ ...tableCellStyle, textAlign: "center", padding: "40px 0" }}>
                   Loading...
                 </td>
               </tr>
             ) : fetchError ? (
               <tr>
-                <td colSpan={13} style={{ ...tableCellStyle, textAlign: "center", padding: "40px 0", color: "#e05252" }}>
+                <td colSpan={14} style={{ ...tableCellStyle, textAlign: "center", padding: "40px 0", color: "#e05252" }}>
                   Failed to load check-ins: {fetchError}
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={13} style={{ ...tableCellStyle, textAlign: "center", padding: "40px 0", color: "#8a96a8" }}>
+                <td colSpan={14} style={{ ...tableCellStyle, textAlign: "center", padding: "40px 0", color: "#8a96a8" }}>
                   No check-ins available.
                 </td>
               </tr>
@@ -251,6 +253,7 @@ const List = ({ propertyType = 'All' }) => {
                   <Badge value={row.status} />
                 </td>
                 <td style={tableCellStyle}>{row.assignedTo}</td>
+                <td style={tableCellStyle}>{row.requestFrom || "—"}</td>
                 <td style={tableCellStyle}>
                   <Button
                     as={Link}
