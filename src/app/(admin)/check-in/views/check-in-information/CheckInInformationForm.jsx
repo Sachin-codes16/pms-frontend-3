@@ -1751,17 +1751,12 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
 
                     <Col md={4}>
                       <DateField
-                        label="Tenant Created Date"
+                        label="Tenanted Created Date"
                         name="tenant_created_date"
                       />
                     </Col>
 
-                    <Col md={4}>
-                      <DateField
-                        label=" Tenanted Created Date"
-                        name="tenant_assigned_date"
-                      />
-                    </Col>
+  
 
                     <Col md={4}>
                       <DateField

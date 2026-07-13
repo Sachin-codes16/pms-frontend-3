@@ -13,6 +13,9 @@ import RepairApprovalPage from "./pages/RepairApprovalPage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
 import UtilityReadingsPage from "./pages/UtilityReadingsPage";
 import InspectionFormIcon from "@/assets/icons/InspectionFormIcon";
+import AgreementIcon from "./edit-detail-page/icons/Aggrement.png";
+import DocumentsIcon from "./edit-detail-page/icons/Documents.png";
+import KeyhandlorIcon from "./edit-detail-page/icons/Keyhandlor.png";
 
 const pageText = "#526b89";
 const darkButton = "#30375f";
@@ -108,25 +111,25 @@ const tabs = [
   {
     key: "agreement",
     label: "Agreement",
-    icon: "mdi:check-circle",
-    iconColor: "#36B37E",
-    iconSize: 20,
+    iconSvg: (
+      <img width={20} height={20} alt="Agreement" style={{display:"block"}} src={AgreementIcon} />
+    ),
     component: AgreementPage,
   },
   {
     key: "keyHandover",
     label: "Key Handover",
-    icon: "noto:key",
-    iconColor: undefined,
-    iconSize: 20,
+    iconSvg: (
+      <img width={20} height={20} alt="Key Handover" style={{display:"block"}} src={KeyhandlorIcon} />
+    ),
     component: KeyHandoverPage,
   },
   {
     key: "documents",
     label: "Documents",
-    icon: "mdi:file-document",
-    iconColor: "#4F7DF3",
-    iconSize: 20,
+    iconSvg: (
+      <img width={20} height={20} alt="Documents" style={{display:"block"}} src={DocumentsIcon} />
+    ),
     component: DocumentsPage,
   },
 ];
