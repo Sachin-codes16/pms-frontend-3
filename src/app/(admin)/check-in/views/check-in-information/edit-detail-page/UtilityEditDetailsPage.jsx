@@ -1,4 +1,4 @@
-import IconifyIcon from "@/components/wrappers/IconifyIcon";
+﻿import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import { useEffect } from "react";
 import { Button, Card, CardBody, Col, Row } from "react-bootstrap";
 import { Link, useLocation } from "react-router-dom";
@@ -12,6 +12,16 @@ const fieldStyle = {
   height: 46,
   padding: "10px 14px",
   width: "100%",
+};
+
+const selectFieldStyle = {
+  ...fieldStyle,
+  paddingRight: 40,
+  appearance: "none",
+  backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23526b89' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E\")",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 20px center",
+  backgroundSize: "16px",
 };
 
 const labelStyle = {
@@ -41,7 +51,7 @@ const FormField = ({
   <div>
     <label style={labelStyle}>{label}</label>
     {as === "select" ? (
-      <select style={fieldStyle} defaultValue="" disabled={disabled}>
+      <select style={selectFieldStyle} defaultValue="" disabled={disabled}>
         <option value="" disabled>
           {placeholder}
         </option>
@@ -84,6 +94,9 @@ const FileField = ({ label }) => (
 
 const UtilityEditDetailsPage = () => {
   const location = useLocation();
+  const params   = new URLSearchParams(location.search);
+  const id       = params.get("id");
+  const backPath = `/check-in-information?id=${id}&tab=utilityReadings`;
 
   useEffect(() => {
     if (!location.hash) return;
@@ -97,7 +110,7 @@ const UtilityEditDetailsPage = () => {
       <div className="d-flex align-items-center gap-3 mb-4">
         <Button
           as={Link}
-          to="/check-in-dashboard"
+          to={backPath}
           variant="link"
           className="p-0 d-flex align-items-center justify-content-center"
           style={{
@@ -214,7 +227,7 @@ const UtilityEditDetailsPage = () => {
               <div className="d-flex gap-2">
                 <Button
                   as={Link}
-                  to="/check-in-dashboard"
+                  to={backPath}
                   variant="outline-secondary"
                   className="w-50"
                   style={{
@@ -639,7 +652,7 @@ const UtilityEditDetailsPage = () => {
                 <div className="d-flex justify-content-end gap-2">
                   <Button
                     as={Link}
-                    to="/check-in-dashboard"
+                    to={backPath}
                     variant="outline-secondary"
                     style={{
                       borderColor: "#526b89",

@@ -1,4 +1,4 @@
-// @refresh reset
+﻿// @refresh reset
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import { useRef, useState } from "react";
 import { Button, Card, CardBody, Col, Row } from "react-bootstrap";
@@ -45,6 +45,16 @@ const fieldStyle = {
   width: "100%",
 };
 
+const selectFieldStyle = {
+  ...fieldStyle,
+  paddingRight: 40,
+  appearance: "none",
+  backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23526b89' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E\")",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 20px center",
+  backgroundSize: "16px",
+};
+
 const labelStyle = {
   color: "#526b89",
   fontSize: 16,
@@ -66,7 +76,7 @@ const FormField = ({ label, name, placeholder, as = "input", type = "text", defa
   <div>
     <label style={labelStyle}>{label}</label>
     {as === "select" ? (
-      <select style={fieldStyle} name={name} defaultValue={defaultValue ?? ""} disabled={readOnly}>
+      <select style={selectFieldStyle} name={name} defaultValue={defaultValue ?? ""} disabled={readOnly}>
         <option value="" disabled>{placeholder}</option>
         {children}
       </select>
@@ -98,12 +108,12 @@ const DateField = ({ label, name, defaultValue, readOnly }) => (
 const toDateString = (iso) => iso ? String(iso).split("T")[0] : "";
 
 const TenantDetailsEditDetailsPage = () => {
-  const dashboardPath = "/check-in-dashboard";
   const flowTitle = "Check-In";
 
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const id = params.get("id");
+  const dashboardPath = `/check-in-information?id=${id}&tab=tenantDetails`;
 
   const { item, loading, updateSections, fetchItem } = useCheckIn({ id });
   const formRef = useRef(null);
@@ -216,7 +226,7 @@ const TenantDetailsEditDetailsPage = () => {
                 <div className="d-flex gap-2">
                   <Button
                     as={Link}
-                    to="/check-in-dashboard"
+                    to={dashboardPath}
                     variant="outline-secondary"
                     className="w-50"
                     style={{ borderColor: "#526b89", color: "#526b89", borderRadius: 5, height: 40 }}
@@ -241,7 +251,7 @@ const TenantDetailsEditDetailsPage = () => {
             <Card className="border-0 shadow-sm" style={{ borderRadius: 10, boxShadow: "0 10px 30px rgba(16, 24, 40, 0.07)", overflow: "hidden" }}>
               <CardBody style={{ padding: 0 }}>
                 <h3 className="mb-0" style={{ color: "#526b89", fontSize: 26, fontWeight: 700, padding: "30px 36px 28px", borderBottom: "1px solid #edf0f3" }}>
-                  {flowTitle} Information
+                  Tenant Details
                 </h3>
 
                 <div style={{ padding: "34px 36px" }}>

@@ -1,6 +1,7 @@
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import checkInApi from "@/helpers/checkInApi";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import ReactSelect from "react-select";
 import { Button, Card, CardBody, Col, Row } from "react-bootstrap";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -200,6 +201,16 @@ const fieldStyle = {
   width: "100%",
 };
 
+const selectFieldStyle = {
+  ...fieldStyle,
+  paddingRight: 40,
+  appearance: "none",
+  backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23526b89' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E\")",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 20px center",
+  backgroundSize: "16px",
+};
+
 const labelStyle = {
   color: "#526b89",
   fontSize: 16,
@@ -207,13 +218,35 @@ const labelStyle = {
   marginBottom: 10,
 };
 
+const countrySelectStyles = {
+  control: (base) => ({
+    ...base,
+    backgroundColor: "#f9f9fc",
+    border: "1px solid #e7e9ef",
+    borderRadius: 5,
+    minHeight: 46,
+    fontSize: 16,
+    boxShadow: "none",
+    "&:hover": { border: "1px solid #e7e9ef" },
+  }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isSelected ? "#526b89" : state.isFocused ? "#f0f0f0" : "#fff",
+    color: state.isSelected ? "#fff" : "#526b89",
+    cursor: "pointer",
+  }),
+  singleValue: (base) => ({ ...base, color: "#526b89" }),
+  placeholder: (base) => ({ ...base, color: "#aab4be", fontWeight: "400" }),
+  indicatorSeparator: () => ({ display: "none" }),
+};
+
 const sectionTitleStyle = {
   color: "#526b89",
   fontSize: 21,
   fontWeight: 700,
   borderBottom: "1px solid #dfe3e8",
-  paddingBottom: 16,
-  marginBottom: 20,
+  paddingBottom: 22,
+  marginBottom: 30,
   scrollMarginTop: 110,
 };
 
@@ -229,7 +262,7 @@ const FormField = ({
   <div>
     <label style={labelStyle}>{label}</label>
     {as === "select" ? (
-      <select style={fieldStyle} name={name} defaultValue={defaultValue ?? ""}>
+      <select style={selectFieldStyle} name={name} defaultValue={defaultValue ?? ""}>
         <option value="" disabled>
           {placeholder}
         </option>
@@ -244,6 +277,22 @@ const FormField = ({
         defaultValue={defaultValue}
       />
     )}
+  </div>
+);
+
+const AmountField = ({ label, name, defaultValue }) => (
+  <div>
+    <label style={labelStyle}>{label}</label>
+    <div style={{ display: "flex", alignItems: "center", border: "1px solid #e7e9ef", borderRadius: 5, overflow: "hidden", background: "#f9f9fc" }}>
+      <span style={{ padding: "0 12px", height: 46, display: "flex", alignItems: "center", background: "#e7e9ef", color: "#526b89", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>OMR</span>
+      <input
+        name={name}
+        type="number"
+        defaultValue={defaultValue}
+        placeholder="0.000"
+        style={{ ...fieldStyle, border: "none", borderRadius: 0, background: "transparent", flex: 1 }}
+      />
+    </div>
   </div>
 );
 
@@ -295,16 +344,13 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   const navigate = useNavigate();
   const isCheckOut = mode === "check-out";
   const flowTitle = isCheckOut ? "Check-Out" : "Check-In";
-  const dashboardPath = isCheckOut
-    ? "/check-out-dashboard"
-    : "/check-in-dashboard";
-  const detailsPath = isCheckOut
-    ? "/check-out-details"
-    : "/check-in-information";
 
   // read id from query param ?id=123
   const params = new URLSearchParams(location.search);
   const id = params.get("id");
+  const dashboardPath = id
+    ? (isCheckOut ? `/check-out-details?id=${id}&tab=overview` : `/check-in-information?id=${id}&tab=overview`)
+    : (isCheckOut ? "/check-out-list" : "/check-in-list");
 
   const { item, loading, create, updateSections, fetchItem } = useCheckIn({ id });
   const formRef = useRef(null);
@@ -318,6 +364,9 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   const [employees, setEmployees] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [nationalityOptions, setNationalityOptions] = useState([]);
+  const [selectedNationalityId, setSelectedNationalityId] = useState(null);
+  const [selectedNationalityValue, setSelectedNationalityValue] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -386,6 +435,32 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
     return () => { cancelled = true; };
   }, []);
 
+ useEffect(() => {
+  let cancelled = false;
+
+  checkInApi
+    .get("/helper/nationality/get_all?limit=999999")
+    .then((res) => {
+      if (cancelled) return;
+
+      const list = res.data?.data?.data ?? [];
+
+      const options = list.map((n) => ({
+        value: n.nationalityId,
+        label: n.name,
+      }));
+
+      setNationalityOptions(options);
+    })
+    .catch(() => {
+      if (!cancelled) setNationalityOptions([]);
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
+
   // Sync dropdowns with loaded item in edit mode (runs after item is fetched)
   useEffect(() => {
     if (item?.propertyId) setSelectedPropertyId(String(item.propertyId));
@@ -398,6 +473,28 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   useEffect(() => {
     if (item?.assignedEmployeeId) setSelectedEmployeeId(String(item.assignedEmployeeId));
   }, [item?.assignedEmployeeId]);
+
+  const setNationalitySelection = useCallback((nationality) => {
+  if (!nationality) {
+    setSelectedNationalityId(null);
+    setSelectedNationalityValue(null);
+    return;
+  }
+
+  const option = nationalityOptions.find(
+    (o) => o.label === nationality
+  );
+
+  if (option) {
+    setSelectedNationalityId(option.value);
+    setSelectedNationalityValue(option);
+  }
+}, [nationalityOptions]);
+  useEffect(() => {
+    if (item?.tenantNationality && nationalityOptions.length > 0) {
+      setNationalitySelection(item.tenantNationality);
+    }
+  }, [item?.tenantNationality, nationalityOptions, setNationalitySelection]);
 
   const handlePropertyChange = (e) => {
     const pid = e.target.value;
@@ -447,12 +544,15 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
     setField("tenant_mobile_number", summary.phoneNumber);
     setField("tenant_civil_id",      summary.civil_id);
     setField("tenant_passport_number", summary.passportOrId);
-    setField("tenant_nationality",   summary.nationality);
+    // setField("tenant_nationality",   summary.nationality);
+    
 
     // Fetch full lead record for fields not returned by get_all
     try {
       const res = await checkInApi.get(`/lead/get/?lead_id=${tid}`);
       const lead = res.data?.data ?? res.data ?? {};
+
+      setNationalitySelection(lead.nationality ?? summary.nationality);
       // Defer DOM writes until after React's render cycle triggered by setSelectedTenantId
       setTimeout(() => {
         if (!formRef.current) return;
@@ -472,7 +572,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
         setField("company_name",             lead.companyName);
       }, 0);
     } catch {
-      // full record unavailable — list-level fields already filled above
+      // full record unavailable � list-level fields already filled above
     }
   };
 
@@ -495,11 +595,15 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
     const formEl = formRef.current;
     const formData = new FormData(formEl);
     const payload = {};
+
     for (const [k, v] of formData.entries()) {
       if (v instanceof File) continue; // no uploads in this form yet
       if (v === "") continue;
       payload[k] = NUMERIC_FIELDS.includes(k) ? Number(v) : v;
     }
+    if (selectedNationalityId != null) payload["tenant_nationality"] = selectedNationalityId;
+       console.log("Payload =", payload);
+
     try {
       setSubmitting(true);
       if (id) {
@@ -515,14 +619,12 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
         await fetchItem();
         setSubmitting(false);
         toast.success(`${flowTitle} updated successfully`);
-        alert(`${flowTitle} updated successfully.`);
+        navigate(isCheckOut ? "/check-out-list" : "/check-in-list");
       } else {
-        const res = await create(payload);
+        await create(payload);
         setSubmitting(false);
-        const newId = res?.data?.check_in_id;
         toast.success(`${flowTitle} created successfully`);
-        alert(`${flowTitle} created successfully${newId ? ` (ID: ${newId})` : ""}.`);
-        if (newId) navigate(`${detailsPath}?id=${newId}`);
+        navigate(isCheckOut ? "/check-out-list" : "/check-in-list");
       }
     } catch (err) {
       setSubmitting(false);
@@ -530,7 +632,6 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
       const res = err?.response?.data;
       const message = res ? JSON.stringify(res) : err?.message || "Something went wrong";
       toast.error(message);
-      alert(message);
     }
   };
 
@@ -695,7 +796,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                 <div className="d-flex gap-2">
                   <Button
                     as={Link}
-                    to="/check-in-dashboard"
+                    to={dashboardPath}
                     variant="outline-secondary"
                     className="w-50"
                     style={{
@@ -750,6 +851,84 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
 
                 <div style={{ padding: "34px 36px" }}>
                   {/* error UI removed to keep page clean; check hook `error` for debugging */}
+                  <h5 id="check-in-information" style={sectionTitleStyle}>
+                    A. {flowTitle} Information
+                  </h5>
+                  <Row className="g-3 mb-4">
+                    <Col md={4}>
+                      <div>
+                        <label style={labelStyle}>Property ID *</label>
+                        <select
+                          name="property_id"
+                          style={selectFieldStyle}
+                          value={selectedPropertyId}
+                          onChange={handlePropertyChange}
+                        >
+                          <option value="" disabled>
+                            {propertiesLoading ? "Loading properties…" : "Select Property ID"}
+                          </option>
+                          {!propertiesLoading && properties.length === 0 && (
+                            <option disabled>No properties available</option>
+                          )}
+                          {properties.map((p) => (
+                            <option key={p.propertyId} value={String(p.propertyId)}>
+                              {p.propertyId} – {p.buildingDetails || p.propertyDetails?.buildingName || ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Property Assignment ID"
+                        name="property_assignment_id"
+                        defaultValue={getValue("property_assignment_id")}
+                        type="number"
+                        placeholder="Assignment ID"
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <DateField
+                        label={`${flowTitle} Date *`}
+                        name="check_in_date"
+                        defaultValue={getValue("check_in_date")}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label={`${flowTitle} Status *`}
+                        name="check_in_status"
+                        defaultValue={getValue("check_in_status")}
+                        placeholder="Select Status"
+                        as="select"
+                      >
+                        <option>Pending</option>
+                        <option>In Progress</option>
+                        <option>Key Pending</option>
+                        <option>Active</option>
+                        <option>Completed</option>
+                        <option>Cancelled</option>
+                      </FormField>
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Assigned Employee ID *"
+                        name="assigned_employee_id"
+                        defaultValue={getValue("assigned_employee_id")}
+                        type="number"
+                        placeholder="Employee ID"
+                      />
+                    </Col>
+                    <Col md={12}>
+                      <FormField
+                        label="Remarks / Notes"
+                        name="remarks_notes"
+                        defaultValue={getValue("remarks_notes")}
+                        placeholder="Enter initial remarks"
+                      />
+                    </Col>
+                  </Row>
+
                   <h5 id="tenant-details" style={sectionTitleStyle}>
                     A. Tenant Details
                   </h5>
@@ -759,7 +938,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                         <label style={labelStyle}>Tenant ID *</label>
                         <select
                           name="tenant_id"
-                          style={fieldStyle}
+                          style={selectFieldStyle}
                           value={selectedTenantId}
                           onChange={handleTenantChange}
                         >
@@ -839,18 +1018,29 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       />
                     </Col>
                     <Col md={4}>
-                      <FormField
-                        label="Nationality"
-                        name="tenant_nationality"
-                        defaultValue={getValue("tenant_nationality")}
-                        placeholder="Select Nationality"
-                        as="select"
-                      >
-                        <option>Oman</option>
-                        <option>India</option>
-                        <option>United Arab Emirates</option>
-                      </FormField>
+                      <div>
+                        <label style={labelStyle}>Nationality</label>
+                        <ReactSelect
+                          options={nationalityOptions}
+                          styles={countrySelectStyles}
+                          placeholder="Select Nationality"
+                          value={selectedNationalityValue}
+                          onChange={(selected) => {
+                            setSelectedNationalityId(selected?.value ?? null);
+                            setSelectedNationalityValue(selected);
+                          }}
+                          isClearable={false}
+                          noOptionsMessage={() => nationalityOptions.length === 0 ? "Loading..." : "No options"}
+                        />
+                        <input
+                          type="hidden"
+                          name="tenant_nationality"
+                          value={selectedNationalityId ?? ""}
+                        />
+                      </div>
                     </Col>
+
+
                     <Col md={4}>
                       <DateField label="Date of Birth" name="date_of_birth" defaultValue={getValue("date_of_birth")} />
                     </Col>
@@ -1092,35 +1282,31 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   </h5>
                   <Row className="g-4 mb-4">
                     <Col md={4}>
-                      <FormField
+                      <AmountField
                         label="Monthly Rent"
                         name="monthly_rent"
                         defaultValue={getValue("monthly_rent")}
-                        placeholder="Amount"
                       />
                     </Col>
                     <Col md={4}>
-                      <FormField
+                      <AmountField
                         label="Security Deposit"
                         name="security_deposit"
                         defaultValue={getValue("security_deposit")}
-                        placeholder="Amount"
                       />
                     </Col>
                     <Col md={4}>
-                      <FormField
+                      <AmountField
                         label="Advance Rent Received"
                         name="advance_rent_received"
                         defaultValue={getValue("advance_rent_received")}
-                        placeholder="Amount"
                       />
                     </Col>
                     <Col md={4}>
-                      <FormField
+                      <AmountField
                         label="First Month Rent Paid"
                         name="first_month_rent_paid"
                         defaultValue={getValue("first_month_rent_paid")}
-                        placeholder="Amount"
                       />
                     </Col>
                     <Col md={4}>
@@ -1138,11 +1324,10 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       </FormField>
                     </Col>
                     <Col md={4}>
-                      <FormField
+                      <AmountField
                         label="Maintenance Charges"
                         name="maintenance_charges"
                         defaultValue={getValue("maintenance_charges")}
-                        placeholder="Amount"
                       />
                     </Col>
                   </Row>
@@ -1253,11 +1438,10 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       </FormField>
                     </Col>
                     <Col md={4}>
-                      <FormField
+                      <AmountField
                         label="Quotation Amount"
                         name="quotation_amount"
                         defaultValue={getValue("quotation_amount")}
-                        placeholder="Amount"
                       />
                     </Col>
                     <Col md={4}>
@@ -1320,11 +1504,11 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                     </Col>
                     <Col md={4}>
                       <FormField
-                        label="Assigned Repair Employee"
+                        label="Assign Repair Employee"
                         name="recommended_by_id"
                         defaultValue={getValue("recommended_by_id")}
                         type="number"
-                        placeholder="Employee ID"
+                        placeholder="assign repair employee"
                       />
                     </Col>
                     <Col md={4}>
@@ -1569,6 +1753,13 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       <DateField
                         label="Tenant Created Date"
                         name="tenant_created_date"
+                      />
+                    </Col>
+
+                    <Col md={4}>
+                      <DateField
+                        label=" Tenanted Created Date"
+                        name="tenant_assigned_date"
                       />
                     </Col>
 

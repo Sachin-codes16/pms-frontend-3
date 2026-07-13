@@ -1,4 +1,4 @@
-// @refresh reset
+﻿// @refresh reset
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import { useRef, useState } from "react";
 import { Button, Card, CardBody, Col, Row } from "react-bootstrap";
@@ -47,6 +47,16 @@ const fieldStyle = {
   width: "100%",
 };
 
+const selectFieldStyle = {
+  ...fieldStyle,
+  paddingRight: 40,
+  appearance: "none",
+  backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23526b89' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E\")",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 20px center",
+  backgroundSize: "16px",
+};
+
 const readOnlyStyle = {
   ...fieldStyle,
   background: "#f3f4f8",
@@ -84,10 +94,20 @@ const Field = ({ label, name, type = "text", defaultValue, readOnly }) => (
   </div>
 );
 
+const AmountField = ({ label, name, defaultValue, readOnly }) => (
+  <div>
+    <label style={labelStyle}>{label}</label>
+    <div style={{ display: "flex", alignItems: "center", border: "1px solid #e7e9ef", borderRadius: 5, overflow: "hidden", background: readOnly ? "#f3f4f8" : "#f9f9fc" }}>
+      <span style={{ padding: "0 12px", height: 46, display: "flex", alignItems: "center", background: "#e7e9ef", color: "#526b89", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>OMR</span>
+      <input name={name} type="number" defaultValue={defaultValue} placeholder="0.000" readOnly={readOnly} style={{ ...fieldStyle, border: "none", borderRadius: 0, background: "transparent", flex: 1, cursor: readOnly ? "not-allowed" : "auto" }} />
+    </div>
+  </div>
+);
+
 const SelectField = ({ label, name, defaultValue, options }) => (
   <div>
     <label style={labelStyle}>{label}</label>
-    <select name={name} defaultValue={defaultValue ?? ""} style={fieldStyle}>
+    <select name={name} defaultValue={defaultValue ?? ""} style={selectFieldStyle}>
       <option value="">— Select —</option>
       {options.map((o) => (
         <option key={o} value={o}>{o}</option>
@@ -111,10 +131,10 @@ const AgreementEditDetailsPage = ({ mode = "check-in" }) => {
   const location   = useLocation();
   const isCheckOut = mode === "check-out";
   const flowTitle  = isCheckOut ? "Check-Out" : "Check-In";
-  const backPath   = isCheckOut ? "/check-out-dashboard" : "/check-in-dashboard";
 
   const params = new URLSearchParams(location.search);
   const id     = params.get("id");
+  const backPath   = isCheckOut ? `/check-out-details?id=${id}` : `/check-in-information?id=${id}&tab=agreement`;
 
   const { item, loading, updateSections, fetchItem } = useCheckIn({ id });
   const formRef    = useRef(null);
@@ -310,16 +330,16 @@ const AgreementEditDetailsPage = ({ mode = "check-in" }) => {
                   <h5 id="financial" style={sectionTitleStyle}>B. Financial Summary</h5>
                   <Row className="g-4 mb-5">
                     <Col md={4}>
-                      <Field label="Rent (Monthly)" defaultValue={details.rentMonthly ?? ""} readOnly />
+                      <AmountField label="Rent (Monthly)" defaultValue={details.rentMonthly ?? ""} readOnly />
                     </Col>
                     <Col md={4}>
-                      <Field label="Security Deposit" defaultValue={details.securityDeposit ?? ""} readOnly />
+                      <AmountField label="Security Deposit" defaultValue={details.securityDeposit ?? ""} readOnly />
                     </Col>
                     <Col md={4}>
-                      <Field label="Advance Rent" defaultValue={details.advanceRent ?? ""} readOnly />
+                      <AmountField label="Advance Rent" defaultValue={details.advanceRent ?? ""} readOnly />
                     </Col>
                     <Col md={4}>
-                      <Field label="Maintenance Charges" defaultValue={details.maintenanceCharges ?? ""} readOnly />
+                      <AmountField label="Maintenance Charges" defaultValue={details.maintenanceCharges ?? ""} readOnly />
                     </Col>
                   </Row>
 

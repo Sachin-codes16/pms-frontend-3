@@ -1,4 +1,4 @@
-// @refresh reset
+﻿// @refresh reset
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import { useRef, useState } from "react";
 import { Button, Card, CardBody, Col, Row } from "react-bootstrap";
@@ -37,6 +37,16 @@ const fieldStyle = {
   height: 46,
   padding: "10px 14px",
   width: "100%",
+};
+
+const selectFieldStyle = {
+  ...fieldStyle,
+  paddingRight: 40,
+  appearance: "none",
+  backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23526b89' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E\")",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 20px center",
+  backgroundSize: "16px",
 };
 
 const readOnlyStyle = {
@@ -103,7 +113,7 @@ const DocumentSlot = ({ num }) => (
       <Col md={4}>
         <div>
           <label style={labelStyle}>Document Type</label>
-          <select name={`slot_${num}_document_type`} defaultValue="" style={fieldStyle}>
+          <select name={`slot_${num}_document_type`} defaultValue="" style={selectFieldStyle}>
             <option value="">— Select —</option>
             {DOCUMENT_TYPES.map((t) => (
               <option key={t} value={t}>{t}</option>
@@ -138,10 +148,10 @@ const DocumentsEditDetailsPage = ({ mode = "check-in" }) => {
   const location   = useLocation();
   const isCheckOut = mode === "check-out";
   const flowTitle  = isCheckOut ? "Check-Out" : "Check-In";
-  const backPath   = isCheckOut ? "/check-out-dashboard" : "/check-in-dashboard";
 
   const params = new URLSearchParams(location.search);
   const id     = params.get("id");
+  const backPath   = isCheckOut ? `/check-out-details?id=${id}` : `/check-in-information?id=${id}&tab=documents`;
 
   const { item, loading, fetchItem } = useCheckIn({ id });
   const formRef    = useRef(null);

@@ -1,4 +1,4 @@
-// @refresh reset
+﻿// @refresh reset
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Card, CardBody, Col, Row } from 'react-bootstrap';
@@ -140,6 +140,16 @@ const fieldStyle = {
   width: '100%',
 };
 
+const selectFieldStyle = {
+  ...fieldStyle,
+  paddingRight: 40,
+  appearance: 'none',
+  backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23526b89' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E\")",
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 20px center',
+  backgroundSize: '16px',
+};
+
 const labelStyle = {
   color: '#526b89',
   fontSize: 16,
@@ -157,11 +167,21 @@ const sectionTitleStyle = {
   scrollMarginTop: 110,
 };
 
+const AmountField = ({ label, name, defaultValue }) => (
+  <div>
+    <label style={labelStyle}>{label}</label>
+    <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e7e9ef', borderRadius: 5, overflow: 'hidden', background: '#f9f9fc' }}>
+      <span style={{ padding: '0 12px', height: 46, display: 'flex', alignItems: 'center', background: '#e7e9ef', color: '#526b89', fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>OMR</span>
+      <input name={name} type="number" defaultValue={defaultValue} placeholder="0.000" style={{ ...fieldStyle, border: 'none', borderRadius: 0, background: 'transparent', flex: 1 }} />
+    </div>
+  </div>
+);
+
 const FormField = ({ label, name, placeholder, as = 'input', type = 'text', defaultValue, children }) => (
   <div>
     <label style={labelStyle}>{label}</label>
     {as === 'select' ? (
-      <select style={fieldStyle} name={name} defaultValue={defaultValue ?? ''}>
+      <select style={selectFieldStyle} name={name} defaultValue={defaultValue ?? ''}>
         <option value="" disabled>{placeholder}</option>
         {children}
       </select>
@@ -203,10 +223,10 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
   const location = useLocation();
   const isCheckOut = mode === 'check-out';
   const flowTitle = isCheckOut ? 'Check-Out' : 'Check-In';
-  const dashboardPath = isCheckOut ? '/check-out-dashboard' : '/check-in-dashboard';
 
   const params = new URLSearchParams(location.search);
   const id = params.get('id');
+  const dashboardPath = isCheckOut ? `/check-out-details?id=${id}` : `/check-in-information?id=${id}&tab=overview`;
 
   const { item, loading, updateSections, fetchItem } = useCheckIn({ id });
   const formRef = useRef(null);
@@ -330,7 +350,7 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
                 <div className="d-flex gap-2">
                   <Button
                     as={Link}
-                    to="/check-in-dashboard"
+                    to={dashboardPath}
                     variant="outline-secondary"
                     className="w-50"
                     style={{ borderColor: '#526b89', color: '#526b89', borderRadius: 5, height: 40 }}
@@ -566,36 +586,16 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
                   <h5 id="rental-details" style={sectionTitleStyle}>D. Rental Details</h5>
                   <Row className="g-4 mb-4">
                     <Col md={4}>
-                      <FormField
-                        label="Monthly Rent"
-                        name="monthly_rent"
-                        defaultValue={getValue('monthly_rent')}
-                        placeholder="Amount"
-                      />
+                      <AmountField label="Monthly Rent" name="monthly_rent" defaultValue={getValue('monthly_rent')} />
                     </Col>
                     <Col md={4}>
-                      <FormField
-                        label="Security Deposit"
-                        name="security_deposit"
-                        defaultValue={getValue('security_deposit')}
-                        placeholder="Amount"
-                      />
+                      <AmountField label="Security Deposit" name="security_deposit" defaultValue={getValue('security_deposit')} />
                     </Col>
                     <Col md={4}>
-                      <FormField
-                        label="Advance Rent Received"
-                        name="advance_rent_received"
-                        defaultValue={getValue('advance_rent_received')}
-                        placeholder="Amount"
-                      />
+                      <AmountField label="Advance Rent Received" name="advance_rent_received" defaultValue={getValue('advance_rent_received')} />
                     </Col>
                     <Col md={4}>
-                      <FormField
-                        label="First Month Rent Paid"
-                        name="first_month_rent_paid"
-                        defaultValue={getValue('first_month_rent_paid')}
-                        placeholder="Amount"
-                      />
+                      <AmountField label="First Month Rent Paid" name="first_month_rent_paid" defaultValue={getValue('first_month_rent_paid')} />
                     </Col>
                     <Col md={4}>
                       <FormField
@@ -612,12 +612,7 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
                       </FormField>
                     </Col>
                     <Col md={4}>
-                      <FormField
-                        label="Maintenance Charges"
-                        name="maintenance_charges"
-                        defaultValue={getValue('maintenance_charges')}
-                        placeholder="Amount"
-                      />
+                      <AmountField label="Maintenance Charges" name="maintenance_charges" defaultValue={getValue('maintenance_charges')} />
                     </Col>
                   </Row>
 
@@ -698,13 +693,7 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
                       </FormField>
                     </Col>
                     <Col md={4}>
-                      <FormField
-                        label="Quotation Amount"
-                        name="quotation_amount"
-                        defaultValue={getValue('quotation_amount')}
-                        type="number"
-                        placeholder="Amount"
-                      />
+                      <AmountField label="Quotation Amount" name="quotation_amount" defaultValue={getValue('quotation_amount')} />
                     </Col>
                     <Col md={4}>
                       <FormField
@@ -757,12 +746,7 @@ const CheckInInformationForm = ({ mode = 'check-in' }) => {
                       </FormField>
                     </Col>
                     <Col md={4}>
-                      <FormField
-                        label="Rent Adjustment Amount"
-                        name="rent_adjustment_amount"
-                        defaultValue={getValue('rent_adjustment_amount')}
-                        placeholder="Amount"
-                      />
+                      <AmountField label="Rent Adjustment Amount" name="rent_adjustment_amount" defaultValue={getValue('rent_adjustment_amount')} />
                     </Col>
                   </Row>
 

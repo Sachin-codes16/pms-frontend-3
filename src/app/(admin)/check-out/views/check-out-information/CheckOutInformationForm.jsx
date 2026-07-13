@@ -194,7 +194,8 @@ const fieldStyle = {
   color: "#526b89",
   fontSize: 16,
   height: 46,
-  padding: "10px 14px",
+  padding: "12px 16px",
+  paddingRight: "40",
   width: "100%",
 };
 
@@ -219,10 +220,14 @@ const FormField = ({ label, name, placeholder, as = "input", type = "text", defa
   <div>
     <label style={labelStyle}>{label}</label>
     {as === "select" ? (
-      <select style={fieldStyle} name={name} defaultValue={defaultValue ?? ""}>
-        <option value="" disabled>{placeholder}</option>
-        {children}
-      </select>
+      <div style={{ position: 'relative' }}>
+        <select style={{ ...fieldStyle, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', paddingRight: 40 }} name={name} defaultValue={defaultValue ?? ""}>
+          <option value="" disabled>{placeholder}</option>
+          {children}
+        </select>
+        <IconifyIcon icon="ri:arrow-down-s-line" width={18} height={18}
+          style={{ color: '#526b89', pointerEvents: 'none', position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }} />
+      </div>
     ) : (
       <input style={fieldStyle} name={name} type={type} placeholder={placeholder} defaultValue={defaultValue} />
     )}
@@ -259,10 +264,9 @@ const DateField = ({ label, name, defaultValue }) => (
 
 const CheckOutInformationForm = () => {
   const location = useLocation();
-  const backPath = "/check-out-dashboard";
-
   const params = new URLSearchParams(location.search);
   const id     = params.get("id");
+  const backPath = id ? `/check-out-details?id=${id}&tab=overview` : "/check-out-list";
 
   const { item, loading, create, updateSections, fetchItem } = useCheckOut({ id });
   const formRef = useRef(null);
@@ -562,22 +566,26 @@ const CheckOutInformationForm = () => {
                     <Col md={4}>
                       <div>
                         <label style={labelStyle}>Property ID *</label>
-                        <select
-                          name="property_id"
-                          style={fieldStyle}
-                          value={selectedPropertyId}
-                          onChange={handlePropertyChange}
-                        >
-                          <option value="" disabled>
-                            {propertiesLoading ? "Loading properties…" : "Select Property ID"}
-                          </option>
-                          {!propertiesLoading && properties.length === 0 && <option disabled>No properties available</option>}
-                          {properties.map((p) => (
-                            <option key={p.propertyId} value={String(p.propertyId)}>
-                              {p.propertyId} – {p.buildingDetails || p.propertyDetails?.buildingName || ""}
+                        <div style={{ position: 'relative' }}>
+                          <select
+                            name="property_id"
+                            style={{ ...fieldStyle, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', paddingRight: 40 }}
+                            value={selectedPropertyId}
+                            onChange={handlePropertyChange}
+                          >
+                            <option value="" disabled>
+                              {propertiesLoading ? "Loading properties…" : "Select Property ID"}
                             </option>
-                          ))}
-                        </select>
+                            {!propertiesLoading && properties.length === 0 && <option disabled>No properties available</option>}
+                            {properties.map((p) => (
+                              <option key={p.propertyId} value={String(p.propertyId)}>
+                                {p.propertyId} – {p.buildingDetails || p.propertyDetails?.buildingName || ""}
+                              </option>
+                            ))}
+                          </select>
+                          <IconifyIcon icon="ri:arrow-down-s-line" width={18} height={18}
+                            style={{ color: '#526b89', pointerEvents: 'none', position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                        </div>
                       </div>
                     </Col>
                     <Col md={4}>
@@ -632,22 +640,26 @@ const CheckOutInformationForm = () => {
                     <Col md={4}>
                       <div>
                         <label style={labelStyle}>Tenant ID *</label>
-                        <select
-                          name="tenant_id"
-                          style={fieldStyle}
-                          value={selectedTenantId}
-                          onChange={handleTenantChange}
-                        >
-                          <option value="" disabled>
-                            {tenantsLoading ? "Loading tenants…" : "Select Tenant ID"}
-                          </option>
-                          {!tenantsLoading && tenants.length === 0 && <option disabled>No tenants available</option>}
-                          {tenants.map((t) => (
-                            <option key={t.leadId} value={String(t.leadId)}>
-                              {t.leadId} – {[t.firstName, t.lastName].filter(Boolean).join(" ")}
+                        <div style={{ position: 'relative' }}>
+                          <select
+                            name="tenant_id"
+                            style={{ ...fieldStyle, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', paddingRight: 40 }}
+                            value={selectedTenantId}
+                            onChange={handleTenantChange}
+                          >
+                            <option value="" disabled>
+                              {tenantsLoading ? "Loading tenants…" : "Select Tenant ID"}
                             </option>
-                          ))}
-                        </select>
+                            {!tenantsLoading && tenants.length === 0 && <option disabled>No tenants available</option>}
+                            {tenants.map((t) => (
+                              <option key={t.leadId} value={String(t.leadId)}>
+                                {t.leadId} – {[t.firstName, t.lastName].filter(Boolean).join(" ")}
+                              </option>
+                            ))}
+                          </select>
+                          <IconifyIcon icon="ri:arrow-down-s-line" width={18} height={18}
+                            style={{ color: '#526b89', pointerEvents: 'none', position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                        </div>
                       </div>
                     </Col>
                     <Col md={4}>

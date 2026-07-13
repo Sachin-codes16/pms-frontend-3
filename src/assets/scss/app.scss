@@ -81,3 +81,17 @@
 @import "pages/custom-react";
 @import "components/preloader";
 
+// Keep React Toastify icons constrained even if component styles load late.
+.Toastify__toast-icon {
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+}
+
+.Toastify__toast-icon svg {
+  width: 20px !important;
+  max-width: 20px !important;
+  height: 20px !important;
+  max-height: 20px !important;
+}
+
