@@ -34,10 +34,14 @@ const Field = ({ label, name, type = "text", defaultValue, readOnly }) => (
 const SelectField = ({ label, name, defaultValue, options }) => (
   <div>
     <label style={labelStyle}>{label}</label>
-    <select name={name} defaultValue={defaultValue ?? ""} style={fieldStyle}>
-      <option value="">— Select —</option>
-      {options.map((o) => <option key={o} value={o}>{o}</option>)}
-    </select>
+    <div style={{ position: 'relative' }}>
+      <select name={name} defaultValue={defaultValue ?? ""} style={{ ...fieldStyle, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', paddingRight: 40 }}>
+        <option value="">— Select —</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+      <IconifyIcon icon="ri:arrow-down-s-line" width={18} height={18}
+        style={{ color: '#526b89', pointerEvents: 'none', position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }} />
+    </div>
   </div>
 );
 
@@ -69,10 +73,9 @@ const UtilitySection = ({ reading, index }) => {
 
 const UtilityReadingsEditDetailsPage = ({ mode = "check-out" }) => {
   const location = useLocation();
-  const backPath = "/check-out-dashboard";
-
   const params = new URLSearchParams(location.search);
   const id     = params.get("id");
+  const backPath = `/check-out-details?id=${id}&tab=utilityReadings`;
 
   const { item, loading, updateSections, fetchItem } = useCheckOut({ id });
   const formRef    = useRef(null);

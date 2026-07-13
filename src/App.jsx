@@ -3,6 +3,7 @@ import configureFakeBackend from './helpers/fake-backend';
 import AppRouter from './routes/router';
 
 import '@/assets/scss/app.scss';
+import 'react-toastify/dist/ReactToastify.css';
 configureFakeBackend();
 function App() {
   return <AppProvidersWrapper>

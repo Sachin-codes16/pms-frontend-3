@@ -28,7 +28,7 @@ const shellStyle = {
 const topBarStyle = {
   background: '#fff',
   borderBottom: '1px solid #eef1f5',
-  padding: '28px 56px 12px',
+  padding: '28px 48px 12px',
 };
 
 const panelStyle = {
@@ -136,7 +136,7 @@ const CheckOutListView = () => {
         </div>
       </div>
 
-      <div style={{ padding: '30px 56px' }}>
+      <div style={{ padding: '30px 48px' }}>
         <div className="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-3 mb-4" style={{ ...panelStyle, padding: '15px 20px' }}>
           <div className="d-flex flex-column flex-sm-row align-items-sm-center gap-4">
             <div style={{ maxWidth: 360, minWidth: 300, position: 'relative' }}>

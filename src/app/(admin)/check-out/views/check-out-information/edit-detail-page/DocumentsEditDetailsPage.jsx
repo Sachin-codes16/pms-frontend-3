@@ -67,10 +67,14 @@ const DocumentSlot = ({ num }) => (
       <Col md={4}>
         <div>
           <label style={labelStyle}>Document Type</label>
-          <select name={`slot_${num}_document_type`} defaultValue="" style={fieldStyle}>
-            <option value="">— Select —</option>
-            {DOCUMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <div style={{ position: 'relative' }}>
+            <select name={`slot_${num}_document_type`} defaultValue="" style={{ ...fieldStyle, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', paddingRight: 40 }}>
+              <option value="">— Select —</option>
+              {DOCUMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <IconifyIcon icon="ri:arrow-down-s-line" width={18} height={18}
+              style={{ color: '#526b89', pointerEvents: 'none', position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }} />
+          </div>
         </div>
       </Col>
       <Col md={4}>
@@ -93,10 +97,9 @@ const SLOTS = [1, 2, 3];
 
 const DocumentsEditDetailsPage = ({ mode = "check-out" }) => {
   const location = useLocation();
-  const backPath = "/check-out-dashboard";
-
   const params = new URLSearchParams(location.search);
   const id     = params.get("id");
+  const backPath = `/check-out-details?id=${id}&tab=documents`;
 
   const { item, loading, fetchItem } = useCheckOut({ id });
   const formRef    = useRef(null);

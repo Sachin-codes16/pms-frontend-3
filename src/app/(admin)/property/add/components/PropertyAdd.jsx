@@ -3,7 +3,7 @@ import TextFormInput from '@/components/from/TextFormInput';
 import TextAreaFormInput from '@/components/from/TextAreaFormInput';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { Card, CardBody, Col, Row, Form, Button } from 'react-bootstrap';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -21,6 +21,12 @@ const propertyTypeOptions = [
 ];
 
 const fieldBg = '#F9F9FC';
+
+const FLAT_CONFIG_MAP = {
+  Studio: 'Studio',
+  '1 BHK': '1BHK', '2 BHK': '2BHK', '3 BHK': '3BHK', '4 BHK': '4BHK',
+  '1BHK': '1BHK',  '2BHK': '2BHK',  '3BHK': '3BHK',  '4BHK': '4BHK',
+};
 
 const ReadOnlyField = ({ label, value }) => (
   <div>
@@ -150,7 +156,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
         state: toStr(values.state) || 'N/A',
         year_of_construction:
           (type === 'villa' && toNum(values.total_floors)) || new Date().getFullYear(),
-        late_fee_type: toStr(values.late_fee_type) || 'Fixed',
+        late_fee_type: toStr(values.late_fee_type) || 'Day wise',
         late_fee_value: toStr(values.late_fee_value) || '0',
         created_by_id: toNum(values.assigned_to_user_id) || 36,
       };
@@ -177,7 +183,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
       if (type==='flat') {
         payload.flat_data = {
           flat_number: toStr(values.flat_no) || 'N/A',
-          flat_configuration: toStr(values.flat_configuration) || 'N/A',
+          flat_configuration: FLAT_CONFIG_MAP[toStr(values.flat_configuration)] || '1BHK',
           floor_number: toNum(values.floor_number),
           building_block: toStr(values.building_block),
           no_of_bathrooms: toNum(values.bathrooms),
@@ -389,13 +395,15 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
           <>
   <Col lg={4}>
     <label className="form-label">BHK Configuration</label>
-
-    <ChoicesFormInput className="form-control">
-      <option>Studio</option>
-      <option>1 BHK</option>
-      <option>2 BHK</option>
-      <option>3 BHK</option>
-    </ChoicesFormInput>
+    <Controller name="flat_configuration" control={control} defaultValue="1 BHK" render={({ field }) => (
+      <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
+        <option value="Studio">Studio</option>
+        <option value="1 BHK">1 BHK</option>
+        <option value="2 BHK">2 BHK</option>
+        <option value="3 BHK">3 BHK</option>
+        <option value="4 BHK">4 BHK</option>
+      </select>
+    )} />
   </Col>
 </>
 
@@ -875,7 +883,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
               </ChoicesFormInput>
             </Col>
             <Col lg={4}><TextFormInput control={control} name="available_from" label="Available From" placeholder="dd-mm-yyyy" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="current_tenant" label="Current Tenant" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+            {/* <Col lg={4}><TextFormInput control={control} name="current_tenant" label="Current Tenant" style={{ backgroundColor: '#F9F9FC' }}/></Col> */}
           </Row>
         </CardBody>
       </Card>)}
@@ -967,7 +975,6 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
               </ChoicesFormInput>
             </Col>
             <Col lg={4}><TextFormInput control={control} name="available_from" label="Available From" placeholder="dd-mm-yyyy" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="current_tenant" label="Current Tenant" style={{ backgroundColor: '#F9F9FC' }}/></Col>
           </Row>
         </CardBody>
       </Card>)}
@@ -1002,7 +1009,6 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
               </ChoicesFormInput>
             </Col>
             <Col lg={4}><TextFormInput control={control} name="available_from" label="Available From" placeholder="dd-mm-yyyy" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="current_tenant" label="Current Tenant" style={{ backgroundColor: '#F9F9FC' }}/></Col>
           </Row>
         </CardBody>
       </Card>)}
@@ -1089,7 +1095,6 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
               </ChoicesFormInput>
             </Col>
             <Col lg={4}><TextFormInput control={control} name="available_from" label="Available From" placeholder="dd-mm-yyyy" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="current_tenant" label="Current Tenant" style={{ backgroundColor: '#F9F9FC' }}/></Col>
           </Row>
         </CardBody>
       </Card>)}

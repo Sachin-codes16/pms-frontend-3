@@ -41,12 +41,16 @@ const FormField = ({
   <div>
     <label style={labelStyle}>{label}</label>
     {as === "select" ? (
-      <select style={fieldStyle} defaultValue="">
-        <option value="" disabled>
-          {placeholder}
-        </option>
-        {children}
-      </select>
+      <div style={{ position: 'relative' }}>
+        <select style={{ ...fieldStyle, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', paddingRight: 40 }} defaultValue="">
+          <option value="" disabled>
+            {placeholder}
+          </option>
+          {children}
+        </select>
+        <IconifyIcon icon="ri:arrow-down-s-line" width={18} height={18}
+          style={{ color: '#526b89', pointerEvents: 'none', position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }} />
+      </div>
     ) : (
       <input style={fieldStyle} placeholder={placeholder} disabled={disabled} />
     )}
@@ -85,9 +89,11 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   const location = useLocation();
   const isCheckOut = mode === "check-out";
   const flowTitle = isCheckOut ? "Check-Out" : "Check-In";
+  const params2 = new URLSearchParams(location.search);
+  const id = params2.get("id");
   const dashboardPath = isCheckOut
-    ? "/check-out-dashboard"
-    : "/check-in-dashboard";
+    ? `/check-out-details?id=${id}&tab=overview`
+    : `/check-in-information?id=${id}&tab=overview`;
 
   useEffect(() => {
     if (!location.hash) return;
