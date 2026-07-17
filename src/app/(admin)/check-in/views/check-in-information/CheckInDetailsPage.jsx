@@ -287,10 +287,11 @@ const CheckInDetailsPage = () => {
         <div className="mb-4" style={{ ...cardStyle, padding: "8px 10px" }}>
           <div
             style={{
-              display: "grid",
-              gap: 18,
-              gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 3,
               width: "100%",
+              justifyContent: "space-between",
             }}
           >
             {tabs.map((tab) => {
@@ -302,7 +303,7 @@ const CheckInDetailsPage = () => {
                   type="button"
                   variant="light"
                   onClick={() => setActiveTab(tab.key)}
-                  className="d-inline-flex align-items-center justify-content-center gap-2 px-3"
+                  className="d-inline-flex align-items-center justify-content-center gap-2"
                   style={{
                     background: isActive ? "#f3f8fb" : "#fff",
                     border: isActive
@@ -313,10 +314,8 @@ const CheckInDetailsPage = () => {
                     fontSize: 15,
                     fontWeight: 700,
                     height: 45,
-                    minWidth: 0,
-                    padding: "0 10px",
+                    padding: "0 16px",
                     whiteSpace: "nowrap",
-                    width: "100%",
                   }}
                 >
                   {tab.iconCircle ? (

@@ -2,7 +2,6 @@ import api from '@/helpers/api';
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Col, Row, Spinner } from 'react-bootstrap';
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
-import OwnerDetails from './components/OwnerDetails';
 import PropertyDetails from './components/PropertyDetails';
 
 const fetchLandlordName = async (landlordId) => {
@@ -92,16 +91,11 @@ const PropertyDetailsPage = () => {
 
   return (
     <>
-      <div style={{ fontSize: '1rem', fontWeight: 500, color: '#555', marginBottom: '0.5rem' }}>
+      <div style={{ fontSize: '1rem', fontWeight: 500, color: '#555', marginBottom: '1rem' }}>
         Properties
         {breadcrumbCity && <> / {breadcrumbCity}</>}
         {breadcrumbState && <> / {breadcrumbState}</>}
         {property?.propertyId && <> / #{property.propertyId}</>}
-      </div>
-
-      <div className="d-flex gap-2 mb-3">
-        <Button variant="outline-secondary" onClick={() => navigate(-1)}>← Back</Button>
-        <Button variant="primary" onClick={() => navigate('/')}>Home</Button>
       </div>
 
       {loading ? (
@@ -120,7 +114,6 @@ const PropertyDetailsPage = () => {
         <div className="text-center py-5 text-muted">Property not found.</div>
       ) : (
         <Row>
-          <OwnerDetails property={property} landlordName={landlordName} />
           <PropertyDetails property={property} landlordName={landlordName} />
         </Row>
       )}

@@ -3,6 +3,7 @@ import LeftSideBarToggle from './components/LeftSideBarToggle';
 // import ProfileDropdown from './components/ProfileDropdown';
 import ProfileSettingPage from './components/ProfileSettingPage';
 import Notifications from './components/Notifications';
+import LogoutButton from './components/LogoutButton';
 import { Container } from 'react-bootstrap';
 
 
@@ -45,8 +46,10 @@ const page = () => {
             {/* RIGHT SIDE */}
             <div className="d-flex align-items-center gap-1">
               <Notifications />
-    
+
               <ProfileSettingPage />
+
+              <LogoutButton />
             </div>
 
           </div>

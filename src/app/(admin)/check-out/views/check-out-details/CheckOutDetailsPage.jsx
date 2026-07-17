@@ -216,10 +216,11 @@ const CheckOutDetailsPage = () => {
         <div className="mb-4" style={{ ...cardStyle, padding: "8px 10px" }}>
           <div
             style={{
-              display: "grid",
-              gap: 18,
-              gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 3,
               width: "100%",
+              justifyContent: "space-between",
             }}
           >
             {tabs.map((tab) => {
@@ -242,10 +243,8 @@ const CheckOutDetailsPage = () => {
                     fontSize: 15,
                     fontWeight: 700,
                     height: 45,
-                    minWidth: 0,
-                    padding: "0 10px",
+                    padding: "0 16px",
                     whiteSpace: "nowrap",
-                    width: "100%",
                   }}
                 >
                   <img src={tab.imgSrc} width={20} height={20} alt={tab.label} style={{ display: "block" }} />

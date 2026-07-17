@@ -257,7 +257,7 @@ const List = ({ propertyType = 'All' }) => {
                 <td style={tableCellStyle}>
                   <Button
                     as={Link}
-                    to="/check-in-start"
+                    to="/check-out-list"
                     onClick={(event) => event.stopPropagation()}
                     style={{
                       background: "#6382b0",
@@ -269,7 +269,7 @@ const List = ({ propertyType = 'All' }) => {
                       padding: "2px 12px",
                     }}
                   >
-                    Add Check-In
+                    Add Check-out
                   </Button>
                 </td>
                 <td style={tableCellStyle}>

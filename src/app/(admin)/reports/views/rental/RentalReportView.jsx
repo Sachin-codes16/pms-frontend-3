@@ -233,9 +233,7 @@ const RentalReportView = () => {
               <FilterCheckboxGroup title="Rental For" items={filters.rentalStatus} />
             </CardBody>
 
-            <div style={{ padding: '14px 20px 20px' }}>
-              <Button className="primary-action w-100">Apply</Button>
-            </div>
+          
           </Card>
         </Col>
 

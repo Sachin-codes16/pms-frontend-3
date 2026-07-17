@@ -1180,8 +1180,8 @@ style ={{ backgroundColor: '#F9F9FC' }}
         <CardBody>
           <h4 className="fw-semibold">Internal Tracking</h4>
           <hr />
-          <TextAreaFormInput control={control} name="internal_notes" label="Internal Notes" style={{ backgroundColor: '#F9F9FC' }}/>
-          <TextFormInput control={control} name="created_by" label="Created By"style={{ backgroundColor: '#F9F9FC' }} />
+          <TextAreaFormInput control={control} name="internal_notes" label="Internal Notes" containerClassName="my-4" style={{ backgroundColor: '#F9F9FC' }}/>
+          <TextFormInput control={control} name="created_by" label="Created By" containerClassName="my-4" style={{ backgroundColor: '#F9F9FC' }} />
         </CardBody>
       </Card>
 
