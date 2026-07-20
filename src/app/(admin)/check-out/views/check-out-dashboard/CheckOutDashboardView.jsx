@@ -1,3 +1,4 @@
+import Spinner from '@/components/Spinner';
 import { Col, Row } from 'react-bootstrap';
 import { useCheckOutDashboardController } from '../../controllers/useCheckOutDashboardController';
 import CheckOutOverviewCards from './CheckOutOverviewCards';
@@ -8,7 +9,24 @@ import PendingCheckOuts from './PendingCheckOuts';
 import UpcomingCheckOuts from './UpcomingCheckOuts';
 
 const CheckOutDashboardView = () => {
-  const { overviewCards, pendingCheckOuts, progressSteps, progressSummary, stats, statusOverview, upcomingCheckOuts } = useCheckOutDashboardController();
+  const { overviewCards, pendingCheckOuts, progressSteps, progressSummary, stats, statusOverview, upcomingCheckOuts, loading, error } =
+    useCheckOutDashboardController();
+
+  if (loading) {
+    return (
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: 300 }}>
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: 300, color: '#e05252' }}>
+        Failed to load Check-Out Dashboard: {error}
+      </div>
+    );
+  }
 
   return (
     <>

@@ -21,21 +21,25 @@ const CheckOutOverviewCards = ({ cards = [] }) => (
                 </h5>
               </div>
 
-              {card.rows.map((row, index) => (
-                <div
-                  key={row.label}
-                  className={row.stacked ? '' : 'd-flex align-items-center justify-content-between'}
-                  style={{
-                    gap: 12,
-                    marginBottom: index === card.rows.length - 1 ? 0 : 17,
-                    minHeight: row.stacked ? 51 : 18,
-                  }}>
-                  <span style={{ color: overviewTextColor, fontSize: 15, fontWeight: 400, lineHeight: 1.2 }}>{row.label}</span>
-                  <span className={row.stacked ? 'd-block mt-3' : ''} style={{ color: overviewTextColor, fontSize: 18, fontWeight: 700, lineHeight: 1.2 }}>
-                    {row.value}
-                  </span>
-                </div>
-              ))}
+              {card.rows.length === 0 ? (
+                <span style={{ color: '#8a96a8', fontSize: 15 }}>No data available.</span>
+              ) : (
+                card.rows.map((row, index) => (
+                  <div
+                    key={row.label}
+                    className={row.stacked ? '' : 'd-flex align-items-center justify-content-between'}
+                    style={{
+                      gap: 12,
+                      marginBottom: index === card.rows.length - 1 ? 0 : 17,
+                      minHeight: row.stacked ? 51 : 18,
+                    }}>
+                    <span style={{ color: overviewTextColor, fontSize: 15, fontWeight: 400, lineHeight: 1.2 }}>{row.label}</span>
+                    <span className={row.stacked ? 'd-block mt-3' : ''} style={{ color: overviewTextColor, fontSize: 18, fontWeight: 700, lineHeight: 1.2 }}>
+                      {row.value}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="d-flex align-items-center justify-content-center" style={{ minHeight: 52, padding: '12px', borderTop: '1px solid #d8dee8', background: '#fff' }}>

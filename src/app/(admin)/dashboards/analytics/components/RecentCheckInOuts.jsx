@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Card, CardBody } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { recentCheckIns, recentCheckOuts } from './checkInData';
 
-const RecentCheckInOuts = () => {
+const RecentCheckInOuts = ({ checkIns = [], checkOuts = [] }) => {
   const [activeTab, setActiveTab] = useState('check-outs');
 
   return (
@@ -83,8 +82,20 @@ const RecentCheckInOuts = () => {
               </tr>
             </thead>
             <tbody>
-              {activeTab === 'check-ins'
-                ? recentCheckIns.map((item, idx) => (
+              {activeTab === 'check-ins' && checkIns.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-4 text-center" style={{ color: '#8a96a8', fontSize: '14px' }}>
+                    No recent check-ins.
+                  </td>
+                </tr>
+              ) : activeTab === 'check-outs' && checkOuts.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-4 text-center" style={{ color: '#8a96a8', fontSize: '14px' }}>
+                    No recent check-outs.
+                  </td>
+                </tr>
+              ) : activeTab === 'check-ins'
+                ? checkIns.map((item, idx) => (
                     <tr key={idx} className="border-bottom border-light">
                       <td className="py-2" style={{ paddingLeft: '1.25rem', color: '#516986', fontSize: '14px' }}>
                         {item.id}
@@ -117,7 +128,7 @@ const RecentCheckInOuts = () => {
                       </td>
                     </tr>
                   ))
-                : recentCheckOuts.map((item, idx) => (
+                : checkOuts.map((item, idx) => (
                     <tr key={idx} className="border-bottom border-light">
                       <td className="py-2" style={{ paddingLeft: '1.25rem', color: '#516986', fontSize: '14px' }}>
                         {item.id}

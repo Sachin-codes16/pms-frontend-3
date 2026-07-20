@@ -78,16 +78,24 @@ const RentPaymentSummary = ({ data = [] }) => {
             </tr>
           </thead>
           <tbody>
-            {data.map((row, i) => (
-              <tr key={i} style={{ background: "#fff" }}>
-                <td style={tdStyle}>{row.id}</td>
-                <td style={{ ...tdStyle, fontWeight: 500 }}>{row.tenant}</td>
-                <td style={tdStyle}>{row.property}</td>
-                <td style={tdStyle}>{row.date}</td>
-                <td style={{ ...tdStyle, ...statusStyle(row.status) }}>{row.status}</td>
-                <td style={tdStyle}>{row.assigned}</td>
+            {data.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ ...tdStyle, textAlign: "center", padding: "40px 0", color: "#8a96a8" }}>
+                  No check-ins available.
+                </td>
               </tr>
-            ))}
+            ) : (
+              data.map((row, i) => (
+                <tr key={i} style={{ background: "#fff" }}>
+                  <td style={tdStyle}>{row.id}</td>
+                  <td style={{ ...tdStyle, fontWeight: 500 }}>{row.tenant}</td>
+                  <td style={tdStyle}>{row.property}</td>
+                  <td style={tdStyle}>{row.date}</td>
+                  <td style={{ ...tdStyle, ...statusStyle(row.status) }}>{row.status}</td>
+                  <td style={tdStyle}>{row.assigned}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

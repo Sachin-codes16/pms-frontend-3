@@ -1,9 +1,13 @@
 import { Card, CardBody } from "react-bootstrap";
 
-const MAX_VALUE = 50;
 const CHART_HEIGHT = 258;
 
 const CheckInPropertyTypeChart = ({ data = [] }) => {
+  const highest = data.reduce((max, d) => Math.max(max, d.value ?? 0), 0);
+  // Round the axis ceiling up to the nearest 10 (min 40) so real data never clips.
+  const maxValue = Math.max(40, Math.ceil((highest || 1) / 10) * 10);
+  const ticks = [0, 1, 2, 3, 4].map((i) => Math.round((maxValue / 4) * i));
+
   return (
     <Card
       className="shadow-sm border-0 h-100 w-100"
@@ -33,7 +37,7 @@ const CheckInPropertyTypeChart = ({ data = [] }) => {
               paddingBottom: "28px",
             }}
           >
-            {[0, 10, 20, 30, 40].map((v) => (
+            {ticks.map((v) => (
               <span
                 key={v}
                 style={{
@@ -82,7 +86,7 @@ const CheckInPropertyTypeChart = ({ data = [] }) => {
               }}
             >
               {data.map((d) => {
-                const barHeight = (d.value / MAX_VALUE) * (CHART_HEIGHT - 28);
+                const barHeight = (d.value / maxValue) * (CHART_HEIGHT - 28);
                 return (
                   <div
                     key={d.label}

@@ -1,43 +1,5 @@
 import { currency } from '@/context/constants';
 
-export const statData = [
-  {
-    icon: 'solar:calendar-date-bold-duotone',
-    title: 'Total Check-Ins',
-    amount: '128',
-    change: 12.5,
-    variant: 'primary'
-  },
-  {
-    icon: 'solar:chart-square-bold-duotone',
-    title: 'Pending Check-Ins',
-    amount: '26',
-    change: 8.2,
-    variant: 'success'
-  },
-  {
-    icon: 'solar:user-plus-rounded-bold-duotone',
-    title: 'Total Check-Outs',
-    amount: '32',
-    change: 4.7,
-    variant: 'warning'
-  },
-  {
-    icon: 'solar:chart-2-bold-duotone',
-    title: 'Pending Check-Outs',
-    amount: '14',
-    change: 3.1,
-    variant: 'info'
-  },
-  {
-    icon: 'solar:chart-bold-duotone',
-    title: 'Pending Settlements',
-    amount: 'OMR 1254',
-    change: 2.4,
-    variant: 'danger'
-  }
-];
-export const statisticData = statData;
 export const propertyData = [{
   title: 'Property',
   icon: 'solar:home-bold-duotone',
@@ -431,14 +393,3 @@ export const checkInOutOptions = {
     }
   }
 };
-
-export const checkInOutSeries = [
-  {
-    name: 'Checked-In',
-    data: [25, 14, 23, 10, 27, 16]
-  },
-  {
-    name: 'Checked-Out',
-    data: [23, 16, 21, 12, 29, 13]
-  }
-];
