@@ -1,0 +1,188 @@
+.property-add-form .form-control,
+.property-add-form .form-select,
+.property-add-form textarea,
+.property-add-form input {
+  background-color: #F9F9FC;
+  color: #2f3848;
+}
+
+.property-add-form .form-control::placeholder,
+.property-add-form textarea::placeholder,
+.property-add-form input::placeholder {
+  color: #7a8796;
+  opacity: 1;
+}
+
+.property-add-form .form-check-label,
+.property-add-form .form-label {
+  color: #2f3848;
+}
+
+.property-add-form .choices {
+  width: 100%;
+}
+
+.choices__inner {
+  background-color: #F9F9FC !important;
+  border: 1px solid #e6e8ee !important;
+  color: #2f3848 !important;
+  min-height: 38px !important;
+  padding: 6px 12px !important;
+}
+
+.choices__list--single {
+  padding: 0 !important;
+}
+
+.choices__item,
+.choices__placeholder {
+  color: #2f3848 !important;
+  opacity: 1 !important;
+}
+
+.choices__list--dropdown,
+.choices__list[aria-expanded] {
+  background-color: #fff !important;
+  border-color: #e6e8ee !important;
+  color: #2f3848 !important;
+  z-index: 1100 !important;
+}
+
+.property-add-card {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.property-add-header {
+  border-bottom: 1px solid #edf0f3;
+  padding: 28px 36px 14px;
+}
+
+.property-add-title {
+  color: #526b89;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.property-type-label {
+  color: #526b89;
+  font-size: 21px;
+  font-weight: 500;
+}
+
+.property-type-toggle {
+  background: #fff;
+  border: 1px solid #e2e6ec;
+  border-radius: 10px;
+  color: #526b89;
+  font-size: 21px;
+  min-width: 348px;
+  padding: 8px 17px;
+}
+
+.property-type-toggle-arrow {
+  border-bottom: 2px solid #526b89;
+  border-right: 2px solid #526b89;
+  display: inline-block;
+  height: 9px;
+  transform: rotate(45deg);
+  width: 9px;
+}
+
+.property-add-card-body {
+  padding: 36px 36px 28px;
+}
+
+.property-add-form h4.fw-semibold {
+  color: #526b89;
+  font-size: 22px;
+  font-weight: 600 !important;
+}
+
+.custom-country-dropdown {
+  position: relative;
+}
+
+.country-select-box {
+  align-items: center;
+  background: #F9F9FC;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  width: 100%;
+}
+
+.country-select-box:hover {
+  border-color: #86b7fe;
+}
+
+.country-select-value,
+.country-dropdown-item {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.country-dropdown-list {
+  background: white;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  left: 0;
+  margin-top: 4px;
+  max-height: 250px;
+  overflow-y: auto;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 1000;
+}
+
+.country-dropdown-item {
+  cursor: pointer;
+  padding: 10px 12px;
+  transition: background 0.2s;
+}
+
+.country-dropdown-item:hover {
+  background: #f8f9fa;
+}
+
+.country-flag {
+  border-radius: 2px;
+  display: inline-block;
+  height: 18px;
+  object-fit: cover;
+  width: 24px;
+}
+
+.country-name {
+  color: #333;
+  font-size: 14px;
+}
+
+.dropdown-arrow {
+  border-bottom: 2px solid #666;
+  border-right: 2px solid #666;
+  display: inline-block;
+  height: 8px;
+  transform: rotate(45deg);
+  width: 8px;
+}
+
+@media (max-width: 767.98px) {
+  .property-add-header {
+    padding: 20px;
+  }
+
+  .property-add-card-body {
+    padding: 24px 20px;
+  }
+
+  .property-type-toggle {
+    min-width: 100%;
+  }
+}
