@@ -21,16 +21,24 @@ const PendingCheckOuts = ({ rows = [] }) => (
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={`${row.tenant}-${index}`} style={{ background: '#fff' }}>
-              <td style={tdStyle}>{row.id}</td>
-              <td style={{ ...tdStyle, fontWeight: 500 }}>{row.tenant}</td>
-              <td style={tdStyle}>{row.property}</td>
-              <td style={tdStyle}>{row.date}</td>
-              <td style={tdStyle}>{row.status}</td>
-              <td style={tdStyle}>{row.daysLeft}</td>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '40px 0', color: '#8a96a8' }}>
+                No pending check-outs.
+              </td>
             </tr>
-          ))}
+          ) : (
+            rows.map((row, index) => (
+              <tr key={`${row.tenant}-${index}`} style={{ background: '#fff' }}>
+                <td style={tdStyle}>{row.id}</td>
+                <td style={{ ...tdStyle, fontWeight: 500 }}>{row.tenant}</td>
+                <td style={tdStyle}>{row.property}</td>
+                <td style={tdStyle}>{row.date}</td>
+                <td style={tdStyle}>{row.status}</td>
+                <td style={tdStyle}>{row.daysLeft}</td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>

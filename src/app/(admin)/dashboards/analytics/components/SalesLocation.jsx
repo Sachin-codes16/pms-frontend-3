@@ -1,8 +1,17 @@
 import ReactApexChart from 'react-apexcharts';
 import { Card, CardBody, CardHeader, CardTitle, Col } from 'react-bootstrap';
-import { checkInOutOptions, checkInOutSeries } from '../data';
+import { checkInOutOptions } from '../data';
 
-const CheckInOutOverview = () => {
+const CheckInOutOverview = ({ categories = [], series = [] }) => {
+  const highest = series.reduce((max, s) => Math.max(max, ...(s.data ?? [])), 0);
+  // Round the axis ceiling up to the nearest 10 (min 40) so real data never clips.
+  const maxValue = Math.max(40, Math.ceil((highest || 1) / 10) * 10);
+  const options = {
+    ...checkInOutOptions,
+    xaxis: { ...checkInOutOptions.xaxis, categories },
+    yaxis: { ...checkInOutOptions.yaxis, max: maxValue, tickAmount: 4 },
+  };
+
   return (
     <Col xl={4} lg={6}>
       <Card className="h-100 shadow-sm border-0" style={{ borderRadius: '8px', minHeight: '372px' }}>
@@ -13,7 +22,7 @@ const CheckInOutOverview = () => {
         </CardHeader>
         <CardBody style={{ padding: '0 20px', overflow: 'hidden' }}>
           <div style={{ transform: 'scale(1.08)', transformOrigin: 'top center' }}>
-            <ReactApexChart options={checkInOutOptions} series={checkInOutSeries} height={306} type="bar" className="apex-charts" />
+            <ReactApexChart options={options} series={series} height={306} type="bar" className="apex-charts" />
           </div>
         </CardBody>
       </Card>

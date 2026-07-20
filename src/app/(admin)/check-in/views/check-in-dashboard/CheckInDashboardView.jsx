@@ -1,3 +1,4 @@
+import Spinner from '@/components/Spinner';
 import { Col, Row } from 'react-bootstrap';
 import { useCheckInDashboardController } from '../../controllers/useCheckInDashboardController';
 import CheckInDashboardHeader from '../../dashboard/components/CheckInDashboardHeader';
@@ -9,7 +10,24 @@ import RentPaymentSummary from '../../dashboard/components/RentPaymentSummary';
 import UpcomingCheckIns from '../../dashboard/components/UpcommingCheckins';
 
 const CheckInDashboardView = () => {
-  const { propertyTypes, rentPaymentSummary, stats, statusOverview, upcomingCheckIns, workflowSteps } = useCheckInDashboardController();
+  const { propertyTypes, rentPaymentSummary, stats, statusOverview, upcomingCheckIns, workflowSteps, loading, error } =
+    useCheckInDashboardController();
+
+  if (loading) {
+    return (
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: 300 }}>
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: 300, color: '#e05252' }}>
+        Failed to load Check-In Dashboard: {error}
+      </div>
+    );
+  }
 
   return (
     <div>

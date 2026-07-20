@@ -1,6 +1,5 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { Card, CardBody, Col, Row } from 'react-bootstrap';
-import { statData } from '../data';
 
 const StatCard = ({
   amount,
@@ -22,9 +21,9 @@ const StatCard = ({
       </CardBody>
     </Card>;
 };
-const Statistics = () => {
+const Statistics = ({ stats = [] }) => {
   return <Row className="g-3 mt-0 mb-2">
-      {statData.map((item, idx) => <Col xs={12} sm={6} lg={4} xl key={idx}>
+      {stats.map((item, idx) => <Col xs={12} sm={6} lg={4} xl key={idx}>
           <StatCard {...item} />
         </Col>)}
     </Row>;
