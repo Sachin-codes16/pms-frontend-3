@@ -35,16 +35,17 @@ const CheckInDashboardHeader = () => {
         <Button
           as={Link}
           to="/check-in-start"
-          variant="primary"
           style={{
-            backgroundColor: '#604ae3',
-            borderColor: '#604ae3',
+            backgroundColor: '#292F57',
+            borderColor: '#292F57',
+            color: '#FFFFFF',
             borderRadius: 4,
             minWidth: 100,
             padding: '10px 18px'
           }}
         >
-          Create Check-Ins</Button>
+          Create Check-In
+        </Button>
       </div>
     </div>
   );
