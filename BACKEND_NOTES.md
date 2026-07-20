@@ -834,5 +834,4 @@ Both list endpoints behave identically to their dedicated dashboard-controller u
 While wiring this screen, found the donut chart's legend list was hardcoded as a **second, separate array** duplicating the same 4 labels/percentages already present in the chart's `series`/`labels` config (`SocialSource.jsx`) — two sources of truth for the same numbers that could silently drift out of sync. Consolidated to a single data source now that both are API-driven. Also renamed the mental model (not the file, to minimize diff) of `SalesLocation.jsx` — its exported component is `CheckInOutOverview`, a leftover name from the template it was copied from; the file still renders the "Check-in & Check-Out Overview" bar chart, just noting the filename/content mismatch for future reference.
 
 ---
-
 *End of Notes*

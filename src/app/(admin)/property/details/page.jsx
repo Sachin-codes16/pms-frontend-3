@@ -92,7 +92,7 @@ const PropertyDetailsPage = () => {
 
   return (
     <>
-      <div style={{ fontSize: '1rem', fontWeight: 500, color: '#555', marginBottom: '0.5rem' }}>
+      <div style={{ fontSize: '1rem', fontWeight: 500, color: '#555', marginBottom: '1rem' }}>
         Properties
         {breadcrumbCity && <> / {breadcrumbCity}</>}
         {breadcrumbState && <> / {breadcrumbState}</>}

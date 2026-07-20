@@ -201,9 +201,7 @@ const OccupancyReportView = () => {
             </CardBody>
           </Card>
 
-          <Button className="primary-action w-100 mt-4" style={{ minHeight: 40 }}>
-            Apply
-          </Button>
+        
         </Col>
 
         <Col xl={10} lg={12}>

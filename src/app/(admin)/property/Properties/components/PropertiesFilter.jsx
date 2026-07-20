@@ -1,6 +1,6 @@
 import ChoicesFormInput from '@/components/from/ChoicesFormInput';
 import { useState } from 'react';
-import { Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Col, Row } from 'react-bootstrap';
+import { Card, CardBody, CardHeader, CardTitle, Col, Row } from 'react-bootstrap';
 
 const checkboxGroups = {
   propertyType: [
@@ -178,13 +178,6 @@ const PropertiesFilter = () => {
             border-color: #604ae3;
             color: #fff;
           }
-
-          .properties-filter-card .apply-btn {
-            background: #604ae3;
-            border-color: #604ae3;
-            border-radius: 5px;
-            min-height: 39px;
-          }
         `}
       </style>
 
@@ -274,12 +267,6 @@ const PropertiesFilter = () => {
             </Row>
           </div>
         </CardBody>
-
-        <CardFooter>
-          <Button variant="primary" className="apply-btn w-100">
-            Apply
-          </Button>
-        </CardFooter>
       </Card>
     </Col>
   );

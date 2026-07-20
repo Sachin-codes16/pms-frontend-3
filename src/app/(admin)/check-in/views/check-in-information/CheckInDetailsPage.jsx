@@ -13,6 +13,9 @@ import RepairApprovalPage from "./pages/RepairApprovalPage";
 import TenantDetailsPage from "./pages/TenantDetailsPage";
 import UtilityReadingsPage from "./pages/UtilityReadingsPage";
 import InspectionFormIcon from "@/assets/icons/InspectionFormIcon";
+import AgreementIcon from "./edit-detail-page/icons/Aggrement.png";
+import DocumentsIcon from "./edit-detail-page/icons/Documents.png";
+import KeyhandlorIcon from "./edit-detail-page/icons/Keyhandlor.png";
 
 const pageText = "#526b89";
 const darkButton = "#30375f";
@@ -108,25 +111,25 @@ const tabs = [
   {
     key: "agreement",
     label: "Agreement",
-    icon: "mdi:check-circle",
-    iconColor: "#36B37E",
-    iconSize: 20,
+    iconSvg: (
+      <img width={20} height={20} alt="Agreement" style={{display:"block"}} src={AgreementIcon} />
+    ),
     component: AgreementPage,
   },
   {
     key: "keyHandover",
     label: "Key Handover",
-    icon: "noto:key",
-    iconColor: undefined,
-    iconSize: 20,
+    iconSvg: (
+      <img width={20} height={20} alt="Key Handover" style={{display:"block"}} src={KeyhandlorIcon} />
+    ),
     component: KeyHandoverPage,
   },
   {
     key: "documents",
     label: "Documents",
-    icon: "mdi:file-document",
-    iconColor: "#4F7DF3",
-    iconSize: 20,
+    iconSvg: (
+      <img width={20} height={20} alt="Documents" style={{display:"block"}} src={DocumentsIcon} />
+    ),
     component: DocumentsPage,
   },
 ];
@@ -284,10 +287,11 @@ const CheckInDetailsPage = () => {
         <div className="mb-4" style={{ ...cardStyle, padding: "8px 10px" }}>
           <div
             style={{
-              display: "grid",
-              gap: 18,
-              gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 3,
               width: "100%",
+              justifyContent: "space-between",
             }}
           >
             {tabs.map((tab) => {
@@ -299,7 +303,7 @@ const CheckInDetailsPage = () => {
                   type="button"
                   variant="light"
                   onClick={() => setActiveTab(tab.key)}
-                  className="d-inline-flex align-items-center justify-content-center gap-2 px-3"
+                  className="d-inline-flex align-items-center justify-content-center gap-2"
                   style={{
                     background: isActive ? "#f3f8fb" : "#fff",
                     border: isActive
@@ -310,10 +314,8 @@ const CheckInDetailsPage = () => {
                     fontSize: 15,
                     fontWeight: 700,
                     height: 45,
-                    minWidth: 0,
-                    padding: "0 10px",
+                    padding: "0 16px",
                     whiteSpace: "nowrap",
-                    width: "100%",
                   }}
                 >
                   {tab.iconCircle ? (
