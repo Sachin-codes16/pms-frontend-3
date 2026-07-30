@@ -67,7 +67,7 @@ const KeyHandoverPage = ({ record }) => {
     ['Key Number',            val(info.keyNumber ?? record?.keyNumber)],
     ['Key Type',              val(record?.keyType)],
     ['Key Available',         yesNo(record?.keyAvailable)],
-    ['Key Booking Date',      fmtDateTime(record?.keyBookingDate)],
+    ['Key Booking Date',      fmtDateTime(info.keyBookingDate)],
     ['Expected Return Date',  fmtDateTime(info.expectedReturnDate ?? record?.expectedReturnDate)],
   ];
 

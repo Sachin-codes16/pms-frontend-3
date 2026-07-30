@@ -6,6 +6,15 @@ const DonutChart = ({ data, size = 198, thickness = 44 }) => {
   const r = (size - thickness) / 2;
   const circumference = 2 * Math.PI * r;
   const total = data.reduce((sum, item) => sum + item.value, 0);
+
+  if (total <= 0) {
+    return (
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e9ecef" strokeWidth={thickness} />
+      </svg>
+    );
+  }
+
   let offset = 0;
 
   const slices = data.map((item) => {

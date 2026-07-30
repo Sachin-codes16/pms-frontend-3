@@ -186,7 +186,7 @@ const FinanceEditDetailsPage = ({ mode = "check-out" }) => {
                     <Col md={4}>
                       <SelectField label="Charge Type" name="charge_type"
                         defaultValue={gv("charge_type")}
-                        options={["Security Deposit Refund", "Other"]} />
+                        options={["Security Deposit Refund", "Deduction", "Pending Dues", "Rent", "Maintenance", "Damage", "Other"]} />
                     </Col>
                     <Col md={4}>
                       <Field label="Total Amount" name="total_amount" defaultValue={gv("total_amount")} />
@@ -194,7 +194,7 @@ const FinanceEditDetailsPage = ({ mode = "check-out" }) => {
                     <Col md={4}>
                       <SelectField label="Payment Status" name="payment_status"
                         defaultValue={gv("payment_status")}
-                        options={["Pending", "Paid", "Refunded"]} />
+                        options={["Pending", "Paid", "Partially Paid", "Refunded"]} />
                     </Col>
                     <Col md={4}>
                       <Field label="Payment Date" name="payment_date" type="date"

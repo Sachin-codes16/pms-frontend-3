@@ -160,7 +160,7 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-in" }) => {
       .map((row) => {
         const kid    = row.checkInKeyId;
         const status = values[`key_${kid}_status`];
-        return status ? { check_in_key_id: kid, key_status: status } : null;
+        return status ? { check_in_key_id: kid, status } : null;
       })
       .filter(Boolean);
 
@@ -289,7 +289,7 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-in" }) => {
                         label="Key Handover Status"
                         name="key_handover_status"
                         defaultValue={gv("key_handover_status")}
-                        options={["Pending", "Booked", "Handed Over"]}
+                        options={["Pending", "Booked", "Handed Over", "Returned"]}
                       />
                     </Col>
                     <Col md={4}>
@@ -402,7 +402,7 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-in" }) => {
                                   style={{ ...selectFieldStyle, height: 38, padding: "6px 32px 6px 10px", width: 160 }}
                                 >
                                   <option value="">— Select —</option>
-                                  {["Pending", "Booked", "Handovered", "Handed Over"].map((o) => (
+                                  {["Pending", "Handovered"].map((o) => (
                                     <option key={o} value={o}>{o}</option>
                                   ))}
                                 </select>

@@ -7,11 +7,14 @@ import { toast } from "react-toastify";
 import Spinner from "@/components/Spinner";
 import useCheckOut from "@/hooks/useCheckOut";
 
-// All fields live at the top level of the check-out record
+// Most fields live at the top level of the check-out record; inspection_duration and
+// next_inspection_due only live nested under inspection.inspectionOverview.
 const FIELD_MAP = {
   inspection_required:  "inspectionRequired",
   inspection_date:      "inspectionDate",
   technician_type:      "technicianType",
+  inspection_duration:  "inspectionDuration",
+  next_inspection_due:  "nextInspectionDue",
   manager_approval:     "managerApproval",
   inspection_priority:  "inspectionPriority",
   issue_identified:     "issueIdentified",
@@ -21,7 +24,9 @@ const FIELD_MAP = {
 const getValue = (item, name) => {
   const key   = FIELD_MAP[name];
   const value = key ? item?.[key] : undefined;
-  return value === null || value === undefined ? "" : value;
+  if (value !== null && value !== undefined) return value;
+  const nested = key ? item?.inspection?.inspectionOverview?.[key] : undefined;
+  return nested === null || nested === undefined ? "" : nested;
 };
 
 const toDateString = (iso) => (iso ? String(iso).split("T")[0] : "");
@@ -38,10 +43,10 @@ const sectionTitleStyle = {
   borderBottom: "1px solid #dfe3e8", paddingBottom: 16, marginBottom: 20, scrollMarginTop: 110,
 };
 
-const Field = ({ label, name, type = "text", defaultValue, readOnly }) => (
+const Field = ({ label, name, type = "text", defaultValue, readOnly, placeholder }) => (
   <div>
     <label style={labelStyle}>{label}</label>
-    <input type={type} name={name} defaultValue={defaultValue ?? ""}
+    <input type={type} name={name} defaultValue={defaultValue ?? ""} placeholder={placeholder}
       readOnly={readOnly} style={readOnly ? readOnlyStyle : fieldStyle} />
   </div>
 );
@@ -198,6 +203,14 @@ const InspectionEditDetailsPage = ({ mode = "check-out" }) => {
                     <Col md={4}>
                       <Field label="Technician Type" name="technician_type"
                         defaultValue={gv("technician_type")} />
+                    </Col>
+                    <Col md={4}>
+                      <Field label="Inspection Duration" name="inspection_duration"
+                        placeholder="e.g. 01:45 Hrs" defaultValue={gv("inspection_duration")} />
+                    </Col>
+                    <Col md={4}>
+                      <Field label="Next Inspection Due" name="next_inspection_due" type="date"
+                        defaultValue={toDateString(gv("next_inspection_due"))} />
                     </Col>
                     <Col md={4}>
                       <SelectField label="Manager Approval" name="manager_approval"

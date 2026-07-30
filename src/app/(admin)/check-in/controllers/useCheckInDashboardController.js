@@ -2,7 +2,8 @@ import checkInApi from '@/helpers/checkInApi';
 import { fmtDate } from '@/utils/checkInFormat';
 import { useEffect, useState } from 'react';
 import {
-  PROPERTY_TYPE_COLORS,
+  FALLBACK_PROPERTY_TYPE_COLORS,
+  PROPERTY_TYPE_COLOR_MAP,
   STATUS_OVERVIEW_META,
   STAT_CARD_META,
   WORKFLOW_META,
@@ -15,7 +16,7 @@ const CHECK_INS_ENDPOINT = '/checkin-checkout/check_in/get_all/';
 // GET /checkin-checkout/check_in/dashboard/summary/ response shape:
 // { data: { totalCheckIns, completed, completedChangePercentage, inProgress, pending, cancelled,
 //   statusOverview: { completed:{count,percentage}, inProgress:{...}, pending:{...}, cancelled:{...} },
-//   propertyTypeOverview: { [propertyType: string]: count },
+//   propertyTypeOverview: { [propertyType: string]: count } (always includes Flat/Commercial/Villa/Warehouse, 0 when absent),
 //   workflow: { visitScheduled, inspectionCompleted, agreementInProgress, companySigned, agreementCompleted } } }
 const mapStats = (summary = {}) =>
   STAT_CARD_META.map((meta) => ({
@@ -40,10 +41,11 @@ const mapStatusOverview = (summary = {}) =>
 
 const mapPropertyTypes = (summary = {}) => {
   const overview = summary.propertyTypeOverview ?? {};
-  return Object.entries(overview).map(([label, value], idx) => ({
+  let fallbackIdx = 0;
+  return Object.entries(overview).map(([label, value]) => ({
     label,
     value: value ?? 0,
-    color: PROPERTY_TYPE_COLORS[idx % PROPERTY_TYPE_COLORS.length],
+    color: PROPERTY_TYPE_COLOR_MAP[label] ?? FALLBACK_PROPERTY_TYPE_COLORS[fallbackIdx++ % FALLBACK_PROPERTY_TYPE_COLORS.length],
   }));
 };
 
@@ -58,7 +60,7 @@ const mapWorkflowSteps = (summary = {}) =>
 // GET /checkin-checkout/check_in/get_all/ response shape:
 // { data: { data: CheckInListItem[], presentPage, totalPage } }
 const mapRentPaymentRow = (item) => ({
-  id: item.checkInId,
+  id: item.checkInCode || item.checkInId,
   tenant: item.tenantName || '—',
   property: [item.buildingName, item.flatUnitNumber].filter(Boolean).join(' - ') || '—',
   date: fmtDate(item.checkInDate),

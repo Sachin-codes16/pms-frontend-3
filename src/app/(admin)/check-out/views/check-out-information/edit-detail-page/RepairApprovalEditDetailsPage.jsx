@@ -1,6 +1,7 @@
 // @refresh reset
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { useRef, useState } from "react";
+import checkInApi from "@/helpers/checkInApi";
+import { useEffect, useRef, useState } from "react";
 import { Button, Card, CardBody, Col, Row } from "react-bootstrap";
 import { Link, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -59,6 +60,23 @@ const SelectField = ({ label, name, defaultValue, options }) => (
   </div>
 );
 
+const EmployeeSelectField = ({ label, name, employees, employeesLoading }) => (
+  <div>
+    <label style={labelStyle}>{label}</label>
+    <div style={{ position: 'relative' }}>
+      <select name={name} defaultValue="" style={{ ...fieldStyle, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', paddingRight: 40 }}>
+        <option value="">{employeesLoading ? "Loading employees…" : "— Select —"}</option>
+        {!employeesLoading && employees.length === 0 && <option disabled>No employees available</option>}
+        {employees.map((emp) => (
+          <option key={emp.managerId ?? emp.userId} value={String(emp.managerId ?? emp.userId)}>{emp.name}</option>
+        ))}
+      </select>
+      <IconifyIcon icon="ri:arrow-down-s-line" width={18} height={18}
+        style={{ color: '#526b89', pointerEvents: 'none', position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }} />
+    </div>
+  </div>
+);
+
 const RepairApprovalEditDetailsPage = ({ mode = "check-out" }) => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -68,6 +86,17 @@ const RepairApprovalEditDetailsPage = ({ mode = "check-out" }) => {
   const { item, loading, updateSections, fetchItem } = useCheckOut({ id });
   const formRef    = useRef(null);
   const [submitting, setSubmitting] = useState(false);
+  const [employees, setEmployees] = useState([]);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    checkInApi.get("/marketing/manager/get_all/")
+      .then((res) => { if (!cancelled) setEmployees(res.data?.data?.data ?? []); })
+      .catch(() => { if (!cancelled) setEmployees([]); })
+      .finally(() => { if (!cancelled) setEmployeesLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   const gv = (name) => getValue(item, name);
 
@@ -210,6 +239,18 @@ const RepairApprovalEditDetailsPage = ({ mode = "check-out" }) => {
                       <SelectField label="Repair Priority" name="repair_priority"
                         defaultValue={gv("repair_priority")}
                         options={["Low", "Medium", "High", "Critical"]} />
+                    </Col>
+                    <Col md={4}>
+                      <EmployeeSelectField label="Recommended By" name="recommended_by_id"
+                        employees={employees} employeesLoading={employeesLoading} />
+                    </Col>
+                    <Col md={4}>
+                      <EmployeeSelectField label="Approved By" name="approved_by_id"
+                        employees={employees} employeesLoading={employeesLoading} />
+                    </Col>
+                    <Col md={4}>
+                      <Field label="Approved On" name="approved_on" type="date"
+                        defaultValue={toDateString(item?.repairDamage?.approvalSummary?.approvedOn)} />
                     </Col>
                   </Row>
 

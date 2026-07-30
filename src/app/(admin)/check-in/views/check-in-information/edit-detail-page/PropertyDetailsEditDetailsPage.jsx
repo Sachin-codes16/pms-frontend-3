@@ -17,6 +17,7 @@ const FIELD_PATHS = {
   flat_unit_number:      [],   // flat: flatUnitNumber
   floor_number:          [],   // flat: floorNumber
   property_status:       [],   // flat: propertyStatus
+  property_assignment_id:[],   // flat: propertyAssignmentId
   monthly_rent:          ["propertyDetails", "rentalAndFinancialDetails", "monthlyRent"],
   security_deposit:      ["propertyDetails", "rentalAndFinancialDetails", "securityDeposit"],
   maintenance_charges:   ["propertyDetails", "rentalAndFinancialDetails", "maintenance"],
@@ -32,7 +33,7 @@ const PROPERTY_API_FIELDS = ["monthly_rent", "security_deposit", "maintenance_ch
 
 // All rental fields are sent to BOTH the check-in PATCH and the property PUT.
 const SECTION_FIELDS = {
-  property_details: ["property_type", "property_code", "building_name", "flat_unit_number", "floor_number", "property_status"],
+  property_details: ["property_type", "property_code", "building_name", "flat_unit_number", "floor_number", "property_status", "property_assignment_id"],
   rental_details:   ["monthly_rent", "security_deposit", "advance_rent_received", "first_month_rent_paid", "payment_mode", "maintenance_charges"],
   comments:         ["internal_comments"],
 };
@@ -388,6 +389,18 @@ const PropertyDetailsEditDetailsPage = ({ mode = "check-in" }) => {
                         <option>Occupied</option>
                         <option>Maintenance</option>
                       </FormField>
+                    </Col>
+                    <Col md={4}>
+                      <FormField
+                        label="Property Assignment ID"
+                        name="property_assignment_id"
+                        type="number"
+                        defaultValue={getValue("property_assignment_id")}
+                        placeholder="e.g. 42"
+                      />
+                      <p className="mb-0 mt-1" style={{ color: "#8a96a8", fontSize: 13 }}>
+                        Links this check-in to an existing rental agreement/assignment (created via Property → Assign).
+                      </p>
                     </Col>
                   </Row>
 

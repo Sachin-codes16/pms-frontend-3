@@ -56,6 +56,14 @@ export const WORKFLOW_META = [
   { key: 'agreementCompleted', label: 'Agreement Completed', dotColor: '#8D67F0', valueColor: '#E91E8C' },
 ];
 
-// propertyTypeOverview keys are dynamic (only property types with at least one
-// check-in are returned by the API), so colors are assigned cyclically.
-export const PROPERTY_TYPE_COLORS = ['#4CAF7D', '#C9A84C', '#6C63D6', '#E8E857', '#4DC0D7', '#F4845F', '#8D67F0', '#F0D44A'];
+// propertyTypeOverview now always includes every known rental type (Flat, Commercial,
+// Villa, Warehouse) at 0 when absent, so each gets a stable, fixed color. Any future
+// unknown type falls back to cycling through FALLBACK_PROPERTY_TYPE_COLORS.
+export const PROPERTY_TYPE_COLOR_MAP = {
+  Villa: '#4CAF7D',
+  Apartment: '#C9A84C',
+  Flat: '#6C63D6',
+  Commercial: '#E8E857',
+  Warehouse: '#4DC0D7',
+};
+export const FALLBACK_PROPERTY_TYPE_COLORS = ['#F4845F', '#8D67F0', '#F0D44A'];

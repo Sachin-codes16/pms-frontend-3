@@ -20,15 +20,17 @@ const FIELD_MAP = {
   confirmation_received:"confirmationReceived",
   key_return_date:      "keyReturnDate",
   key_return:           null, // from keyReturn.keyReturnInformation.keyReturn
+  key_booking_date:     null, // from keyReturn.keyReturnInformation.keyBookingDate
 };
 
 const KEY_RETURN_SECTION_FIELDS = [
   "key_return_status","key_number","key_type","key_available",
-  "expected_return_date","confirmation_received","key_return_date","key_return",
+  "expected_return_date","confirmation_received","key_return_date","key_return","key_booking_date",
 ];
 
 const getValue = (item, name) => {
   if (name === "key_return") return item?.keyReturn?.keyReturnInformation?.keyReturn ?? "";
+  if (name === "key_booking_date") return item?.keyReturn?.keyReturnInformation?.keyBookingDate ?? "";
   const key   = FIELD_MAP[name];
   const value = key ? item?.[key] : undefined;
   return value === null || value === undefined ? "" : value;
@@ -111,7 +113,7 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-out" }) => {
       .map((row) => {
         const kid    = row.checkOutKeyId;
         const status = values[`key_${kid}_status`];
-        return status ? { check_out_key_id: kid, key_status: status } : null;
+        return status ? { check_out_key_id: kid, status } : null;
       })
       .filter(Boolean);
 
@@ -216,7 +218,7 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-out" }) => {
                     <Col md={4}>
                       <SelectField label="Key Return Status" name="key_return_status"
                         defaultValue={gv("key_return_status")}
-                        options={["Pending", "Returned", "Lost"]} />
+                        options={["Pending", "Returned", "Not Returned", "Lost"]} />
                     </Col>
                     <Col md={4}>
                       <Field label="Key Number" name="key_number" defaultValue={gv("key_number")} />
@@ -249,6 +251,10 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-out" }) => {
                     <Col md={4}>
                       <Field label="Key Return Date" name="key_return_date" type="date"
                         defaultValue={toDateString(gv("key_return_date"))} />
+                    </Col>
+                    <Col md={4}>
+                      <Field label="Key Booking Date" name="key_booking_date" type="date"
+                        defaultValue={toDateString(gv("key_booking_date"))} />
                     </Col>
                     <Col md={4}>
                       <Field label="Received By" defaultValue={item?.keyReturn?.keyReturnInformation?.receivedBy ?? ""} readOnly />
@@ -284,7 +290,7 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-out" }) => {
                                     defaultValue={row.status ?? ""}
                                     style={{ ...fieldStyle, height: 38, padding: "6px 10px", width: '100%', WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', paddingRight: 36 }}>
                                     <option value="">— Select —</option>
-                                    {["Pending","Returned","Lost"].map((o) => (
+                                    {["Pending","Returned"].map((o) => (
                                       <option key={o} value={o}>{o}</option>
                                     ))}
                                   </select>

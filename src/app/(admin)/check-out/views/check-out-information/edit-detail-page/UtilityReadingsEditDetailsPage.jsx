@@ -64,7 +64,7 @@ const UtilitySection = ({ reading, index }) => {
         <Col md={4}><Field label="Charges"          name={`${prefix}_charges`}         type="number" defaultValue={reading.charges ?? ""} /></Col>
         <Col md={4}>
           <SelectField label="Status" name={`${prefix}_status`} defaultValue={reading.status ?? ""}
-            options={["Normal", "Fixed", "Issues", "High", "Abnormal"]} />
+            options={["Normal", "Fixed", "Issues", "Not Applicable"]} />
         </Col>
       </Row>
     </div>

@@ -6,6 +6,7 @@ import { Link, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import Spinner from "@/components/Spinner";
 import useCheckOut from "@/hooks/useCheckOut";
+import useNationalities from "@/hooks/useNationalities";
 
 const FIELD_PATHS = {
   tenant_name:              ["tenantDetails", "personalDetails", "tenantName"],
@@ -91,6 +92,7 @@ const TenantDetailsEditDetailsPage = ({ mode = "check-out" }) => {
   const backPath = `/check-out-details?id=${id}&tab=tenantDetails`;
 
   const { item, loading, updateSections, fetchItem } = useCheckOut({ id });
+  const { nationalities, loaded: nationalitiesLoaded } = useNationalities();
   const formRef    = useRef(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -135,7 +137,7 @@ const TenantDetailsEditDetailsPage = ({ mode = "check-out" }) => {
         </h4>
       </div>
 
-      <form key={loading ? "loading" : id || "new"} ref={formRef} onSubmit={handleSubmit}>
+      <form key={loading || !nationalitiesLoaded ? "loading" : id || "new"} ref={formRef} onSubmit={handleSubmit}>
         <Row className="g-4 align-items-start">
 
           {/* Sidebar */}
@@ -219,7 +221,8 @@ const TenantDetailsEditDetailsPage = ({ mode = "check-out" }) => {
                         options={["Single", "Married"]} />
                     </Col>
                     <Col md={4}>
-                      <Field label="Nationality" defaultValue={gv("tenant_nationality")} readOnly />
+                      <SelectField label="Nationality" name="tenant_nationality" defaultValue={gv("tenant_nationality")}
+                        options={nationalities} />
                     </Col>
                   </Row>
 

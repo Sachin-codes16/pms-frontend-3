@@ -15,6 +15,7 @@ const FIELD_MAP = {
   flat_unit_number:      "flatUnitNumber",
   floor_number:          "floorNumber",
   property_status:       "propertyStatus",
+  property_assignment_id:"propertyAssignmentId",
   monthly_rent:          "monthlyRent",
   security_deposit:      "securityDeposit",
   advance_rent_received: "advanceRentReceived",
@@ -25,7 +26,7 @@ const FIELD_MAP = {
 
 const PROPERTY_FIELDS = [
   "property_type", "property_code", "building_name",
-  "flat_unit_number", "floor_number", "property_status",
+  "flat_unit_number", "floor_number", "property_status", "property_assignment_id",
 ];
 
 const RENTAL_FIELDS = [
@@ -227,6 +228,13 @@ const PropertyDetailsEditDetailsPage = ({ mode = "check-out" }) => {
                     <Col md={4}>
                       <SelectField label="Property Status" name="property_status" defaultValue={gv("property_status")}
                         options={["Reserved", "Available", "Occupied", "Maintenance"]} />
+                    </Col>
+                    <Col md={4}>
+                      <Field label="Property Assignment ID" name="property_assignment_id" type="number"
+                        defaultValue={gv("property_assignment_id")} />
+                      <p className="mb-0 mt-1" style={{ color: "#8a96a8", fontSize: 13 }}>
+                        Links this check-out to an existing rental agreement/assignment (created via Property → Assign). Populates Rental &amp; Agreement Details below once linked.
+                      </p>
                     </Col>
                   </Row>
 

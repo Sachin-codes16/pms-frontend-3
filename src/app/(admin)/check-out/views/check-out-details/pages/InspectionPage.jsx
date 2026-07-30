@@ -57,15 +57,14 @@ const InspectionPage = ({ record }) => {
     { label: 'Inspection Status', value: val(record?.overview?.summaryCards?.inspectionStatus ?? record?.managerApproval) },
   ];
 
-  // Backend bug: inspectionOverview.inspectionDuration actually returns technicianType value.
-  // Use record.technicianType directly; nextInspectionDue also doesn't appear in the response.
   const overviewRows = [
     ['Inspection Type',    val(record?.inspectionRequired === 'Yes' ? 'Move-Out Inspection' : 'Not Required')],
     ['Inspection Date',    fmtDate(overview.inspectionDate)],
     ['Inspector',          val(overview.inspector)],
+    ['Inspection Duration',val(overview.inspectionDuration)],
     ['Technician Type',    val(record?.technicianType)],
     ['Overall Status',     val(overview.overallStatus)],
-    ['Next Inspection Due',fmtDate(record?.nextInspectionDue ?? overview.nextInspectionDue)],
+    ['Next Inspection Due',fmtDate(overview.nextInspectionDue)],
   ];
 
   // Compute max count for bar width

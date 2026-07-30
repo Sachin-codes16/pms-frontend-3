@@ -12,10 +12,22 @@ const DOCUMENT_UPLOAD_ENDPOINT = "/checkin-checkout/check_out/document/upload/";
 
 const DOCUMENT_TYPES = [
   "Tenant ID Proof",
-  "Agreement Copy",
-  "Inspection Photo",
-  "Key Return Photo",
   "Passport Copy",
+  "Address Proof",
+  "Police Clearance",
+  "Agreement Copy",
+  "Agreement Signed",
+  "Company Seal",
+  "Inspection Photo",
+  "Meter Reading Photo",
+  "Property Photo",
+  "Key Return Photo",
+  "Repair Document",
+  "Rent Invoice",
+  "NOC Certificate",
+  "Insurance Document",
+  "Stamp Duty",
+  "Notice",
   "Other",
 ];
 
@@ -101,7 +113,7 @@ const DocumentsEditDetailsPage = ({ mode = "check-out" }) => {
   const id     = params.get("id");
   const backPath = `/check-out-details?id=${id}&tab=documents`;
 
-  const { item, loading, fetchItem } = useCheckOut({ id });
+  const { item, loading, updateSections, fetchItem } = useCheckOut({ id });
   const formRef    = useRef(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -133,31 +145,36 @@ const DocumentsEditDetailsPage = ({ mode = "check-out" }) => {
       uploads.push({ file, docType, docName, linkedTo, expiry });
     }
 
-    if (uploads.length === 0) {
-      toast.info("No files selected. Pick at least one document to upload.");
+    const notesValue = form.querySelector('[name="documents_notes"]')?.value ?? "";
+    const notesChanged = notesValue !== notes;
+
+    if (uploads.length === 0 && !notesChanged) {
+      toast.info("No changes to save.");
       return;
     }
 
     try {
       setSubmitting(true);
-      await Promise.all(
-        uploads.map(async ({ file, docType, docName, linkedTo, expiry }) => {
-          const base64  = await fileToBase64(file);
-          const payload = {
-            check_out_id:  Number(id),
-            document_type: docType,
-            document_name: docName,
-            file:          base64,
-          };
-          if (linkedTo) payload.linked_to   = linkedTo;
-          if (expiry)   payload.expiry_date = expiry;
-          return checkInApi.post(DOCUMENT_UPLOAD_ENDPOINT, payload);
-        })
-      );
+      const requests = uploads.map(async ({ file, docType, docName, linkedTo, expiry }) => {
+        const base64  = await fileToBase64(file);
+        const payload = {
+          check_out_id:  Number(id),
+          document_type: docType,
+          document_name: docName,
+          file:          base64,
+        };
+        if (linkedTo) payload.linked_to_label = linkedTo;
+        if (expiry)   payload.expiry_date = expiry;
+        return checkInApi.post(DOCUMENT_UPLOAD_ENDPOINT, payload);
+      });
+      if (notesChanged) {
+        requests.push(updateSections(id, { documents: { documents_notes: notesValue } }));
+      }
+      await Promise.all(requests);
       await fetchItem();
       setSubmitting(false);
-      toast.success(`${uploads.length} document${uploads.length > 1 ? "s" : ""} uploaded successfully`);
-      alert(`${uploads.length} document${uploads.length > 1 ? "s" : ""} uploaded successfully.`);
+      toast.success("Documents updated successfully");
+      alert("Documents updated successfully.");
       formRef.current.reset();
     } catch (err) {
       setSubmitting(false);
@@ -285,12 +302,9 @@ const DocumentsEditDetailsPage = ({ mode = "check-out" }) => {
                   {/* C — Notes */}
                   <h5 style={sectionTitleStyle}>C. Notes / Comments</h5>
                   <div className="mb-5">
-                    <div style={{ background: "#fff7f7", border: "1px solid #f0cfd0", borderRadius: 8, padding: "16px 18px" }}>
-                      <p style={{ color: "#526b89", fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Notes</p>
-                      <div style={{ background: "#fff", borderRadius: 8, color: "#666", fontSize: 15, padding: "16px 22px" }}>
-                        {notes || "No notes added."}
-                      </div>
-                    </div>
+                    <label style={labelStyle}>Notes</label>
+                    <textarea name="documents_notes" defaultValue={notes} placeholder="Notes about this check-out's documents…"
+                      style={{ ...fieldStyle, height: "auto", minHeight: 94, resize: "none" }} />
                   </div>
 
                   {/* D — System Fields */}

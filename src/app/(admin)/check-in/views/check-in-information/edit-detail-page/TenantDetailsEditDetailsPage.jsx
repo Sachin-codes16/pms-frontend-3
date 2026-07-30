@@ -6,6 +6,7 @@ import { Link, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import Spinner from "@/components/Spinner";
 import useCheckIn from "@/hooks/useCheckIn";
+import useNationalities from "@/hooks/useNationalities";
 
 // Maps snake_case form field → nested path in the check-in detail response.
 // getValue() falls back to the flat camelCase top-level field automatically.
@@ -116,6 +117,7 @@ const TenantDetailsEditDetailsPage = () => {
   const dashboardPath = `/check-in-information?id=${id}&tab=tenantDetails`;
 
   const { item, loading, updateSections, fetchItem } = useCheckIn({ id });
+  const { nationalities, loaded: nationalitiesLoaded } = useNationalities();
   const formRef = useRef(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -178,7 +180,7 @@ const TenantDetailsEditDetailsPage = () => {
         </h4>
       </div>
 
-      <form key={loading ? "loading" : id || "new"} ref={formRef} onSubmit={handleSubmit}>
+      <form key={loading || !nationalitiesLoaded ? "loading" : id || "new"} ref={formRef} onSubmit={handleSubmit}>
         <Row className="g-4 align-items-start">
           {/* ── Sidebar ── */}
           <Col xs={12} lg={3}>
@@ -362,9 +364,9 @@ const TenantDetailsEditDetailsPage = () => {
                         placeholder="Select Nationality"
                         as="select"
                       >
-                        <option>Oman</option>
-                        <option>India</option>
-                        <option>United Arab Emirates</option>
+                        {nationalities.map((name) => (
+                          <option key={name}>{name}</option>
+                        ))}
                       </FormField>
                     </Col>
                     <Col md={4}>

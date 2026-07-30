@@ -146,7 +146,7 @@ const UtilitySection = ({ reading, index }) => {
             label="Status"
             name={`${prefix}_status`}
             defaultValue={reading.status ?? ""}
-            options={["Normal", "Fixed", "Issues", "High", "Abnormal"]}
+            options={["Normal", "Fixed", "Issues", "Not Applicable"]}
           />
         </Col>
       </Row>

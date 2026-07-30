@@ -63,11 +63,11 @@ const getPropertyImage = (item, fallbackImage) => {
   }
 
   if (typeof image === "string" && image.startsWith("/")) {
-    return `https://alw.checkour.work${image}`;
+    return `https://essdemo.alwijha.net${image}`;
   }
 
   if (typeof image === "string" && !image.startsWith("http")) {
-    return `https://alw.checkour.work/${image.replace(/^\/+/, "")}`;
+    return `https://essdemo.alwijha.net/${image.replace(/^\/+/, "")}`;
   }
 
   return image;

@@ -9,10 +9,12 @@ const CHECK_INS_ENDPOINT = '/checkin-checkout/check_in/get_all/';
 const CHECK_OUTS_ENDPOINT = '/checkin-checkout/check_out/get_all/';
 
 // GET /checkin-checkout/dashboard/summary/ response shape:
-// { data: { totalCheckIns, pendingCheckIns, totalCheckOuts, pendingCheckOuts, pendingSettlements,
+// { data: { totalCheckIns, pendingCheckIns, totalCheckOuts, pendingCheckOuts,
+//   pendingSettlements (currency total, Sum(total_amount) — NOT a count, unlike the
+//   same-named field on the Check-Out dashboard's own summary),
 //   statusOverview: { checkedIn:{count,percentage}, checkedOut:{...}, pendingCheckIn:{...}, pendingCheckOut:{...} },
-//   monthlyOverview: [{month, year, checkedIn, checkedOut}] } }
-const mapStats = (summary = {}, pendingSettlementsTotal) => [
+//   monthlyOverview: [{month, year, checkedIn, checkedOut}] (rolling 6-month window, intentional) } }
+const mapStats = (summary = {}) => [
   ...STAT_CARD_META.map((meta) => ({
     title: meta.title,
     amount: String(summary[meta.key] ?? 0),
@@ -21,7 +23,7 @@ const mapStats = (summary = {}, pendingSettlementsTotal) => [
   })),
   {
     title: PENDING_SETTLEMENTS_STAT_META.title,
-    amount: `OMR ${pendingSettlementsTotal.toLocaleString('en-US', { maximumFractionDigits: 2 })}`,
+    amount: `OMR ${(summary.pendingSettlements ?? 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}`,
     icon: PENDING_SETTLEMENTS_STAT_META.icon,
     variant: PENDING_SETTLEMENTS_STAT_META.variant,
   },
@@ -49,20 +51,18 @@ const mapMonthlyOverview = (summary = {}) => {
   };
 };
 
-// GET /checkin-checkout/dashboard/pending_settlements/ response shape:
-// { data: { data: PendingSettlementItem[], presentPage, totalPage } }
-// NOTE: item field names are unverified — the endpoint returns an empty list on the
-// only account tested. Mapped defensively across plausible field names. See BACKEND_NOTES.md.
+// GET /checkin-checkout/dashboard/pending_settlements/ response shape (confirmed):
+// { data: { data: [{checkOutId, tenantId, tenantName, propertyId, propertyName, amount}], presentPage, totalPage } }
 const mapPendingSettlement = (item) => ({
-  name: item.tenantName || item.tenant || item.name || '—',
-  property: [item.buildingName, item.flatUnitNumber].filter(Boolean).join(' - ') || item.property || item.propertyName || '—',
-  amount: Number(item.amount ?? item.pendingAmount ?? item.settlementAmount ?? 0),
+  name: item.tenantName || '—',
+  property: item.propertyName || '—',
+  amount: Number(item.amount ?? 0),
 });
 
 // GET /checkin-checkout/check_in/get_all/ response shape:
 // { data: { data: CheckInListItem[], presentPage, totalPage } }
 const mapRecentCheckIn = (item) => ({
-  id: item.checkInId,
+  id: item.checkInCode || item.checkInId,
   tenantName: item.tenantName || '—',
   property: [item.buildingName, item.flatUnitNumber].filter(Boolean).join(' - ') || '—',
   date: fmtDate(item.checkInDate),
@@ -118,12 +118,10 @@ export const useAnalyticsDashboardController = () => {
         if (cancelled) return;
 
         const settlementItems = settlementsRes.data?.data?.data ?? [];
-        const mappedSettlements = settlementItems.map(mapPendingSettlement);
-        const settlementsTotal = mappedSettlements.reduce((sum, item) => sum + item.amount, 0);
-        setPendingSettlements(mappedSettlements);
+        setPendingSettlements(settlementItems.map(mapPendingSettlement));
 
         const summary = summaryRes.data?.data ?? {};
-        setStats(mapStats(summary, settlementsTotal));
+        setStats(mapStats(summary));
         setStatusOverview(mapStatusOverview(summary));
         setMonthlyOverview(mapMonthlyOverview(summary));
 

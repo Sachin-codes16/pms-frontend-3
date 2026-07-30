@@ -78,8 +78,12 @@ const UtilityReadingsPage = ({ record }) => {
                           {val(row.utility)}
                         </td>
                         <td style={{ color: pageText, fontSize: 13, padding: '9px 10px' }}>{fmt(row.meterNo)}</td>
-                        <td style={{ color: pageText, fontSize: 13, padding: '9px 10px' }}>{fmt(row.checkInReading)}</td>
-                        <td style={{ color: pageText, fontSize: 13, padding: '9px 10px' }}>{fmt(row.readingValue ?? row.checkOutReading)}</td>
+                        <td style={{ color: pageText, fontSize: 13, padding: '9px 10px' }}>
+                          {row.checkInReading == null
+                            ? <span style={{ color: '#8a96a8', fontStyle: 'italic' }}>No prior check-in reading</span>
+                            : row.checkInReading}
+                        </td>
+                        <td style={{ color: pageText, fontSize: 13, padding: '9px 10px' }}>{fmt(row.readingValue)}</td>
                         <td style={{ color: pageText, fontSize: 13, padding: '9px 10px' }}>{fmt(row.consumption)}</td>
                         <td style={{ color: pageText, fontSize: 13, padding: '9px 10px' }}>{fmt(row.unit)}</td>
                         <td style={{ color: pageText, fontSize: 13, padding: '9px 10px' }}>
@@ -106,12 +110,21 @@ const UtilityReadingsPage = ({ record }) => {
               {photos.length === 0 ? (
                 <p style={{ color: pageText, fontSize: 15 }}>No meter photos uploaded.</p>
               ) : (
-                <div className="d-flex gap-3 mb-3" style={{ overflowX: 'auto', paddingBottom: 4 }}>
-                  {photos.map((p, i) => (
-                    <img key={i} alt="Meter or bill" src={resolvePhotoSrc(p?.photo ?? p)}
-                      style={{ borderRadius: 8, flex: '0 0 auto', height: 78, objectFit: 'cover', width: 110 }} />
-                  ))}
-                </div>
+                readings
+                  .filter((r) => photos.some((p) => String(p.linkedTo) === String(r.checkOutUtilityReadingId)))
+                  .map((r) => (
+                    <div key={r.checkOutUtilityReadingId} className="mb-3">
+                      <p className="mb-2" style={{ color: pageText, fontSize: 14, fontWeight: 600 }}>{val(r.utility)}</p>
+                      <div className="d-flex gap-3" style={{ overflowX: 'auto', paddingBottom: 4 }}>
+                        {photos
+                          .filter((p) => String(p.linkedTo) === String(r.checkOutUtilityReadingId))
+                          .map((p) => (
+                            <img key={p.documentId} alt={`${r.utility} meter`} src={resolvePhotoSrc(p.file)}
+                              style={{ borderRadius: 8, flex: '0 0 auto', height: 78, objectFit: 'cover', width: 110 }} />
+                          ))}
+                      </div>
+                    </div>
+                  ))
               )}
 
               <div className="d-flex justify-content-between align-items-center mb-2">
@@ -121,28 +134,18 @@ const UtilityReadingsPage = ({ record }) => {
 
               {recentIssues.length === 0 ? (
                 <p style={{ color: pageText, fontSize: 15 }}>No recent issues recorded.</p>
-              ) : recentIssues.map((issue, i) => {
-                const title    = val(issue.title ?? issue.name);
-                const category = val(issue.category ?? issue.utility);
-                const date     = fmtDateTime(issue.timestamp ?? issue.date);
-                const photo    = issue.photo;
-                return (
-                  <div key={i} className="d-flex align-items-center justify-content-between" style={{ padding: '22px 0', borderTop: '1px solid #eef1f4' }}>
-                    <div className="d-flex align-items-center gap-3">
-                      {photo ? (
-                        <img alt={title} src={resolvePhotoSrc(photo)} style={{ height: 52, objectFit: 'cover', width: 52, borderRadius: 8 }} />
-                      ) : (
-                        <div style={{ background: '#eef2f7', borderRadius: 8, height: 52, width: 52 }} />
-                      )}
-                      <div>
-                        <p className="mb-1" style={{ color: pageText, fontSize: 15, fontWeight: 600 }}>{title}</p>
-                        <p className="mb-0" style={{ color: pageText, fontSize: 14 }}>{category}</p>
-                      </div>
+              ) : recentIssues.map((issue, i) => (
+                <div key={issue.checkOutUtilityReadingId ?? i} className="d-flex align-items-center justify-content-between" style={{ padding: '22px 0', borderTop: '1px solid #eef1f4' }}>
+                  <div className="d-flex align-items-center gap-3">
+                    <div style={{ background: '#eef2f7', borderRadius: 8, height: 52, width: 52 }} />
+                    <div>
+                      <p className="mb-1" style={{ color: pageText, fontSize: 15, fontWeight: 600 }}>{val(issue.utility)} — {val(issue.meterNo)}</p>
+                      <p className="mb-0" style={{ color: pageText, fontSize: 14 }}>{val(issue.remarks)}</p>
                     </div>
-                    <span style={{ color: pageText, fontSize: 14 }}>{date}</span>
                   </div>
-                );
-              })}
+                  <span style={{ color: pageText, fontSize: 14 }}>{fmtDateTime(issue.reportedOn)}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
