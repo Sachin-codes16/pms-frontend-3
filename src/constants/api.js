@@ -1,6 +1,6 @@
 ﻿import { getCookie, setCookie, deleteCookie } from "cookies-next";
 
-export const API_BASE_URL = "http://essdemo.alwijha.net";
+export const API_BASE_URL = "https://essdemo.alwijha.net";
 const authSessionKey = "_LAHOMES_AUTH_KEY_";
 
 const readToken = () => {
