@@ -1,10 +1,8 @@
 ﻿import axios from "axios";
 import { deleteCookie, getCookie } from "cookies-next";
 
-// TODO: point back at https://essdemo.alwijha.net once the backend fixes in
-// FRONTEND_NOTES.md are pushed there — for now the fixes only live locally.
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000",
+  baseURL: "http://essdemo.alwijha.net",
 });
 
 const authSessionKey = "_LAHOMES_AUTH_KEY_";

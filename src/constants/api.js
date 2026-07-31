@@ -1,8 +1,6 @@
 ﻿import { getCookie, setCookie, deleteCookie } from "cookies-next";
 
-// TODO: point back at https://essdemo.alwijha.net once the backend fixes in
-// FRONTEND_NOTES.md are pushed there — for now the fixes only live locally.
-export const API_BASE_URL = "http://127.0.0.1:8000";
+export const API_BASE_URL = "http://essdemo.alwijha.net";
 const authSessionKey = "_LAHOMES_AUTH_KEY_";
 
 const readToken = () => {
