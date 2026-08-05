@@ -1,14 +1,10 @@
-import avatar3 from '@/assets/images/users/avatar-3.jpg';
-import avatar4 from '@/assets/images/users/avatar-4.jpg';
-import avatar5 from '@/assets/images/users/avatar-5.jpg';
-import avatar6 from '@/assets/images/users/avatar-6.jpg';
-import avatar7 from '@/assets/images/users/avatar-7.jpg';
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
-import { Button, Card, CardBody, CardHeader, CardTitle, Col, Dropdown, DropdownItem, DropdownMenu, DropdownToggle, ProgressBar } from 'react-bootstrap';
+import { Button, Card, CardBody, CardHeader, CardTitle, Col, ProgressBar } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-const Overview = () => {
+
+const Overview = ({ occupiedCount = 0, occupiedPercent = 0, totalProperties = 0 }) => {
   const navigate = useNavigate();
- 
+
   return  <Col lg={5}>
       <Card className="border-0 shadow-sm" style={{
         minHeight: 420,
@@ -22,20 +18,6 @@ const Overview = () => {
             fontSize: 16,
             fontWeight: 600
           }}>Overview</CardTitle>
-          <Dropdown>
-            <DropdownToggle as={'a'} className="btn btn-sm btn-outline-light content-none icons-center" style={{
-              borderRadius: 5,
-              color: '#2f3848',
-              padding: '8px 12px'
-            }} data-bs-toggle="dropdown" aria-expanded="false">
-              This Month <IconifyIcon className="ms-1" width={16} height={16} icon="ri:arrow-down-s-line" />
-            </DropdownToggle>
-            <DropdownMenu className="dropdown-menu-end">
-              <DropdownItem>Today</DropdownItem>
-              <DropdownItem>Month</DropdownItem>
-              <DropdownItem>Years</DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
         </CardHeader>
         <CardBody style={{
           padding: '38px 20px 20px'
@@ -45,12 +27,12 @@ const Overview = () => {
               <p className="mb-2" style={{
                 color: '#647c99',
                 fontSize: 14
-              }}>Total Properties Rented</p>
+              }}>Total Properties Occupied</p>
               <h3 className="mb-1" style={{
                 color: '#2f3848',
                 fontSize: 25,
                 fontWeight: 700
-              }}>153</h3>
+              }}>{occupiedCount}</h3>
             </div>
             <div className="flex-centered" style={{
               position: 'absolute',
@@ -70,44 +52,19 @@ const Overview = () => {
             height: 15,
             borderRadius: 10,
             backgroundColor: '#edf2f6'
-          }} now={50} striped animated variant="success" className="mt-4" role="progressbar"></ProgressBar>
+          }} now={occupiedPercent} striped animated variant="success" className="mt-4" role="progressbar"></ProgressBar>
+          <p className="mb-0 mt-2" style={{ color: '#647c99', fontSize: 13 }}>{occupiedPercent}% of {totalProperties} properties occupied</p>
 
-          <div className="d-flex align-items-center justify-content-between mt-3">
-            <div>
-              <p className="mb-2 text-success fs-15 fw-medium"></p>
-              <h4 className="text-dark fw-bold mb-0"></h4>
-            </div>
-            <div className="text-end">
-              <p className="mb-2 fs-15 fw-medium"></p>
-              <h4 className="text-dark fw-bold mb-0"></h4>
-            </div>
-          </div>
           <div className="d-flex align-items-center border justify-content-between mt-5" style={{
             borderColor: '#edf0f4',
             borderRadius: 5,
             padding: '30px 16px'
           }}>
             <div>
-              <h5 className="fw-medium mb-3 text-dark" style={{
+              <h5 className="fw-medium mb-1 text-dark" style={{
                 fontSize: 16
-              }}>New Properies</h5>
-              <div className="avatar-group">
-                <div className="avatar d-flex align-items-center justify-content-center">
-                  <img src={avatar4} alt="avatar1" className="rounded-circle avatar border border-light border-3" />
-                </div>
-                <div className="avatar d-flex align-items-center justify-content-center">
-                  <img src={avatar5} alt="avatar2" className="rounded-circle avatar border border-light border-3" />
-                </div>
-                <div className="avatar d-flex align-items-center justify-content-center">
-                  <img src={avatar3} alt="avatar3" className="rounded-circle avatar border border-light border-3" />
-                </div>
-                <div className="avatar d-flex align-items-center justify-content-center">
-                  <img src={avatar6} alt="avatar4" className="rounded-circle avatar border border-light border-3" />
-                </div>
-                <div className="avatar d-flex align-items-center justify-content-center">
-                  <img src={avatar7} alt="avatar5" className="rounded-circle avatar border border-light border-3" />
-                </div>
-              </div>
+              }}>Total Properties</h5>
+              <p className="mb-0" style={{ color: '#647c99', fontSize: 14 }}>{totalProperties} listed overall</p>
             </div>
             <div>
               <Button onClick={() => navigate('/landlord/property-grid')} variant="primary" style={{

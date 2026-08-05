@@ -34,12 +34,13 @@ export default function useCheckIn({ id } = {}) {
     }
   }, [id]);
 
+  // Note: does not touch `loading` — that reflects the initial record fetch,
+  // not a mutation in flight. Callers key their form's remount on `loading`,
+  // so toggling it here would wipe unsaved input on every submit.
   const create = useCallback(async (payload) => {
-    setLoading(true);
     setError(null);
     try {
       const res = await api.post(CREATE_ENDPOINT, payload);
-      setLoading(false);
       return res.data;
     } catch (err) {
       setError(err);
@@ -48,7 +49,6 @@ export default function useCheckIn({ id } = {}) {
         err?.response?.status,
         err?.response?.data || err?.message,
       );
-      setLoading(false);
       throw err;
     }
   }, []);
@@ -59,7 +59,6 @@ export default function useCheckIn({ id } = {}) {
     const entries = Object.entries(sections).filter(
       ([, body]) => body && Object.keys(body).length > 0,
     );
-    setLoading(true);
     setError(null);
     try {
       const results = await Promise.all(
@@ -70,7 +69,6 @@ export default function useCheckIn({ id } = {}) {
           }),
         ),
       );
-      setLoading(false);
       return results.map((res) => res.data);
     } catch (err) {
       setError(err);
@@ -79,7 +77,6 @@ export default function useCheckIn({ id } = {}) {
         err?.response?.status,
         err?.response?.data || err?.message,
       );
-      setLoading(false);
       throw err;
     }
   }, []);

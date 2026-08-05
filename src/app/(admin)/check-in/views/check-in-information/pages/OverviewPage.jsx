@@ -41,26 +41,15 @@ const InfoRows = ({ items }) => (
   </div>
 );
 
-const FEATURE_LABELS = {
-  lift: 'Lift',
-  security: 'Security',
-  gasPipeline: 'Gas Pipeline',
-  waterSupply: 'Water Supply',
-  intercom: 'Intercom',
-  fireSafety: 'Fire Safety',
-  powerBackup: 'Power Backup',
-  cctv: 'CCTV',
-};
-
 const OverviewPage = ({ record }) => {
   const overview = record?.overview ?? {};
+  const propertyDetails = record?.propertyDetails ?? {};
   const propertyInformation = overview.propertyInformation ?? {};
   const rentAndCharges = overview.rentAndCharges ?? {};
   const activityTimeline = overview.activityTimeline ?? {};
   const landlordDetails = overview.landlordDetails ?? {};
-  const propertyFeatures = overview.propertyFeatures ?? {};
   const tenantDocuments = overview.tenantDocuments ?? [];
-  const photos = overview.photos ?? [];
+  const photos = propertyDetails.photos ?? [];
 
   const propertyInfoLeft = [
     ['Property Type', val(propertyInformation.rentalType)],
@@ -111,9 +100,7 @@ const OverviewPage = ({ record }) => {
     ['Address', val(landlordDetails.address)],
   ];
 
-  const features = Object.entries(FEATURE_LABELS)
-    .filter(([key]) => propertyFeatures[key])
-    .map(([, label]) => label);
+  const features = propertyDetails.amenitiesAndFacilities ?? [];
 
   return (
     <div style={{ padding: 24 }}>

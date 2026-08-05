@@ -97,6 +97,27 @@ const FIELD_MAP = {
   key_handover_status: "keyHandoverStatus",
 };
 
+// FIELD_MAP above assumes every value lives at the top level of the GET response,
+// but the tenant sub-fields are only ever returned nested under tenantDetails.*.
+// getValue() falls back to these paths when the flat FIELD_MAP lookup misses.
+const NESTED_FIELD_PATHS = {
+  tenant_code:              ["tenantDetails", "personalDetails", "tenantCode"],
+  tenant_name:              ["tenantDetails", "personalDetails", "tenantName"],
+  tenant_type:              ["tenantDetails", "personalDetails", "tenantType"],
+  tenant_nationality:       ["tenantDetails", "personalDetails", "tenantNationality"],
+  date_of_birth:            ["tenantDetails", "personalDetails", "dateOfBirth"],
+  gender:                   ["tenantDetails", "personalDetails", "gender"],
+  marital_status:           ["tenantDetails", "personalDetails", "maritalStatus"],
+  tenant_mobile_number:     ["tenantDetails", "contactDetails", "tenantMobileNumber"],
+  tenant_email:             ["tenantDetails", "contactDetails", "tenantEmail"],
+  emergency_contact_name:   ["tenantDetails", "contactDetails", "emergencyContactName"],
+  emergency_contact_number: ["tenantDetails", "contactDetails", "emergencyContactNumber"],
+  tenant_civil_id:          ["tenantDetails", "identificationDetails", "tenantCivilId"],
+  tenant_passport_number:   ["tenantDetails", "identificationDetails", "tenantPassportNumber"],
+  profession:               ["tenantDetails", "professionalDetails", "profession"],
+  company_name:             ["tenantDetails", "professionalDetails", "companyName"],
+};
+
 // Maps each section to its dedicated PATCH endpoint
 // (/checkin-checkout/check_in/update/<key>/). There's no single
 // whole-record update endpoint — every section saves independently.
@@ -257,6 +278,7 @@ const FormField = ({
   as = "input",
   type = "text",
   defaultValue,
+  min,
   children,
 }) => (
   <div>
@@ -273,6 +295,7 @@ const FormField = ({
         style={fieldStyle}
         name={name}
         type={type}
+        min={min}
         placeholder={placeholder}
         defaultValue={defaultValue}
       />
@@ -370,24 +393,24 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
 
   useEffect(() => {
     let cancelled = false;
-    checkInApi
-      .get("/property/get_all/")
-      .then((res) => {
+    const fetchAllProperties = async () => {
+      try {
+        const res = await checkInApi.get("/property/get_all/?limit=999999");
+        const all = res.data?.data?.data ?? [];
         if (!cancelled) {
-          const all = res.data?.data?.data ?? [];
           const unassigned = all.filter((p) => {
             const status = p.propertyDetails?.currentStatus ?? p.currentStatus ?? "";
             return !status || status === "Available" || status === "Vacant";
           });
           setProperties(unassigned);
         }
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setProperties([]);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setPropertiesLoading(false);
-      });
+      }
+    };
+    fetchAllProperties();
     return () => { cancelled = true; };
   }, []);
 
@@ -395,19 +418,13 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
     let cancelled = false;
     const fetchAllTenants = async () => {
       try {
-        const base = "/lead/get_all/?filter_key=purpose&filter_value=tenant";
-        const first = await checkInApi.get(base);
-        const payload = first.data?.data ?? {};
-        const totalPages = payload.totalPage ?? 1;
-        let all = payload.data ?? [];
-        if (totalPages > 1) {
-          const rest = await Promise.all(
-            Array.from({ length: totalPages - 1 }, (_, i) =>
-              checkInApi.get(`${base}&page_num=${i + 2}`).then((r) => r.data?.data?.data ?? [])
-            )
-          );
-          all = all.concat(...rest);
-        }
+        // purpose casing is inconsistent in the backend data ("Tenant" vs "tenant"),
+        // so filter client-side case-insensitively instead of relying on an exact
+        // server-side match that silently drops differently-cased records.
+        const res = await checkInApi.get("/lead/get_all/?limit=999999");
+        const all = (res.data?.data?.data ?? []).filter(
+          (l) => l.purpose?.toLowerCase() === "tenant"
+        );
         if (!cancelled) setTenants(all);
       } catch {
         if (!cancelled) setTenants([]);
@@ -491,10 +508,13 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   }
 }, [nationalityOptions]);
   useEffect(() => {
-    if (item?.tenantNationality && nationalityOptions.length > 0) {
-      setNationalitySelection(item.tenantNationality);
+    // tenantNationality only lives nested in the GET response (tenantDetails.personalDetails),
+    // never at the top level.
+    const nationality = item?.tenantNationality ?? item?.tenantDetails?.personalDetails?.tenantNationality;
+    if (nationality && nationalityOptions.length > 0) {
+      setNationalitySelection(nationality);
     }
-  }, [item?.tenantNationality, nationalityOptions, setNationalitySelection]);
+  }, [item?.tenantNationality, item?.tenantDetails?.personalDetails?.tenantNationality, nationalityOptions, setNationalitySelection]);
 
   const handlePropertyChange = (e) => {
     const pid = e.target.value;
@@ -542,7 +562,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
     const fullName = [summary.firstName, summary.lastName].filter(Boolean).join(" ");
     setField("tenant_name",          fullName);
     setField("tenant_mobile_number", summary.phoneNumber);
-    setField("tenant_civil_id",      summary.civil_id);
+    setField("tenant_civil_id",      summary.civilId);
     setField("tenant_passport_number", summary.passportOrId);
     // setField("tenant_nationality",   summary.nationality);
     
@@ -561,7 +581,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
         setField("tenant_civil_id",          lead.civil_id          ?? lead.civilId);
         setField("tenant_passport_number",   lead.passportOrId);
         setField("tenant_nationality",       lead.nationality);
-        setField("tenant_type",              lead.leadCategory);
+        setField("tenant_type",              lead.tenantType);
         setField("date_of_birth",            lead.dateOfBirth);
         setField("gender",                   lead.gender);
         setField("marital_status",           lead.maritalStatus);
@@ -579,7 +599,15 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
   const getValue = (name) => {
     const key = FIELD_MAP[name];
     const value = key ? item?.[key] : undefined;
-    return value === null || value === undefined ? "" : value;
+    if (value !== null && value !== undefined) return value;
+    // These fields only live nested in the GET response (tenantDetails.*),
+    // never at the top level FIELD_MAP assumes.
+    const path = NESTED_FIELD_PATHS[name];
+    if (path) {
+      const nested = path.reduce((acc, k) => acc?.[k], item);
+      if (nested !== null && nested !== undefined) return nested;
+    }
+    return "";
   };
 
   useEffect(() => {
@@ -851,83 +879,6 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
 
                 <div style={{ padding: "34px 36px" }}>
                   {/* error UI removed to keep page clean; check hook `error` for debugging */}
-                  <h5 id="check-in-information" style={sectionTitleStyle}>
-                    A. {flowTitle} Information
-                  </h5>
-                  <Row className="g-3 mb-4">
-                    <Col md={4}>
-                      <div>
-                        <label style={labelStyle}>Property ID *</label>
-                        <select
-                          name="property_id"
-                          style={selectFieldStyle}
-                          value={selectedPropertyId}
-                          onChange={handlePropertyChange}
-                        >
-                          <option value="" disabled>
-                            {propertiesLoading ? "Loading properties…" : "Select Property ID"}
-                          </option>
-                          {!propertiesLoading && properties.length === 0 && (
-                            <option disabled>No properties available</option>
-                          )}
-                          {properties.map((p) => (
-                            <option key={p.propertyId} value={String(p.propertyId)}>
-                              {p.propertyId} – {p.buildingDetails || p.propertyDetails?.buildingName || ""}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </Col>
-                    <Col md={4}>
-                      <FormField
-                        label="Property Assignment ID"
-                        name="property_assignment_id"
-                        defaultValue={getValue("property_assignment_id")}
-                        type="number"
-                        placeholder="Assignment ID"
-                      />
-                    </Col>
-                    <Col md={4}>
-                      <DateField
-                        label={`${flowTitle} Date *`}
-                        name="check_in_date"
-                        defaultValue={getValue("check_in_date")}
-                      />
-                    </Col>
-                    <Col md={4}>
-                      <FormField
-                        label={`${flowTitle} Status *`}
-                        name="check_in_status"
-                        defaultValue={getValue("check_in_status")}
-                        placeholder="Select Status"
-                        as="select"
-                      >
-                        <option>Pending</option>
-                        <option>In Progress</option>
-                        <option>Key Pending</option>
-                        <option>Active</option>
-                        <option>Completed</option>
-                        <option>Cancelled</option>
-                      </FormField>
-                    </Col>
-                    <Col md={4}>
-                      <FormField
-                        label="Assigned Employee ID *"
-                        name="assigned_employee_id"
-                        defaultValue={getValue("assigned_employee_id")}
-                        type="number"
-                        placeholder="Employee ID"
-                      />
-                    </Col>
-                    <Col md={12}>
-                      <FormField
-                        label="Remarks / Notes"
-                        name="remarks_notes"
-                        defaultValue={getValue("remarks_notes")}
-                        placeholder="Enter initial remarks"
-                      />
-                    </Col>
-                  </Row>
 
                   <h5 id="tenant-details" style={sectionTitleStyle}>
                     A. Tenant Details
@@ -980,8 +931,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                         placeholder="Select Category"
                         as="select"
                       >
-                        <option>Married</option>
-                        <option>Bachelor</option>
+                        <option>Individual</option>
+                        <option>Corporate</option>
                       </FormField>
                     </Col>
                     <Col md={4}>
@@ -1067,6 +1018,8 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                       >
                         <option>Single</option>
                         <option>Married</option>
+                        <option>Divorced</option>
+                        <option>Widowed</option>
                       </FormField>
                     </Col>
                     <Col md={4}>
@@ -1123,6 +1076,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                         name="number_of_occupants"
                         defaultValue={getValue("number_of_occupants")}
                         type="number"
+                        min="0"
                         placeholder="0"
                       />
                     </Col>

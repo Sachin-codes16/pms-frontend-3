@@ -1,6 +1,5 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { Card, CardBody, Col } from 'react-bootstrap';
-import { statData } from '../data';
 
 const statTheme = {
   primary: {
@@ -73,7 +72,7 @@ const StatCard = ({
       </CardBody>
     </Card>;
 };
-const PropertyStats = () => {
+const PropertyStats = ({ statData = [] }) => {
   return <>
       {statData.map((item, idx) => <Col md={6} xl={3} key={idx}>
           <StatCard {...item} />

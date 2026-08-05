@@ -1,8 +1,15 @@
-import agent1Img from '@/assets/images/agent-1.png';
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
+import { resolvePhotoSrc } from '@/utils/imageStorage';
 import { Link } from 'react-router-dom';
 import { Card, CardBody, CardHeader, CardTitle } from 'react-bootstrap';
-const TopProperties = () => {
+
+const TopProperties = ({ topProperty }) => {
+  const name = topProperty?.buildingDetails || topProperty?.propertyDetails?.buildingName || '—';
+  const location = [topProperty?.propertyDetails?.city, topProperty?.propertyDetails?.country].filter(Boolean).join(', ') || '—';
+  const rent = topProperty?.propertyDetails?.monthlyRent ?? topProperty?.expectedRent;
+  const photo = topProperty?.photos?.[0];
+  const detailPath = topProperty ? `/landlord/detailspage?property_id=${topProperty.propertyId}` : '';
+
   return <Card className="border-0 shadow-sm" style={{
       borderRadius: 5,
       minHeight: 354
@@ -15,6 +22,7 @@ const TopProperties = () => {
           fontSize: 16,
           fontWeight: 600
         }}>Top Properties</CardTitle>
+        <p className="mb-0" style={{ color: '#647c99', fontSize: 13 }}>By highest monthly rent</p>
       </CardHeader>
       <CardBody style={{
         padding: '34px 20px 12px'
@@ -24,11 +32,17 @@ const TopProperties = () => {
           borderRadius: 5,
           padding: 10
         }}>
-          <img src={agent1Img} alt="top property" className="img-fluid w-100" style={{
-            height: 150,
-            objectFit: 'cover',
-            borderRadius: 4
-          }} />
+          {photo ? (
+            <img src={resolvePhotoSrc(photo)} alt={name} className="img-fluid w-100" style={{
+              height: 150,
+              objectFit: 'cover',
+              borderRadius: 4
+            }} />
+          ) : (
+            <div className="d-flex align-items-center justify-content-center" style={{ height: 150, borderRadius: 4, background: '#7a739b', color: '#fff' }}>
+              <IconifyIcon icon="solar:home-2-bold-duotone" width={48} height={48} />
+            </div>
+          )}
           <div className="d-flex align-items-center justify-content-between mt-2 text-start" style={{
             backgroundColor: '#8e88aa',
             borderRadius: 5,
@@ -36,43 +50,21 @@ const TopProperties = () => {
             padding: '12px 11px'
           }}>
             <div>
-              <Link to="" className="text-white fw-medium" style={{
+              <Link to={detailPath} className="text-white fw-medium" style={{
                 fontSize: 16
               }}>
-                Lahomes Group , Pvt Ltd
+                {name}
               </Link>
               <p className="mb-0" style={{
                 color: '#d8d4e6',
                 fontSize: 14
-              }}>Markova , USA</p>
-              <div className="d-flex flex-wrap gap-2 align-items-center mt-2">
-                <ul className="d-flex m-0 list-unstyled" style={{
-                  color: '#ff9b44',
-                  fontSize: 19
-                }}>
-                  <li>
-                    <IconifyIcon icon="ri:star-fill" />
-                  </li>
-                  <li>
-                    <IconifyIcon icon="ri:star-fill" />
-                  </li>
-                  <li>
-                    <IconifyIcon icon="ri:star-fill" />
-                  </li>
-                  <li>
-                    <IconifyIcon icon="ri:star-fill" />
-                  </li>
-                  <li>
-                    <IconifyIcon icon="ri:star-half-line" />
-                  </li>
-                </ul>
-                <p className="mb-0 text-white" style={{
-                  fontSize: 14
-                }}>4.5 / 5 Rating</p>
-              </div>
+              }}>{location}</p>
+              <p className="mb-0 text-white mt-2" style={{
+                fontSize: 14
+              }}>{rent != null ? `OMR ${rent} / month` : '—'}</p>
             </div>
             <div>
-              <Link to="">
+              <Link to={detailPath}>
                 <div className="flex-shrink-0">
                   <span className="flex-centered text-white rounded-circle" style={{
                     width: 36,

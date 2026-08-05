@@ -2,6 +2,11 @@ import { resolvePhotoSrc } from '@/utils/imageStorage';
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { fmtDateTime, val, yesNo } from '@/utils/checkInFormat';
 
+// Fixed, ordered steps the backend computes into keyHandoverTimeline — it only
+// ever includes an entry once that step's date is actually set, so the
+// canonical list here is what lets pending steps render (blue, no date).
+const TIMELINE_STEPS = ['Key Booked', 'Key Prepared', 'Key Notified', 'Key Handed Over', 'Handover Completed'];
+
 const pageText = '#526b89';
 const bodyText = '#202b3c';
 
@@ -153,20 +158,34 @@ const KeyHandoverPage = ({ record }) => {
               {attachments.length > 0 ? (
                 <div style={{ padding: '0 26px 12px' }}>
                   {attachments.map((attachment, index) => (
-                    <div key={attachment.name ?? index} className="d-flex align-items-center justify-content-between gap-3 mb-3">
+                    <div key={attachment.documentId ?? index} className="d-flex align-items-center justify-content-between gap-3 mb-3">
                       <div className="d-flex align-items-center gap-3">
-                        {attachment.photo && (
-                          <img alt={attachment.name} src={resolvePhotoSrc(attachment.photo)} style={{ borderRadius: 4, height: 50, objectFit: 'cover', width: 50 }} />
+                        {attachment.file && (
+                          <img
+                            alt={attachment.documentName ?? attachment.documentType}
+                            src={resolvePhotoSrc(attachment.file)}
+                            style={{ borderRadius: 4, height: 50, objectFit: 'cover', width: 50 }}
+                          />
                         )}
                         <div>
                           <p className="mb-1" style={{ color: pageText, fontSize: 15 }}>
-                            {val(attachment.name)}
+                            {val(attachment.documentName ?? attachment.documentType)}
                           </p>
                           <p className="mb-0" style={{ color: pageText, fontSize: 15 }}>
-                            {fmtDateTime(attachment.date)}
+                            {fmtDateTime(attachment.uploadedOn)}
                           </p>
                         </div>
                       </div>
+                      {attachment.file && (
+                        <a
+                          href={resolvePhotoSrc(attachment.file)}
+                          download
+                          className="d-inline-flex align-items-center justify-content-center"
+                          style={{ border: '1px solid #cfd7df', borderRadius: 5, color: pageText, height: 32, width: 32 }}
+                        >
+                          <IconifyIcon icon="ri:download-line" width={16} height={16} />
+                        </a>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -192,11 +211,19 @@ const KeyHandoverPage = ({ record }) => {
         <div>
           <div className="mb-4" style={cardStyle}>
             <h5 style={titleStyle}>Key Handover Timeline</h5>
-            {timeline.length > 0 ? (
+            {(() => {
+              const steps = TIMELINE_STEPS.map((stepEvent) => {
+                const entry = timeline.find((e) => (e.event ?? e.title) === stepEvent);
+                return { event: stepEvent, entry };
+              });
+              return (
               <div style={{ padding: '22px 32px 24px' }}>
-                {timeline.map((entry, index) => (
+                {steps.map(({ event, entry }, index) => {
+                  const completed = Boolean(entry?.timestamp ?? entry?.date);
+                  const dotColor = completed ? '#37b875' : '#05a9df';
+                  return (
                   <div
-                    key={entry.event ?? index}
+                    key={event}
                     style={{
                       display: 'grid',
                       gap: 20,
@@ -205,13 +232,13 @@ const KeyHandoverPage = ({ record }) => {
                       position: 'relative',
                     }}
                   >
-                    {index < timeline.length - 1 && (
+                    {index < steps.length - 1 && (
                       <span style={{ background: '#64c986', height: 76, left: 15, position: 'absolute', top: 26, width: 1 }} />
                     )}
                     <span
                       className="d-inline-flex align-items-center justify-content-center"
                       style={{
-                        background: index === timeline.length - 1 ? '#05a9df' : '#37b875',
+                        background: dotColor,
                         borderRadius: '50%',
                         color: '#fff',
                         height: 30,
@@ -224,26 +251,26 @@ const KeyHandoverPage = ({ record }) => {
                     </span>
                     <div>
                       <p className="mb-2" style={{ color: pageText, fontSize: 16, fontWeight: 700 }}>
-                        {val(entry.event ?? entry.title)}
+                        {val(event)}
                       </p>
                       <p className="mb-0" style={{ color: bodyText, fontSize: 15 }}>
-                        {val(entry.description)}
+                        {val(entry?.description)}
                       </p>
                     </div>
                     <div className="text-end">
                       <p className="mb-2" style={{ color: bodyText, fontSize: 15 }}>
-                        {fmtDateTime(entry.timestamp ?? entry.date)}
+                        {completed ? fmtDateTime(entry.timestamp ?? entry.date) : ''}
                       </p>
                       <p className="mb-0" style={{ color: bodyText, fontSize: 15 }}>
-                        {val(entry.actor ?? entry.by)}
+                        {completed ? val(entry?.actor ?? entry?.by) : ''}
                       </p>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
-            ) : (
-              <p style={emptyTextStyle}>No timeline activity yet</p>
-            )}
+              );
+            })()}
           </div>
 
           <div style={cardStyle}>

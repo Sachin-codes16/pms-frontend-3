@@ -30,7 +30,7 @@ const StatCard = ({ label, value, color, bg }) => (
 const DetailRows = ({ items }) => (
   <div>
     {items.map(([label, value, type]) => (
-      <div key={label} style={{ display: 'grid', gridTemplateColumns: '210px 18px 1fr', minHeight: 40 }}>
+      <div key={label} style={{ display: 'grid', gridTemplateColumns: '210px 18px minmax(0, 1fr)', minHeight: 40 }}>
         <span style={{ color: bodyText, fontSize: 16 }}>{label}</span>
         <span style={{ color: bodyText, fontSize: 16 }}>:</span>
         {type === 'pill' ? (
@@ -38,7 +38,7 @@ const DetailRows = ({ items }) => (
             {value}
           </span>
         ) : (
-          <span style={{ color: bodyText, fontSize: 16, whiteSpace: 'pre-line' }}>{value || '—'}</span>
+          <span style={{ color: bodyText, fontSize: 16, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>{value || '—'}</span>
         )}
       </div>
     ))}
@@ -113,14 +113,11 @@ const KeyHandoverPage = ({ record }) => {
 
         {/* Left column */}
         <div>
-          {/* Key Return Information 2-col */}
+          {/* Key Return Information */}
           <div className="mb-4" style={cardStyle}>
             <h5 style={titleStyle}>Key Return Information</h5>
-            <div style={{ display: 'grid', gap: 28, gridTemplateColumns: '1fr 1fr', padding: '22px 52px 18px' }}>
-              <div style={{ borderRight: '1px solid #d7dce2', paddingRight: 28 }}>
-                <DetailRows items={infoLeft} />
-              </div>
-              <DetailRows items={infoRight} />
+            <div style={{ padding: '22px 52px 18px' }}>
+              <DetailRows items={[...infoLeft, ...infoRight]} />
             </div>
           </div>
 

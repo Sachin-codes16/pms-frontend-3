@@ -73,8 +73,6 @@ const PropertyDetails = ({ property, landlordName }) => {
 
   /* ── Configuration ── */
   const configuration = fd.flatConfiguration || vd.villaConfiguration || '';
-  const bhkMatch = configuration.match(/(\d+)\s*BHK/i);
-  const bhk = bhkMatch ? `${bhkMatch[1]} BHK` : '';
   const bedrooms = vd.numberOfBedrooms || '';
   const bathrooms = fd.noOfBathrooms || fd.no_of_bathrooms || vd.numberOfBathrooms || vd.number_of_bathrooms || cd.noOfWashrooms || '—';
 
@@ -168,11 +166,9 @@ const PropertyDetails = ({ property, landlordName }) => {
   const updatedAtStr = formatDate(d.updatedAt);
 
   /* ── Photos ── */
-  const apiPhotos = Array.isArray(d.photos) ? d.photos : [];
-
   const photoUrls = useMemo(
-    () => apiPhotos.slice(0, 4).map((photo) => resolvePhotoSrc(photo)),
-    [apiPhotos]
+    () => (Array.isArray(d.photos) ? d.photos : []).slice(0, 4).map((photo) => resolvePhotoSrc(photo)),
+    [d.photos]
   );
 
   return (
@@ -326,6 +322,8 @@ const PropertyDetails = ({ property, landlordName }) => {
                   ['LATE FEE TYPE', pd.lateFeeType || '—'],
                   ['LATE FEE AMOUNT', pd.lateFeeValue || '—'],
                   ['OTHER CHARGES', pd.otherCharges || '—'],
+                  ['ELECTRICITY CHARGE TYPE', electricityType],
+                  ['WATER CHARGE TYPE', waterType],
                 ].map(([label, value]) => (
                   <Col lg={2} md={4} sm={6} key={label}>
                     <div style={{ marginBottom: '1.5rem' }}>
@@ -340,7 +338,7 @@ const PropertyDetails = ({ property, landlordName }) => {
         </Card>
 
         {/* ── Ownership ────────────────────────────────────────────────── */}
-        {/* <Card style={{ borderRadius: '0.5rem', border: '1px solid #dee2e6', marginBottom: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', backgroundColor: 'white' }}>
+        <Card style={{ borderRadius: '0.5rem', border: '1px solid #dee2e6', marginBottom: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', backgroundColor: 'white' }}>
           <CardBody style={{ padding: '2rem 2.5rem' }}>
             <h4 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '1.5rem', color: '#000' }}>Ownership</h4>
             <div style={{ borderTop: '1px solid #dee2e6', paddingTop: '1.75rem' }}>
@@ -360,7 +358,7 @@ const PropertyDetails = ({ property, landlordName }) => {
               </Row>
             </div>
           </CardBody>
-        </Card> */}
+        </Card>
 
         {/* ── Amenities & Facilities ───────────────────────────────────── */}
         <Card style={{ borderRadius: '0.5rem', border: '1px solid #dee2e6', marginBottom: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', backgroundColor: 'white' }}>

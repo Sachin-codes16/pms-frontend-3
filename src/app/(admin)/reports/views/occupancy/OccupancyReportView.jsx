@@ -1,9 +1,30 @@
-import { Button, Card, CardBody, CardHeader, Col, Row } from 'react-bootstrap';
+import { Alert, Button, Card, CardBody, CardHeader, Col, Row, Spinner } from 'react-bootstrap';
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { useOccupancyReportController } from '../../controllers/useOccupancyReportController';
 
 const OccupancyReportView = () => {
-  const { filters, rows, stats } = useOccupancyReportController();
+  const {
+    filters,
+    selectedTypes,
+    selectedStatuses,
+    toggleType,
+    toggleStatus,
+    searchInput,
+    setSearchInput,
+    fromDate,
+    setFromDate,
+    toDate,
+    setToDate,
+    rows,
+    rowsLoading,
+    rowsError,
+    presentPage,
+    totalPage,
+    goToPage,
+    stats,
+    summaryLoading,
+    summaryError,
+  } = useOccupancyReportController();
 
   return (
     <div className="occupancy-report-page">
@@ -131,8 +152,18 @@ const OccupancyReportView = () => {
         Occupancy Reports
       </h4>
 
+      {summaryError && (
+        <Alert variant="danger" className="mb-3">
+          {summaryError}
+        </Alert>
+      )}
+
       <Row className="g-3 mb-3">
-        {stats.map((item) => (
+        {summaryLoading ? (
+          <Col xs={12} className="d-flex justify-content-center py-4">
+            <Spinner animation="border" size="sm" />
+          </Col>
+        ) : stats.map((item) => (
           <Col xs={12} sm={6} xl key={item.label}>
             <Card className="soft-card h-100">
               <CardBody style={{ padding: '20px 22px' }}>
@@ -166,23 +197,44 @@ const OccupancyReportView = () => {
         <div className="d-flex align-items-center gap-3 flex-wrap">
           <div className="search-box">
             <IconifyIcon icon="ri:search-line" className="position-absolute" style={{ left: 13, top: '50%', transform: 'translateY(-50%)', color: '#7a8da5', fontSize: 17 }} />
-            <input className="form-control" placeholder="Search" />
+            <input
+              className="form-control"
+              placeholder="Search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
           </div>
-          <span style={{ color: '#2f3848', fontSize: 15, fontWeight: 500 }}>311 Properties</span>
+          <span style={{ color: '#2f3848', fontSize: 15, fontWeight: 500 }}>
+            {stats[0]?.value ?? 0} Properties
+          </span>
         </div>
 
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <Button variant="outline-primary" className="outline-action">
-            <IconifyIcon icon="ri:arrow-down-s-line" className="me-1" />
-            From Date
-          </Button>
-          <Button variant="outline-primary" className="outline-action">
-            <IconifyIcon icon="ri:arrow-down-s-line" className="me-1" />
-            To Date
-          </Button>
+          <input
+            type="date"
+            className="form-control outline-action"
+            style={{ minHeight: 39 }}
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            aria-label="From Date"
+          />
+          <input
+            type="date"
+            className="form-control outline-action"
+            style={{ minHeight: 39 }}
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            aria-label="To Date"
+          />
           <Button className="primary-action">Export Excel</Button>
         </div>
       </div>
+
+      {rowsError && (
+        <Alert variant="danger" className="mb-3">
+          {rowsError}
+        </Alert>
+      )}
 
       <Row className="g-3">
         <Col xl={2} lg={12}>
@@ -192,16 +244,16 @@ const OccupancyReportView = () => {
                 Property
               </h5>
               <p className="mb-0" style={{ color: '#536b86', fontSize: 14 }}>
-                Show 311 <strong>Property</strong>
+                Show {stats[0]?.value ?? 0} <strong>Property</strong>
               </p>
             </CardHeader>
             <CardBody style={{ padding: '22px 24px 28px' }}>
-              <FilterCheckboxGroup title="Property Type" items={filters.propertyTypes} />
-              <FilterCheckboxGroup title="Status" items={filters.statuses} />
+              <FilterCheckboxGroup title="Property Type" items={filters.propertyTypes} selected={selectedTypes} onToggle={toggleType} />
+              <FilterCheckboxGroup title="Status" items={filters.statuses} selected={selectedStatuses} onToggle={toggleStatus} />
             </CardBody>
           </Card>
 
-        
+
         </Col>
 
         <Col xl={10} lg={12}>
@@ -224,8 +276,22 @@ const OccupancyReportView = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row) => (
-                      <tr key={`${row.srNo}-${row.unitNo}`}>
+                    {rowsLoading && (
+                      <tr>
+                        <td colSpan={11} className="text-center" style={{ ...cellStyle, padding: '30px 12px' }}>
+                          <Spinner animation="border" size="sm" />
+                        </td>
+                      </tr>
+                    )}
+                    {!rowsLoading && rows.length === 0 && (
+                      <tr>
+                        <td colSpan={11} className="text-center" style={{ ...cellStyle, padding: '30px 12px' }}>
+                          No properties found.
+                        </td>
+                      </tr>
+                    )}
+                    {!rowsLoading && rows.map((row) => (
+                      <tr key={row.id}>
                         <td style={cellStyle}>{row.srNo}</td>
                         <td style={cellStyle}>{row.id}</td>
                         <td className="property-cell" style={{ ...cellStyle, color: '#2f3848', fontWeight: 600 }}>
@@ -265,17 +331,35 @@ const OccupancyReportView = () => {
                 <nav aria-label="Occupancy report pagination">
                   <ul className="pagination pagination-sm mb-0">
                     <li className="page-item">
-                      <button className="page-link" style={paginationButtonStyle}>Previous</button>
+                      <button
+                        className="page-link"
+                        style={paginationButtonStyle}
+                        disabled={presentPage <= 1}
+                        onClick={() => goToPage(presentPage - 1)}
+                      >
+                        Previous
+                      </button>
                     </li>
-                    {[1, 2, 3].map((page) => (
-                      <li className={`page-item ${page === 1 ? 'active' : ''}`} key={page}>
-                        <button className="page-link" style={page === 1 ? activePaginationButtonStyle : paginationButtonStyle}>
+                    {paginationRange(presentPage, totalPage).map((page) => (
+                      <li className={`page-item ${page === presentPage ? 'active' : ''}`} key={page}>
+                        <button
+                          className="page-link"
+                          style={page === presentPage ? activePaginationButtonStyle : paginationButtonStyle}
+                          onClick={() => goToPage(page)}
+                        >
                           {page}
                         </button>
                       </li>
                     ))}
                     <li className="page-item">
-                      <button className="page-link" style={paginationButtonStyle}>Next</button>
+                      <button
+                        className="page-link"
+                        style={paginationButtonStyle}
+                        disabled={presentPage >= totalPage}
+                        onClick={() => goToPage(presentPage + 1)}
+                      >
+                        Next
+                      </button>
                     </li>
                   </ul>
                 </nav>
@@ -288,14 +372,20 @@ const OccupancyReportView = () => {
   );
 };
 
-const FilterCheckboxGroup = ({ title, items }) => (
+const FilterCheckboxGroup = ({ title, items, selected, onToggle }) => (
   <div className="filter-section">
     <h5 className="filter-label">{title}</h5>
     <Row className="g-0">
       {items.map((item) => (
-        <Col xs={6} key={item}>
+        <Col xs={12} key={item}>
           <div className="d-flex align-items-center gap-2 mb-3">
-            <input className="form-check-input" type="checkbox" id={`occupancy-${title}-${item}`} />
+            <input
+              className="form-check-input"
+              type="checkbox"
+              id={`occupancy-${title}-${item}`}
+              checked={selected.includes(item)}
+              onChange={() => onToggle(item)}
+            />
             <label className="form-check-label" htmlFor={`occupancy-${title}-${item}`} style={{ color: '#536b86', fontSize: 14 }}>
               {item}
             </label>
@@ -308,10 +398,10 @@ const FilterCheckboxGroup = ({ title, items }) => (
 
 const getStatusStyle = (status) => {
   const styles = {
-    Rented: { color: '#43b36f', background: '#d6f8e6' },
+    Occupied: { color: '#43b36f', background: '#d6f8e6' },
     Booked: { color: '#7e8a99', background: '#dceeff' },
     Vacant: { color: '#8d8420', background: '#fff685' },
-    Police: { color: '#d95c63', background: '#ffd3d8' },
+    'Under Maintenance': { color: '#d95c63', background: '#ffd3d8' },
   };
 
   return {
@@ -319,8 +409,18 @@ const getStatusStyle = (status) => {
     fontSize: 13,
     fontWeight: 600,
     padding: '5px 11px',
-    ...(styles[status] || styles.Rented),
+    ...(styles[status] || styles.Vacant),
   };
+};
+
+const paginationRange = (current, total) => {
+  const windowSize = 3;
+  let start = Math.max(1, current - 1);
+  const end = Math.min(total, start + windowSize - 1);
+  start = Math.max(1, end - windowSize + 1);
+  const pages = [];
+  for (let p = start; p <= end; p++) pages.push(p);
+  return pages;
 };
 
 const headStyle = {

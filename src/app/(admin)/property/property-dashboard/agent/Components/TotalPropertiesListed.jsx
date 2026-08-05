@@ -1,6 +1,5 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { Card, CardBody, CardHeader, CardTitle, Col, Row } from 'react-bootstrap';
-import { revenueData } from '../data';
 
 const progressColors = {
   primary: '#604ae3',
@@ -9,7 +8,7 @@ const progressColors = {
   info: '#45c3c9'
 };
 
-const TotalPropertiesListed = () => {
+const TotalPropertiesListed = ({ typeBreakdown = [], totalProperties = 0 }) => {
   return <Col lg={6}>
       <Card className="border-0 shadow-sm" style={{
         borderRadius: 5,
@@ -29,22 +28,16 @@ const TotalPropertiesListed = () => {
         }}>
           <div className="d-flex align-items-center justify-content-between">
             <div>
-              <div className="d-flex align-items-center gap-4 mb-2">
-                <h3 className="mb-0" style={{
-                  color: '#2f3848',
-                  fontSize: 25,
-                  fontWeight: 700
-                }}>356</h3>
-                <span className="badge text-success bg-success-subtle px-2 py-1 fs-12 icons-center">
-                  <IconifyIcon width={12} height={12} icon="ri-arrow-up-line" />
-                  4.53%
-                </span>
-              </div>
+              <h3 className="mb-2" style={{
+                color: '#2f3848',
+                fontSize: 25,
+                fontWeight: 700
+              }}>{totalProperties}</h3>
               <p className="mb-0" style={{
                 color: '#647c99',
                 fontSize: 14
               }}>
-                Gained <span className="text-success">OMR 125605</span> This Month !
+                Breakdown by property type
               </p>
             </div>
             <div className="flex-centered" style={{
@@ -69,7 +62,7 @@ const TotalPropertiesListed = () => {
               fontWeight: 500
             }}>Properties</h5>
             <Row className="mb-3 g-lg-0 g-2">
-              {revenueData?.map((item, idx) => <Col lg={3} xs={4} key={idx}>
+              {typeBreakdown.map((item, idx) => <Col lg={3} xs={4} key={idx}>
                   <p className="mb-2 d-flex align-items-center" style={{
                     color: '#647c99',
                     fontSize: 14
@@ -83,7 +76,7 @@ const TotalPropertiesListed = () => {
                 </Col>)}
             </Row>
             <div className="d-flex align-items-center gap-1">
-              {revenueData.map((item, idx) => <div key={idx} style={{
+              {typeBreakdown.map((item, idx) => <div key={idx} style={{
                 height: 9,
                 borderRadius: 10,
                 backgroundColor: progressColors[item.variant],

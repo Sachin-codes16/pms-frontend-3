@@ -8,10 +8,20 @@ import * as yup from 'yup';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '@/helpers/api';
-import { normalizePhotosForApi } from '@/utils/imageStorage';
+import { useAuthContext } from '@/context/useAuthContext';
 import  './PropertyAdd.css';
 
-const schema = yup.object({});
+const schema = yup.object({
+  building_name: yup.string().trim().required('Building/Property name is required'),
+  landlord_id: yup.string().trim().required('Landlord is required'),
+  address1: yup.string().trim().required('Address is required'),
+  city: yup.string().trim().required('City is required'),
+  monthly_rent: yup
+    .string()
+    .trim()
+    .required('Monthly rent is required')
+    .test('is-positive-number', 'Monthly rent must be a positive number', (v) => !v || (Number(v) > 0 && Number.isFinite(Number(v)))),
+});
 
 const propertyTypeOptions = [
   { value: 'flat', label: 'Flat / Apartment', fieldValue: 'Flat', sectionTitle: 'Basic Property Details' },
@@ -27,6 +37,45 @@ const FLAT_CONFIG_MAP = {
   '1 BHK': '1BHK', '2 BHK': '2BHK', '3 BHK': '3BHK', '4 BHK': '4BHK',
   '1BHK': '1BHK',  '2BHK': '2BHK',  '3BHK': '3BHK',  '4BHK': '4BHK',
 };
+
+const LandlordSelect = ({ control, landlords }) => (
+  <div>
+    <label className="form-label" style={{ backgroundColor: '#F9F9FC' }}>Landlord Name</label>
+    <Controller name="landlord_id" control={control} defaultValue="" render={({ field, fieldState }) => (
+      <>
+        <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
+          <option value="">Select Landlord</option>
+          {landlords.map((l) => (
+            <option key={l.leadId} value={l.leadId}>
+              {[l.firstName, l.lastName].filter(Boolean).join(' ') || `Lead #${l.leadId}`}
+            </option>
+          ))}
+        </select>
+        {fieldState.error?.message && (
+          <div className="text-danger small mt-1">{fieldState.error.message}</div>
+        )}
+      </>
+    )} />
+  </div>
+);
+
+const BoolCheck = ({ control, name, label }) => (
+  <Controller name={name} control={control} defaultValue={false} render={({ field: { value, onChange, ...field } }) => (
+    <Form.Check type="checkbox" label={label} checked={!!value} onChange={(e) => onChange(e.target.checked)} {...field} />
+  )} />
+);
+
+const ChargeTypeSelect = ({ control, name, label }) => (
+  <div>
+    <label className="form-label">{label}</label>
+    <Controller name={name} control={control} defaultValue="Meter" render={({ field }) => (
+      <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
+        <option value="Meter">Meter</option>
+        <option value="Fixed">Fixed</option>
+      </select>
+    )} />
+  </div>
+);
 
 const ReadOnlyField = ({ label, value }) => (
   <div>
@@ -46,6 +95,8 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [landlords, setLandlords] = useState([]);
   const navigate = useNavigate();
+  const { user } = useAuthContext();
+  const loggedInUserId = user?.user_id ?? user?.userId ?? '';
    const countries = [
     { code: 'GB', name: 'United Kingdom' },
     { code: 'FR', name: 'France' },
@@ -71,7 +122,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
       kitchen_type: 'Open',
       facing: 'East',
       landlord_id: '',
-      assigned_to_user_id: '36',
+      assigned_to_user_id: String(loggedInUserId || ''),
     }
   });
 
@@ -79,7 +130,11 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
     const fetchLandlords = async () => {
       try {
         const res = await api.get('/lead/get_all/', { params: { limit: 99999 } });
-        setLandlords(res?.data?.data?.data || []);
+        const all = res?.data?.data?.data || [];
+        // purpose casing is inconsistent in the backend data ("Landlord" vs "landlord"),
+        // so filter client-side case-insensitively instead of relying on an exact
+        // server-side match that silently drops differently-cased records.
+        setLandlords(all.filter((l) => l.purpose?.toLowerCase() === 'landlord'));
       } catch (e) {
         console.error('Failed to fetch landlords', e);
       }
@@ -158,7 +213,12 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
           (type === 'villa' && toNum(values.total_floors)) || new Date().getFullYear(),
         late_fee_type: toStr(values.late_fee_type) || 'Day wise',
         late_fee_value: toStr(values.late_fee_value) || '0',
-        created_by_id: toNum(values.assigned_to_user_id) || 36,
+        other_charges: toStr(
+          values.other_charges || values.villa_other_charges || values.commercial_other_charges || values.warehouse_other_charges
+        ) || '0',
+        electricity_charge_type: toStr(values.electricity_charge_type) || 'Meter',
+        water_charge_type: toStr(values.water_charge_type) || 'Meter',
+        created_by_id: toNum(values.assigned_to_user_id) || toNum(loggedInUserId) || 0,
       };
 
       const payload = {
@@ -172,7 +232,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
         expected_rent: toStr(values.monthly_rent ?? ''),
         photos: [],
         assigned_to: {
-          user_id: toNum(values.assigned_to_user_id) || 36,
+          user_id: toNum(values.assigned_to_user_id) || toNum(loggedInUserId) || 0,
           name: '',
           phone_number: '',
           email: '',
@@ -191,6 +251,17 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
           facing: toStr(values.facing),
           balcony: values.balcony === 'Yes',
           parking: !!values.amenity_Parking,
+          lift: !!values.amenity_Lift,
+          power_backup: !!values.amenity_PowerBackup,
+          security: !!values.amenity_Security,
+          cctv: !!values.amenity_CCTV,
+          gas_pipeline: !!values.amenity_GasPipeline,
+          water_supply: !!values.amenity_WaterSupply,
+          intercom: !!values.amenity_Intercom,
+          fire_safety: !!values.amenity_FireSafety,
+          store_room: !!values.store_room,
+          allowed_tenant_types: ['Bachelor', 'Family', 'Company Staff', 'Labour'].filter((t) => !!values[`tenant_type_${t}`]),
+          maintenance_charge_amount: toStr(values.maintenance) || '0',
         };
       } else if (type==='villa') {
         payload.villa_data = {
@@ -198,34 +269,106 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
           villa_type: toStr(values.villa_type) || 'Independent',
           villa_configuration: toStr(values.villa_configuration) || '2BHK',
           plot_area_sqft: toStr(values.plot_area) || '0',
+          number_of_bedrooms: toNum(values.villa_bedrooms),
+          number_of_bathrooms: toNum(values.villa_bathrooms),
+          living_rooms_count: toNum(values.villa_living_rooms),
+          maintenance_charge_amount: toStr(values.maintenance) || '0',
+          gardening_charges: toStr(values.villa_gardening_charges) || '0',
+          store_room: !!values.villa_store_room,
+          servant_room: !!values.villa_servant_room,
+          balcony_or_sitout: !!values.villa_balcony_or_sitout,
+          facing: toStr(values.villa_facing) || 'East',
+          private_garden: !!values.villa_private_garden,
+          terrace_access: !!values.villa_terrace_access,
+          boundary_wall: !!values.villa_boundary_wall,
+          driveway: !!values.villa_driveway,
+          private_parking: toStr(values.villa_private_parking) || undefined,
+          water_supply_24x7: !!values.villa_water_supply_24x7,
+          power_backup: !!values.villa_power_backup,
+          security_guard: !!values.villa_security_guard,
+          cctv: !!values.villa_cctv,
+          clubhouse_access: !!values.villa_clubhouse_access,
+          gym: !!values.villa_gym,
+          childrens_play_area: !!values.villa_childrens_play_area,
+          internal_roads: !!values.villa_internal_roads,
+          street_lights: !!values.villa_street_lights,
+          gated_community: !!values.villa_gated_community,
+          allowed_tenant_types: ['Bachelor', 'Family', 'Company Staff', 'Labour'].filter((t) => !!values[`tenant_type_${t}`]),
+        };
+      } else if (type === 'warehouse') {
+        payload.warehouse_data = {
+          warehouse_category: toStr(values.warehouse_category) || 'Industrial Warehouse',
+          warehouse_name: toStr(values.building_block) || toStr(values.building_name) || 'N/A',
+          loading_area: toStr(values.loading_area) || 'Warehouse',
+          plot_area_sqft: toStr(values.warehouse_plot_area) || '0',
+          clear_height_ft: toStr(values.warehouse_clear_height) || '0',
+          no_of_bays: toNum(values.warehouse_no_of_bays),
+          no_of_loading_docks: toNum(values.warehouse_no_of_loading_docks),
+          dock_height_ft: toStr(values.warehouse_dock_height) || '0',
+          floor_load_capacity_mt_sqft: toStr(values.warehouse_floor_load) || '0',
+          column_spacing_ft: toStr(values.warehouse_column_spacing) || '0',
+          office_space_area_sqft: toStr(values.warehouse_office_space_area) || '0',
+          maintenance_charges: toStr(values.maintenance) || '0',
+          cam_charges: toStr(values.warehouse_cam_charges) || '0',
+          rent_escalation_percentage: toStr(values.warehouse_rent_escalation) || '0',
+          lock_in_period_months: toNum(values.warehouse_lock_in_period),
+          has_mezzanine_floor: !!values.warehouse_mezzanine_floor,
+          power_load_kw: toStr(values.warehouse_power_supply) || '0',
+          has_transformer: !!values.warehouse_transformer,
+          has_dg_backup: !!values.warehouse_dg_backup,
+          water_supply_source: toStr(values.warehouse_water_supply_source) || undefined,
+          has_drainage_system: !!values.warehouse_drainage_system,
+          has_internet_fiber: !!values.warehouse_internet_fiber,
+          entry_gate_width_ft: toStr(values.warehouse_entry_gate_width) || '0',
+          road_width_ft: toStr(values.warehouse_road_width) || '0',
+          truck_parking_capacity: toNum(values.warehouse_truck_parking_capacity),
+          container_access: toStr(values.warehouse_container_access) || undefined,
+          turning_radius: toStr(values.warehouse_turning_radius) || undefined,
+          has_weighbridge_nearby: !!values.warehouse_weighbridge_nearby,
+          monthly_rent_type: toStr(values.warehouse_monthly_rent_type) || 'Lump Sum',
+          allowed_industry_types: ['FMCG','Pharma','Ecommerce','Manufacturing','Logistics'].filter((t) => !!values[`industry_type_${t}`]),
+          industrial_estate_name: toStr(values.floor_number) || undefined,
+          plot_shed_number: toStr(values.flat_no) || undefined,
         };
       } else {
-        const commercialData = {
-          commercial_category: toStr(values.commercial_category) || (type === 'warehouse' ? 'Warehouse' : 'Shop'),
+        payload.commercial_data = {
+          commercial_category: toStr(values.commercial_category) || 'Shop',
           floor_number: toNum(values.floor_number),
           loading_area: toStr(values.loading_area) || 'Warehouse',
+          frontage_width_ft: toStr(values.commercial_frontage_width) || '0',
+          ceiling_height_ft: toStr(values.commercial_ceiling_height) || '0',
+          no_of_cabins: toNum(values.commercial_no_of_cabins),
+          no_of_washrooms: toNum(values.commercial_no_of_washrooms),
+          maintenance_charge_amount: toStr(values.maintenance) || '0',
+          gst_percentage: toStr(values.commercial_gst_percentage) || '0',
+          lease_tenure_years: toNum(values.commercial_lease_tenure_year),
+          lock_in_period_months: toNum(values.commercial_lock_in_period),
+          power_load_kw: toStr(values.commercial_power_load) || '0',
+          has_dg_backup: !!values.commercial_dg_backup,
+          lift_type: toStr(values.commercial_lift_type) || undefined,
+          fire_safety_compliant: !!values.commercial_fire_safety_compliant,
+          emergency_exit: !!values.commercial_emergency_exit,
+          parking_availability: toStr(values.commercial_parking_availability) || undefined,
+          cctv: !!values.commercial_cctv,
+          gst_applicable: !!values.commercial_gst_applicable,
+          allowed_business: toStr(values.commercial_allowed_business_type) || undefined,
+          prohibited_business: toStr(values.commercial_prohibited_business) || undefined,
+          super_builtup_area_sqft: toStr(values.commercial_super_builtup_area) || undefined,
         };
-
-        if (type === 'warehouse') {
-          payload.warehouse_data = {
-            warehouse_category: commercialData.commercial_category,
-            floor_number: commercialData.floor_number,
-            loading_area: commercialData.loading_area,
-          };
-        } else {
-          payload.commercial_data = commercialData;
-        }
       }
 
       if (Array.isArray(uploadedPhotos) && uploadedPhotos.length>0) {
-        const existingPhotos = uploadedPhotos.filter(p=>p.type==='existing').map(p=>p.raw);
-        const newBase64 = uploadedPhotos.filter(p=>p.type==='new').map(p=>p.raw);
-        const normalizedNew = normalizePhotosForApi(newBase64);
-        payload.photos = [...existingPhotos, ...normalizedNew];
+        // /property/create/ expects photos as plain base64 strings (or URLs) with
+        // no data-URI prefix — confirmed live; a "data:image/...;base64," prefix
+        // is accepted (201) but silently fails to persist.
+        payload.photos = uploadedPhotos
+          .map((p) => p.raw)
+          .filter(Boolean)
+          .map((raw) => (raw.startsWith('data:') ? raw.split(',')[1] : raw));
       }
       if (selectedLandlord) {
         payload.assigned_to = {
-          user_id: toNum(selectedLandlord.lead_assign_to_id) || toNum(values.assigned_to_user_id) || 36,
+          user_id: toNum(selectedLandlord.lead_assign_to_id) || toNum(values.assigned_to_user_id) || toNum(loggedInUserId) || 0,
           name: `${selectedLandlord.firstName || ''} ${selectedLandlord.lastName || ''}`.trim(),
           phone_number: selectedLandlord.phoneNumber || '',
           email: selectedLandlord.email || '',
@@ -290,10 +433,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
             <Col lg={4}><ReadOnlyField label="Property Type" value={selectedPropertyType.fieldValue} /></Col>
             <Col lg={4}><TextFormInput control={control}style ={{ backgroundColor: '#F9F9FC' }} name="property_code" label="Property Code / ID" placeholder="Auto-Generated" /></Col>
             <Col lg={4}>
-              <label className="form-label">Building Name</label>
-              <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                <option>Select Building</option>
-              </ChoicesFormInput>
+              <TextFormInput control={control} name="building_name" label="Building Name" style={{ backgroundColor: '#F9F9FC' }}/>
             </Col>
             
 <Col lg={4}>
@@ -335,10 +475,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
             <Col lg={4}><ReadOnlyField label="Property Type" value={selectedPropertyType.fieldValue} /></Col>
             <Col lg={4} ><TextFormInput control={control} name="property_code" label="Property Code / ID" placeholder="Auto-Generated" style={{ backgroundColor: '#F9F9FC' }}/></Col>
             <Col lg={4}>
-              <label className="form-label">Villa Name / Number</label>
-              <ChoicesFormInput className="form-control" >
-                <option>Villa Name / Number</option>
-              </ChoicesFormInput>
+              <TextFormInput control={control} name="building_name" label="Villa Name / Number" style={{ backgroundColor: '#F9F9FC' }}/>
             </Col>
             <Col lg={4}><TextFormInput control={control} name="building_block" label="Project / Society Name" style={{ backgroundColor: '#F9F9FC' }}/></Col>
             <Col lg={4}><TextFormInput control={control} name="floor_number" label="Unit Number (Gated)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
@@ -354,6 +491,10 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
               <Controller name="commercial_category" control={control} defaultValue="Shop" render={({ field }) => (
                 <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
                   <option value="Shop">Shop</option>
+                  <option value="Office">Office</option>
+                  <option value="Showroom">Showroom</option>
+                  <option value="Godown">Godown</option>
+                  <option value="Industrial Unit">Industrial Unit</option>
                 </select>
               )} />
             </Col>
@@ -369,9 +510,12 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
             <Col lg={4}><TextFormInput control={control} name="property_code" label="Property Code / ID" placeholder="Auto-Generated"style={{ backgroundColor: '#F9F9FC' }} /></Col>
             <Col lg={4}>
               <label className="form-label"style ={{ backgroundColor: '#F9F9FC' }}>Warehouse Category</label>
-              <Controller name="commercial_category" control={control} defaultValue="Warehouse" render={({ field }) => (
+              <Controller name="warehouse_category" control={control} defaultValue="Industrial Warehouse" render={({ field }) => (
                 <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
-                  <option value="Warehouse">Warehouse</option>
+                  <option value="Industrial Warehouse">Industrial Warehouse</option>
+                  <option value="Logistics Warehouse">Logistics Warehouse</option>
+                  <option value="Cold Storage">Cold Storage</option>
+                  <option value="Godown">Godown</option>
                 </select>
               )} />
             </Col>
@@ -434,11 +578,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
               )} />
             </Col>
             <Col lg={4}>
-              <label className="form-label">Store Room</label>
-              <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                <option>Yes</option>
-                <option>No</option>
-              </ChoicesFormInput>
+              <BoolCheck control={control} name="store_room" label="Store Room" />
             </Col>
             <Col lg={4}>
               <label className="form-label">Facing</label>
@@ -468,60 +608,43 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
             </Col>
             <Col lg={4}>
               <label className="form-label">BHK Configuration</label>
-              <Controller name="villa_configuration" control={control} defaultValue="Independent" render={({ field }) => (
+              <Controller name="villa_configuration" control={control} defaultValue="2BHK" render={({ field }) => (
                 <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
-                  <option value="Independent">Independent</option>
-                  <option value="1 BHK">1 BHK</option>
-                  <option value="2 BHK">2 BHK</option>
-                  <option value="3 BHK">3 BHK</option>
+                  <option value="2BHK">2 BHK</option>
+                  <option value="3BHK">3 BHK</option>
+                  <option value="4BHK">4 BHK</option>
+                  <option value="5BHK">5 BHK</option>
                 </select>
               )} />
             </Col>
              <Col lg={4}><TextFormInput control={control} name="carpet_area" label="Carpet Area (Sq.Ft)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
             <Col lg={4}><TextFormInput control={control} name="builtup_area" label="Built-up Area (Sq.Ft)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
             <Col lg={4}><TextFormInput control={control} name="plot_area" label="Plot Area (Sq.Ft)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="bathrooms" label="No. of Bedrooms"style={{ backgroundColor: '#F9F9FC' }} /></Col>
-            <Col lg={4}><TextFormInput control={control} name="bathrooms" label="No. of Bathrooms"style={{ backgroundColor: '#F9F9FC' }} /></Col>
-            <Col lg={4}><TextFormInput control={control} name="bathrooms" label="Living Rooms Count"style={{ backgroundColor: '#F9F9FC' }} /></Col>
+            <Col lg={4}><TextFormInput control={control} name="villa_bedrooms" label="No. of Bedrooms"style={{ backgroundColor: '#F9F9FC' }} /></Col>
+            <Col lg={4}><TextFormInput control={control} name="villa_bathrooms" label="No. of Bathrooms"style={{ backgroundColor: '#F9F9FC' }} /></Col>
+            <Col lg={4}><TextFormInput control={control} name="villa_living_rooms" label="Living Rooms Count"style={{ backgroundColor: '#F9F9FC' }} /></Col>
             <Col lg={4}>
-              <label className="form-label">Kitchen Type</label>
-              <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                <option>Open</option>
-                <option>Closed</option>
-              </ChoicesFormInput>
-            </Col>
-            <Col lg={4}>
-              <label className="form-label">Store Room</label>
-              <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                <option>Yes</option>
-                <option>No</option>
-              </ChoicesFormInput>
+              <BoolCheck control={control} name="villa_store_room" label="Store Room" />
             </Col>
 
             <Col lg={4}>
-              <label className="form-label">Servant Room</label>
-              <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                <option>Yes</option>
-                <option>No</option>
-              </ChoicesFormInput>
+              <BoolCheck control={control} name="villa_servant_room" label="Servant Room" />
             </Col>
 
             <Col lg={4}>
-              <label className="form-label">Balcony / Sit-out</label>
-              <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                <option>Yes</option>
-                <option>No</option>
-              </ChoicesFormInput>
+              <BoolCheck control={control} name="villa_balcony_or_sitout" label="Balcony / Sit-out" />
             </Col>
 
             <Col lg={4}>
               <label className="form-label">Facing</label>
-              <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                <option>East</option>
-                <option>West</option>
-                <option>North</option>
-                <option>South</option>
-              </ChoicesFormInput>
+              <Controller name="villa_facing" control={control} defaultValue="East" render={({ field }) => (
+                <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
+                  <option value="East">East</option>
+                  <option value="West">West</option>
+                  <option value="North">North</option>
+                  <option value="South">South</option>
+                </select>
+              )} />
             </Col></>}
 
 
@@ -531,33 +654,17 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
              <Col lg={4}><TextFormInput control={control} name="carpet_area" label="Carpet Area (Sq.Ft)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
             <Col lg={4}><TextFormInput control={control} name="builtup_area" label="Built-up Area (Sq.Ft)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
             <Col lg={4}><TextFormInput control={control} name="commercial_super_builtup_area" label="Super Built-up (Optional)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="bathrooms" label="Frontage Width (Feet)"style={{ backgroundColor: '#F9F9FC' }} /></Col>
-            <Col lg={4}><TextFormInput control={control} name="bathrooms" label="Ceiling Height (Feet)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="bathrooms" label="No. of Cabins"style={{ backgroundColor: '#F9F9FC' }} /></Col>
-            <Col lg={4}><TextFormInput control={control} name="bathrooms" label="No. of Washrooms"style={{ backgroundColor: '#F9F9FC' }} /></Col>
-
-            <Col lg={4}>
-              <label className="form-label">Pantry</label>
-              <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                <option>Yes</option>
-                <option>No</option>
-              </ChoicesFormInput>
-            </Col>
-
-            <Col lg={4}>
-              <label className="form-label">Store Room</label>
-              <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                <option>Yes</option>
-                <option>No</option>
-              </ChoicesFormInput>
-            </Col>
+            <Col lg={4}><TextFormInput control={control} name="commercial_frontage_width" label="Frontage Width (Feet)"style={{ backgroundColor: '#F9F9FC' }} /></Col>
+            <Col lg={4}><TextFormInput control={control} name="commercial_ceiling_height" label="Ceiling Height (Feet)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+            <Col lg={4}><TextFormInput control={control} name="commercial_no_of_cabins" label="No. of Cabins"style={{ backgroundColor: '#F9F9FC' }} /></Col>
+            <Col lg={4}><TextFormInput control={control} name="commercial_no_of_washrooms" label="No. of Washrooms"style={{ backgroundColor: '#F9F9FC' }} /></Col>
 
             <Col lg={4}>
               <label className="form-label">Loading Area</label>
-              <Controller name="loading_area" control={control} defaultValue="Yes" render={({ field }) => (
+              <Controller name="loading_area" control={control} defaultValue="Warehouse" render={({ field }) => (
                 <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
+                  <option value="Warehouse">Warehouse</option>
+                  <option value="Godown">Godown</option>
                 </select>
               )} />
             </Col>
@@ -569,20 +676,16 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
               <Col lg={4}><TextFormInput control={control} name="builtup_area" label="Built-up Area (Sq.Ft)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
              <Col lg={4}><TextFormInput control={control} name="carpet_area" label="Carpet Area (Sq.Ft)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
             <Col lg={4}><TextFormInput control={control} name="warehouse_clear_height" label="Clear Height(Feet)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="bathrooms" label="No. of Bays" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="bathrooms" label="No. of Loading docks" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="bathrooms" label="Dock Height (Feet)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="bathrooms" label="Floor Load (MT / Sq.Ft)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="bathrooms" label="Column Spacing (Feet)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+            <Col lg={4}><TextFormInput control={control} name="warehouse_no_of_bays" label="No. of Bays" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+            <Col lg={4}><TextFormInput control={control} name="warehouse_no_of_loading_docks" label="No. of Loading docks" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+            <Col lg={4}><TextFormInput control={control} name="warehouse_dock_height" label="Dock Height (Feet)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+            <Col lg={4}><TextFormInput control={control} name="warehouse_floor_load" label="Floor Load (MT / Sq.Ft)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+            <Col lg={4}><TextFormInput control={control} name="warehouse_column_spacing" label="Column Spacing (Feet)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
     
             <Col lg={4}>
-              <label className="form-label">Mezzanine Floor</label>
-              <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                <option>Yes</option>
-                <option>No</option>
-              </ChoicesFormInput>
+              <BoolCheck control={control} name="warehouse_mezzanine_floor" label="Mezzanine Floor" />
             </Col>
-           <Col lg={4}><TextFormInput control={control} name="bathrooms" label="Office Space Area" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+           <Col lg={4}><TextFormInput control={control} name="warehouse_office_space_area" label="Office Space Area" style={{ backgroundColor: '#F9F9FC' }}/></Col>
             </>}
 
             
@@ -597,13 +700,26 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
             <hr />
             <Row className="g-3">
               {[
-                'Private Garden /  Lawn','Private Parking','Swiming Pool','Terrace / Rooftop Access','Boundry Wall',
-                'Driveway'
-              ].map(item => (
-                <Col lg={3} key={item}>
-                  <Form.Check type="checkbox" label={item} />
+                ['villa_private_garden', 'Private Garden /  Lawn'],
+                ['villa_terrace_access', 'Terrace / Rooftop Access'],
+                ['villa_boundary_wall', 'Boundry Wall'],
+                ['villa_driveway', 'Driveway'],
+              ].map(([name, label]) => (
+                <Col lg={3} key={name}>
+                  <BoolCheck control={control} name={name} label={label} />
                 </Col>
               ))}
+              <Col lg={3}>
+                <label className="form-label">Private Parking</label>
+                <Controller name="villa_private_parking" control={control} defaultValue="" render={({ field }) => (
+                  <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
+                    <option value="">— Select —</option>
+                    <option value="Open">Open</option>
+                    <option value="Covered">Covered</option>
+                    <option value="Both">Both</option>
+                  </select>
+                )} />
+              </Col>
             </Row>
           </CardBody>
         </Card>
@@ -617,43 +733,41 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
             <Row className="g-3">
               <Col lg={4}><TextFormInput control={control} name="commercial_power_load" label="Pwer Load (KW) " style ={{ backgroundColor: '#F9F9FC' }}/></Col>
               <Col lg={4}>
-                <label className="form-label">DG / Power Backup</label>
-                <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                  <option>Yes</option>
-                  <option>No</option>
-                </ChoicesFormInput>
+                <BoolCheck control={control} name="commercial_dg_backup" label="DG / Power Backup" />
               </Col>
 
               <Col lg={4}>
                 <label className="form-label">Lift Type</label>
-                <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                  <option>Passanger</option>
-                  <option>No</option>
-                </ChoicesFormInput>
+                <Controller name="commercial_lift_type" control={control} defaultValue="" render={({ field }) => (
+                  <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
+                    <option value="">— Select —</option>
+                    <option value="Passenger">Passenger</option>
+                    <option value="Goods">Goods</option>
+                    <option value="Both">Both</option>
+                  </select>
+                )} />
               </Col>
-              <Col lg={4}><TextFormInput control={control} name="commercial_fire_safety_compliance" label="Fire Safety Compliance"style={{ backgroundColor: '#F9F9FC' }}/></Col>
               <Col lg={4}>
-                <label className="form-label">Emergency Exit</label>
-                <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                  <option>Yes</option>
-                  <option>No</option>
-                </ChoicesFormInput>
+                <BoolCheck control={control} name="commercial_fire_safety_compliant" label="Fire Safety Compliant" />
+              </Col>
+              <Col lg={4}>
+                <BoolCheck control={control} name="commercial_emergency_exit" label="Emergency Exit" />
               </Col>
 
               <Col lg={4}>
                 <label className="form-label">Parking Availability</label>
-                <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                  <option>Open</option>
-                  <option>Close</option>
-                </ChoicesFormInput>
+                <Controller name="commercial_parking_availability" control={control} defaultValue="" render={({ field }) => (
+                  <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
+                    <option value="">— Select —</option>
+                    <option value="Open">Open</option>
+                    <option value="Covered">Covered</option>
+                    <option value="Both">Both</option>
+                  </select>
+                )} />
               </Col>
 
               <Col lg={4}>
-                <label className="form-label">CCTV / Security</label>
-                <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                  <option>Yes</option>
-                  <option>No</option>
-                </ChoicesFormInput>
+                <BoolCheck control={control} name="commercial_cctv" label="CCTV / Security" />
               </Col>
             </Row>
           </CardBody>
@@ -669,43 +783,31 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
               <Col lg={4}><TextFormInput control={control} name="warehouse_power_supply" label="Power Supply (KW)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
             
               <Col lg={4}>
-                <label className="form-label">Transformer Available </label>
-                <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                  <option>Yes</option>
-                  <option>No</option>
-                </ChoicesFormInput>
+                <BoolCheck control={control} name="warehouse_transformer" label="Transformer Available" />
               </Col>
 
               <Col lg={4}>
-                <label className="form-label">DG Set / Backup</label>
-                <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                  <option>Yes</option>
-                  <option>No</option>
-                </ChoicesFormInput>
+                <BoolCheck control={control} name="warehouse_dg_backup" label="DG Set / Backup" />
               </Col>
 
               <Col lg={4}>
                 <label className="form-label">Water Supply Source</label>
-                <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                  <option>Borewell</option>
-                  <option>No</option>
-                </ChoicesFormInput>
+                <Controller name="warehouse_water_supply_source" control={control} defaultValue="" render={({ field }) => (
+                  <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
+                    <option value="">— Select —</option>
+                    <option value="Borewell">Borewell</option>
+                    <option value="Municipal">Municipal</option>
+                    <option value="Tanker">Tanker</option>
+                  </select>
+                )} />
               </Col>
 
               <Col lg={4}>
-                <label className="form-label">Drainage System</label>
-                <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                  <option>Yes</option>
-                  <option>No</option>
-                </ChoicesFormInput>
+                <BoolCheck control={control} name="warehouse_drainage_system" label="Drainage System" />
               </Col>
 
               <Col lg={4}>
-                <label className="form-label">Internet / Fiber</label>
-                <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                  <option>Yes</option>
-                  <option>No</option>
-                </ChoicesFormInput>
+                <BoolCheck control={control} name="warehouse_internet_fiber" label="Internet / Fiber" />
               </Col>
             </Row>
           </CardBody>
@@ -723,26 +825,29 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
               <Col lg={4}><TextFormInput control={control} name="warehouse_truck_parking_capacity" label="Truck Parking Capacity" style={{ backgroundColor: '#F9F9FC' }}/></Col>
               <Col lg={4}>
                 <label className="form-label">Container Access</label>
-                <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                  <option>20ft</option>
-                  <option>No</option>
-                </ChoicesFormInput>
+                <Controller name="warehouse_container_access" control={control} defaultValue="" render={({ field }) => (
+                  <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
+                    <option value="">— Select —</option>
+                    <option value="20 ft">20 ft</option>
+                    <option value="40 ft">40 ft</option>
+                    <option value="Both">Both</option>
+                  </select>
+                )} />
               </Col>
 
               <Col lg={4}>
                 <label className="form-label">Turning Radius</label>
-                <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                  <option>Adequate</option>
-                  <option>No</option>
-                </ChoicesFormInput>
+                <Controller name="warehouse_turning_radius" control={control} defaultValue="" render={({ field }) => (
+                  <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
+                    <option value="">— Select —</option>
+                    <option value="Adequate">Adequate</option>
+                    <option value="Limited">Limited</option>
+                  </select>
+                )} />
               </Col>
 
               <Col lg={4}>
-                <label className="form-label">Weighbridge Nearby</label>
-                <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-                  <option>Yes</option>
-                  <option>No</option>
-                </ChoicesFormInput>
+                <BoolCheck control={control} name="warehouse_weighbridge_nearby" label="Weighbridge Nearby" />
               </Col>
             </Row>
           </CardBody>
@@ -761,12 +866,10 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
         <Col lg={4}><TextFormInput control={control} name="security_deposit" label="Security Deposit" style={{ backgroundColor: '#F9F9FC' }}/></Col>
         <Col lg={4}><TextFormInput control={control} name="maintenance" label="Maintenance (Monthly)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
         <Col lg={4}>
-          <label className="form-label">Electricity Type</label>
-          <ChoicesFormInput className="form-control"><option>Meter</option></ChoicesFormInput>
+          <ChargeTypeSelect control={control} name="electricity_charge_type" label="Electricity Type" />
         </Col>
         <Col lg={4}>
-          <label className="form-label">Water Type</label>
-          <ChoicesFormInput className="form-control"><option>Meter</option></ChoicesFormInput>
+          <ChargeTypeSelect control={control} name="water_charge_type" label="Water Type" />
         </Col>
         <Col lg={4}><TextFormInput control={control} name="other_charges" label="Other Charges" style={{ backgroundColor: '#F9F9FC' }}/></Col>
         <Col lg={4}>
@@ -792,16 +895,14 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
         <Col lg={4}><TextFormInput control={control} name="security_deposit" label="Security Deposit" style={{ backgroundColor: '#F9F9FC' }}/></Col>
         <Col lg={4}><TextFormInput control={control} name="maintenance" label="Maintenance (Monthly)" style={{ backgroundColor: '#F9F9FC' }}/></Col>
         <Col lg={4}>
-          <label className="form-label">Electricity Charges</label>
-          <ChoicesFormInput className="form-control"><option>Meter</option></ChoicesFormInput>
+          <ChargeTypeSelect control={control} name="electricity_charge_type" label="Electricity Charges" />
         </Col>
         <Col lg={4}>
-          <label className="form-label">Water Charges</label>
-          <ChoicesFormInput className="form-control"><option>Meter</option></ChoicesFormInput>
+          <ChargeTypeSelect control={control} name="water_charge_type" label="Water Charges" />
         </Col>
-        <Col lg={4}><TextFormInput control={control} name="other_charges" label="Gardening Charges" style={{ backgroundColor: '#F9F9FC' }} /></Col>
-        <Col lg={4}><TextFormInput control={control} name="other_charges" label="Other Charges" style={{ backgroundColor: '#F9F9FC' }} /></Col>
-        <Col lg={4}><TextFormInput control={control} name="other_charges" label="Late Fee Rule" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+        <Col lg={4}><TextFormInput control={control} name="villa_gardening_charges" label="Gardening Charges" style={{ backgroundColor: '#F9F9FC' }} /></Col>
+        <Col lg={4}><TextFormInput control={control} name="villa_other_charges" label="Other Charges" style={{ backgroundColor: '#F9F9FC' }} /></Col>
+        <Col lg={4}><TextFormInput control={control} name="villa_late_fee_rule" label="Late Fee Rule" style={{ backgroundColor: '#F9F9FC' }}/></Col>
       </Row>
     </CardBody>
   </Card>
@@ -818,23 +919,17 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
         <Col lg={4}><TextFormInput control={control} name="security_deposit" label="Security Deposit" style={{ backgroundColor: '#F9F9FC' }}/></Col>
         <Col lg={4}><TextFormInput control={control} name="maintenance" label="Maintenance Charges" style={{ backgroundColor: '#F9F9FC' }}/></Col>
         <Col lg={4}>
-          <label className="form-label"style ={{ backgroundColor: '#F9F9FC' }}>GST Applicable</label>
-          <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}>
-            <option>Yes</option>
-            <option>No</option>
-          </ChoicesFormInput>
+          <BoolCheck control={control} name="commercial_gst_applicable" label="GST Applicable" />
         </Col>
-        <Col lg={4}><TextFormInput control={control} name="maintenance" label="GST %" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+        <Col lg={4}><TextFormInput control={control} name="commercial_gst_percentage" label="GST %" style={{ backgroundColor: '#F9F9FC' }}/></Col>
         <Col lg={4}>
-          <label className="form-label"style ={{ backgroundColor: '#F9F9FC' }}>Electricity Charges</label>
-          <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}><option>Meter</option></ChoicesFormInput>
+          <ChargeTypeSelect control={control} name="electricity_charge_type" label="Electricity Charges" />
         </Col>
         <Col lg={4}>
-          <label className="form-label"style ={{ backgroundColor: '#F9F9FC' }}>Water Charges</label>
-          <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}><option>Meter</option></ChoicesFormInput>
+          <ChargeTypeSelect control={control} name="water_charge_type" label="Water Charges" />
         </Col>
-        <Col lg={4}><TextFormInput control={control} name="other_charges" label="Other Charges" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-        <Col lg={4}><TextFormInput control={control} name="other_charges" label="Late Fee Rule" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+        <Col lg={4}><TextFormInput control={control} name="commercial_other_charges" label="Other Charges" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+        <Col lg={4}><TextFormInput control={control} name="commercial_late_fee_rule" label="Late Fee Rule" style={{ backgroundColor: '#F9F9FC' }}/></Col>
       </Row>
     </CardBody>
   </Card>
@@ -850,17 +945,24 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
         <Col lg={4}><TextFormInput control={control} name="security_deposit" label="Security Deposit" style={{ backgroundColor: '#F9F9FC' }}/></Col>
         <Col lg={4}><TextFormInput control={control} name="maintenance" label="Maintenance Charges" style={{ backgroundColor: '#F9F9FC' }}/></Col>
         <Col lg={4}>
-          <label className="form-label"style ={{ backgroundColor: '#F9F9FC' }}>Electricity Charges</label>
-          <ChoicesFormInput className="form-control"><option>Meter</option></ChoicesFormInput>
+          <ChargeTypeSelect control={control} name="electricity_charge_type" label="Electricity Charges" />
         </Col>
         <Col lg={4}>
-          <label className="form-label"style ={{ backgroundColor: '#F9F9FC' }}>Water Charges</label>
-          <ChoicesFormInput className="form-control"style ={{ backgroundColor: '#F9F9FC' }}><option>Meter</option></ChoicesFormInput>
+          <ChargeTypeSelect control={control} name="water_charge_type" label="Water Charges" />
         </Col>
-        <Col lg={4}><TextFormInput control={control} name="other_charges" label="CAM Charges" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-        <Col lg={4}><TextFormInput control={control} name="other_charges" label="Other Charges" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-        <Col lg={4}><TextFormInput control={control} name="other_charges" label="Rent Escalation %/Year" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-        <Col lg={4}><TextFormInput control={control} name="other_charges" label="Lock-in Period" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+        <Col lg={4}>
+          <label className="form-label"style ={{ backgroundColor: '#F9F9FC' }}>Monthly Rent Type</label>
+          <Controller name="warehouse_monthly_rent_type" control={control} defaultValue="Lump Sum" render={({ field }) => (
+            <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
+              <option value="Per Sq. Ft.">Per Sq. Ft.</option>
+              <option value="Lump Sum">Lump Sum</option>
+            </select>
+          )} />
+        </Col>
+        <Col lg={4}><TextFormInput control={control} name="warehouse_cam_charges" label="CAM Charges" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+        <Col lg={4}><TextFormInput control={control} name="warehouse_other_charges" label="Other Charges" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+        <Col lg={4}><TextFormInput control={control} name="warehouse_rent_escalation" label="Rent Escalation %/Year" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+        <Col lg={4}><TextFormInput control={control} name="warehouse_lock_in_period" label="Lock-in Period" style={{ backgroundColor: '#F9F9FC' }}/></Col>
       </Row>
     </CardBody>
   </Card>
@@ -870,16 +972,15 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
         <CardBody>
           <h4 className="fw-semibold">Tenant & Usage Preference</h4>
           <hr />
-          <label className="form-label">Landlord Name</label>
-          <ChoicesFormInput className="form-control mb-3"style ={{ backgroundColor: '#F9F9FC' }}>
-            <option>Select From Master</option>
-          </ChoicesFormInput>
+          <div className="mb-3">
+            <LandlordSelect control={control} landlords={landlords} />
+          </div>
 
           <label className="form-label"style ={{ backgroundColor: '#F9F9FC' }}>Allowed Industry Type</label>
           <Row className="g-3">
             {['FMCG','Pharma','Ecommerce','Manufacturing','Logistics'].map(t => (
               <Col lg={3} key={t}>
-                <Form.Check label={t} />
+                <BoolCheck control={control} name={`industry_type_${t}`} label={t} />
               </Col>
             ))}
           </Row>
@@ -897,7 +998,9 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
               <Controller name="status" control={control} defaultValue="Vacant" render={({ field }) => (
                 <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
                   <option value="Vacant">Vacant</option>
+                  <option value="Booked">Booked</option>
                   <option value="Occupied">Occupied</option>
+                  <option value="Under Maintenance">Under Maintenance</option>
                 </select>
               )} />
             </Col>
@@ -915,19 +1018,19 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
             <hr />
             <Row className="g-3">
               {[
-                '24x7 Water Supply',
-                'Power Backup',
-                'Security / Guard',
-                'CCTV',
-                'Clubhouse Access',
-                'Gym',
-                'Children’s Play Area',
-                'Internal Roads',
-                'Street Lights',
-                'Gated Community'
-              ].map(item => (
-                <Col lg={3} key={item}>
-                  <Form.Check type="checkbox" label={item} />
+                ['villa_water_supply_24x7', '24x7 Water Supply'],
+                ['villa_power_backup', 'Power Backup'],
+                ['villa_security_guard', 'Security / Guard'],
+                ['villa_cctv', 'CCTV'],
+                ['villa_clubhouse_access', 'Clubhouse Access'],
+                ['villa_gym', 'Gym'],
+                ['villa_childrens_play_area', 'Children’s Play Area'],
+                ['villa_internal_roads', 'Internal Roads'],
+                ['villa_street_lights', 'Street Lights'],
+                ['villa_gated_community', 'Gated Community'],
+              ].map(([name, label]) => (
+                <Col lg={3} key={name}>
+                  <BoolCheck control={control} name={name} label={label} />
                 </Col>
               ))}
             </Row>
@@ -951,7 +1054,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
           <Row className="g-3">
             {['Bachelor','Family','Company Staff','Labour'].map(t => (
               <Col lg={3} key={t}>
-                <Form.Check label={t} />
+                <BoolCheck control={control} name={`tenant_type_${t}`} label={t} />
               </Col>
             ))}
           </Row>
@@ -964,7 +1067,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
             <h4 className="fw-semibold">Business & Tenant Preference</h4>
             <hr />
             <Row className="g-3">
-              <Col lg={4}><TextFormInput control={control} name="commercial_landlord_name" label="Landlord Name"style={{ backgroundColor: '#F9F9FC' }} /></Col>
+              <Col lg={4}><LandlordSelect control={control} landlords={landlords} /></Col>
               <Col lg={4}><TextFormInput control={control} name="commercial_allowed_business_type" label="Allowed Business Type" style={{ backgroundColor: '#F9F9FC' }}/></Col>
               <Col lg={4}><TextFormInput control={control} name="commercial_prohibited_business" label="Prohibited Business" style={{ backgroundColor: '#F9F9FC' }}/></Col>
               <Col lg={4}>
@@ -993,7 +1096,9 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
               <Controller name="status" control={control} defaultValue="Vacant" render={({ field }) => (
                 <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
                   <option value="Vacant">Vacant</option>
+                  <option value="Booked">Booked</option>
                   <option value="Occupied">Occupied</option>
+                  <option value="Under Maintenance">Under Maintenance</option>
                 </select>
               )} />
             </Col>
@@ -1008,12 +1113,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
           <hr />
            <Row>
           <Col lg={4} md={6}>
-
-          <label className="form-label"style ={{ backgroundColor: '#F9F9FC' }}>Landlord Name</label>
-          <ChoicesFormInput className="form-control mb-2"style ={{ backgroundColor: '#F9F9FC' }}>
-            <option>Landlord Master</option>
-          
-          </ChoicesFormInput>
+            <LandlordSelect control={control} landlords={landlords} />
          </Col></Row>
           
         </CardBody>
@@ -1029,7 +1129,9 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
               <Controller name="status" control={control} defaultValue="Vacant" render={({ field }) => (
                 <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
                   <option value="Vacant">Vacant</option>
+                  <option value="Booked">Booked</option>
                   <option value="Occupied">Occupied</option>
+                  <option value="Under Maintenance">Under Maintenance</option>
                 </select>
               )} />
             </Col>
@@ -1045,17 +1147,18 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
           <hr />
           <Row className="g-3">
             {[
-              'Parking','Lift','Power Backup','Security','CCTV',
-              'Gas Pipeline','Water Supply','Intercom','Fire Safety'
-            ].map(item => (
-              <Col lg={3} key={item}>
-                {item === 'Parking' ? (
-                  <Controller name="amenity_Parking" control={control} defaultValue={false} render={({ field: { value, onChange, ...field } }) => (
-                    <Form.Check type="checkbox" label={item} checked={!!value} onChange={(e) => onChange(e.target.checked)} {...field} />
-                  )} />
-                ) : (
-                  <Form.Check type="checkbox" label={item} />
-                )}
+              ['amenity_Parking', 'Parking'],
+              ['amenity_Lift', 'Lift'],
+              ['amenity_PowerBackup', 'Power Backup'],
+              ['amenity_Security', 'Security'],
+              ['amenity_CCTV', 'CCTV'],
+              ['amenity_GasPipeline', 'Gas Pipeline'],
+              ['amenity_WaterSupply', 'Water Supply'],
+              ['amenity_Intercom', 'Intercom'],
+              ['amenity_FireSafety', 'Fire Safety'],
+            ].map(([name, label]) => (
+              <Col lg={3} key={name}>
+                <BoolCheck control={control} name={name} label={label} />
               </Col>
             ))}
           </Row>
@@ -1094,11 +1197,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
         <Row className="gx-4 gy-3">
           {['Bachelor', 'Family', 'Company Staff', 'Labour'].map(t => (
             <Col lg={3} md={6} key={t}>
-              <Form.Check
-                type="checkbox"
-                label={t}
-                className="fw-medium"
-              />
+              <BoolCheck control={control} name={`tenant_type_${t}`} label={t} />
             </Col>
           ))}
         </Row>
@@ -1122,7 +1221,9 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
               <Controller name="status" control={control} defaultValue="Vacant" render={({ field }) => (
                 <select className="form-control" style={{ backgroundColor: fieldBg }} {...field}>
                   <option value="Vacant">Vacant</option>
+                  <option value="Booked">Booked</option>
                   <option value="Occupied">Occupied</option>
+                  <option value="Under Maintenance">Under Maintenance</option>
                 </select>
               )} />
             </Col>
@@ -1213,19 +1314,6 @@ style ={{ backgroundColor: '#F9F9FC' }}
           <h4 className="fw-semibold">Internal Tracking</h4>
           <hr />
           <TextAreaFormInput control={control} name="internal_notes" label="Internal Notes" containerClassName="my-4" style={{ backgroundColor: '#F9F9FC' }}/>
-          <TextFormInput control={control} name="created_by" label="Created By" containerClassName="my-4" style={{ backgroundColor: '#F9F9FC' }} />
-        </CardBody>
-      </Card>
-
-      <Card className="mb-4">
-        <CardBody>
-          <h4 className="fw-semibold">System Fields (Auto)</h4>
-          <hr />
-          <Row className="g-3">
-            <Col lg={4}><TextFormInput control={control} name="created_time" label="Created Time" placeholder="Time Stamp" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="updated_by" label="Last Updated By" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-            <Col lg={4}><TextFormInput control={control} name="updated_time" label="Last Updated Time" style={{ backgroundColor: '#F9F9FC' }}/></Col>
-          </Row>
         </CardBody>
       </Card>
 

@@ -1,4 +1,5 @@
 import { Col, Row } from 'react-bootstrap';
+import Spinner from '@/components/Spinner';
 import { usePropertyDashboardController } from '../../controllers/usePropertyDashboardController';
 import OccupancyOverview from '../../property-dashboard/agent/Components/OccupancyOverview';
 import Overview from '../../property-dashboard/agent/Components/Overview';
@@ -9,7 +10,35 @@ import TopProperties from '../../property-dashboard/agent/Components/TopProperti
 import TotalPropertiesListed from '../../property-dashboard/agent/Components/TotalPropertiesListed';
 
 const PropertyDashboardView = () => {
-  usePropertyDashboardController();
+  const {
+    loading,
+    error,
+    statData,
+    occupancyStatusData,
+    typeBreakdown,
+    cityBreakdown,
+    topProperty,
+    occupiedCount,
+    occupiedPercent,
+    totalProperties,
+    recentProperties,
+  } = usePropertyDashboardController();
+
+  if (loading) {
+    return (
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: 300 }}>
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="d-flex align-items-center justify-content-center" style={{ minHeight: 300, color: '#e05252' }}>
+        Failed to load Property Dashboard: {error}
+      </div>
+    );
+  }
 
   return (
     <div className="property-dashboard-page">
@@ -23,31 +52,31 @@ const PropertyDashboardView = () => {
       <h4 className="mb-3 fw-semibold" style={{ color: '#516986', fontSize: '17px' }}>Property Dashboard</h4>
 
       <Row className="g-3 mb-3">
-        <PropertyStats />
+        <PropertyStats statData={statData} />
       </Row>
 
       <Row className="g-3 mb-3">
         <Col xl={9}>
           <Row className="g-3">
-            <OccupancyOverview />
-            <TotalPropertiesListed />
+            <OccupancyOverview occupancyStatusData={occupancyStatusData} />
+            <TotalPropertiesListed typeBreakdown={typeBreakdown} totalProperties={totalProperties} />
           </Row>
         </Col>
         <Col xl={3}>
-          <TopProperties />
+          <TopProperties topProperty={topProperty} />
         </Col>
       </Row>
 
       <Row className="g-3">
         <Col xl={9}>
           <Row className="g-3">
-            <Overview />
-            <Properties />
+            <Overview occupiedCount={occupiedCount} occupiedPercent={occupiedPercent} totalProperties={totalProperties} />
+            <Properties cityBreakdown={cityBreakdown} totalProperties={totalProperties} />
           </Row>
         </Col>
 
         <Col xl={3}>
-          <RecentProperties />
+          <RecentProperties recentProperties={recentProperties} totalProperties={totalProperties} />
         </Col>
       </Row>
     </div>

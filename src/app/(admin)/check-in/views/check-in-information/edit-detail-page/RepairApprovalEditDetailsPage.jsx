@@ -6,6 +6,7 @@ import { Link, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import Spinner from "@/components/Spinner";
 import useCheckIn from "@/hooks/useCheckIn";
+import checkInApi from "@/helpers/checkInApi";
 
 const FIELD_PATHS = {
   repair_required:         [],   // flat: repairRequired
@@ -16,9 +17,21 @@ const FIELD_PATHS = {
   gm_approval:             [],   // flat: gmApproval
   landlord_consent:        [],   // flat: landlordConsent
   finance_alert_generated: [],   // flat: financeAlertGenerated
+  recommended_by_id:       [],   // flat: recommendedById
+  approved_by_id:          [],   // flat: approvedById
   approved_on:             [],   // flat: approvedOn
   inspector_comments:      [],   // flat: inspectorComments
 };
+
+// Only these fields are ever sent to the repair_approval PATCH — keeps the
+// dynamic per-issue management inputs (added below) from leaking into it.
+const REPAIR_APPROVAL_FIELDS = Object.keys(FIELD_PATHS);
+
+const INSPECTION_ITEM_UPDATE_ENDPOINT = "/checkin-checkout/check_in/inspection_item/update/";
+
+// Confirmed against the live API schema (RepairStatusEnum / ItemApprovalStatusEnum)
+const ISSUE_STATUS_OPTIONS = ['Required', 'Pending', 'Repaired'];
+const ISSUE_APPROVAL_STATUS_OPTIONS = ['Pending', 'Approved'];
 
 const getValue = (item, name) => {
   const path = FIELD_PATHS[name];
@@ -146,6 +159,8 @@ const RepairApprovalEditDetailsPage = ({ mode = "check-in" }) => {
 
   const gv = (name) => getValue(item, name);
 
+  const issueList = item?.repairApproval?.issueList ?? [];
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formRef.current) return;
@@ -153,15 +168,40 @@ const RepairApprovalEditDetailsPage = ({ mode = "check-in" }) => {
       alert('Cannot submit: no check-in id in the URL.');
       return;
     }
-    const formData = new FormData(formRef.current);
+    const form = formRef.current;
+    const formData = new FormData(form);
     const body = {};
     for (const [k, v] of formData.entries()) {
+      if (!REPAIR_APPROVAL_FIELDS.includes(k)) continue;
       if (v === '') continue;
       body[k] = v;
     }
+
+    const issueUpdates = [];
+    for (const issue of issueList) {
+      const issueId = issue.issueId ?? issue.id;
+      if (issueId == null) continue;
+      const status = form.querySelector(`[name="issue_${issueId}_status"]`)?.value;
+      const approvalStatus = form.querySelector(`[name="issue_${issueId}_approval_status"]`)?.value;
+      const assignedTo = form.querySelector(`[name="issue_${issueId}_assigned_to"]`)?.value;
+      const targetDate = form.querySelector(`[name="issue_${issueId}_target_date"]`)?.value;
+
+      const payload = { check_in_inspection_item_id: issueId };
+      let hasChange = false;
+      if (status) { payload.repair_status = status; hasChange = true; }
+      if (approvalStatus) { payload.item_approval_status = approvalStatus; hasChange = true; }
+      if (assignedTo) { payload.assigned_to_id = Number(assignedTo); hasChange = true; }
+      if (targetDate) { payload.target_date = targetDate; hasChange = true; }
+      if (hasChange) issueUpdates.push(payload);
+    }
+
     try {
       setSubmitting(true);
-      await updateSections(id, { repair_approval: body });
+      const requests = [
+        updateSections(id, { repair_approval: body }),
+        ...issueUpdates.map((payload) => checkInApi.patch(INSPECTION_ITEM_UPDATE_ENDPOINT, payload)),
+      ];
+      await Promise.all(requests);
       await fetchItem();
       setSubmitting(false);
       toast.success('Repair & approval details updated successfully');
@@ -269,8 +309,8 @@ const RepairApprovalEditDetailsPage = ({ mode = "check-in" }) => {
 
                 <div style={{ padding: "34px 36px" }}>
 
-                  {/* Section A — Repair Details */}
-                  <h5 id="repair-details" style={sectionTitleStyle}>A. Repair Details</h5>
+                  {/* Section A — Repair & Approval */}
+                  <h5 id="repair-details" style={sectionTitleStyle}>A. Repair &amp; Approval</h5>
                   <Row className="g-4 mb-5">
                     <Col md={4}>
                       <SelectField
@@ -297,26 +337,6 @@ const RepairApprovalEditDetailsPage = ({ mode = "check-in" }) => {
                     </Col>
                     <Col md={4}>
                       <SelectField
-                        label="Priority"
-                        name="repair_priority"
-                        defaultValue={gv('repair_priority')}
-                        options={['Low', 'Medium', 'High']}
-                      />
-                    </Col>
-                    <Col md={4}>
-                      <AmountField
-                        label="Rent Adjustment Amount"
-                        name="rent_adjustment_amount"
-                        defaultValue={gv('rent_adjustment_amount')}
-                      />
-                    </Col>
-                  </Row>
-
-                  {/* Section B — Approval */}
-                  <h5 id="approval" style={sectionTitleStyle}>B. Approval</h5>
-                  <Row className="g-4 mb-5">
-                    <Col md={4}>
-                      <SelectField
                         label="GM Approval"
                         name="gm_approval"
                         defaultValue={gv('gm_approval')}
@@ -340,6 +360,37 @@ const RepairApprovalEditDetailsPage = ({ mode = "check-in" }) => {
                       />
                     </Col>
                     <Col md={4}>
+                      <AmountField
+                        label="Rent Adjustment Amount"
+                        name="rent_adjustment_amount"
+                        defaultValue={gv('rent_adjustment_amount')}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <SelectField
+                        label="Priority"
+                        name="repair_priority"
+                        defaultValue={gv('repair_priority')}
+                        options={['Low', 'Medium', 'High']}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Field
+                        label="Recommended By (Employee ID)"
+                        name="recommended_by_id"
+                        type="number"
+                        defaultValue={gv('recommended_by_id')}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Field
+                        label="Approved By (Employee ID)"
+                        name="approved_by_id"
+                        type="number"
+                        defaultValue={gv('approved_by_id')}
+                      />
+                    </Col>
+                    <Col md={4}>
                       <Field
                         label="Approved On"
                         name="approved_on"
@@ -349,12 +400,67 @@ const RepairApprovalEditDetailsPage = ({ mode = "check-in" }) => {
                     </Col>
                   </Row>
 
+                  {/* Section B — Manage Issues */}
+                  <h5 id="manage-issues" style={sectionTitleStyle}>B. Manage Issues</h5>
+                  {issueList.length === 0 ? (
+                    <p style={{ color: '#526b89', fontSize: 15, marginBottom: 28 }}>
+                      No issues recorded yet. Add inspection items with an "Issue" status from the Inspection tab first.
+                    </p>
+                  ) : (
+                    issueList.map((issue) => {
+                      const issueId = issue.issueId ?? issue.id;
+                      return (
+                        <div
+                          key={issueId}
+                          className="mb-4"
+                          style={{ background: '#fbfcfd', border: '1px solid #e7e9ef', borderRadius: 8, padding: 20 }}
+                        >
+                          <h6 className="mb-3" style={{ color: '#526b89', fontSize: 15, fontWeight: 700 }}>
+                            Issue #{issueId} — {issue.category ?? '—'}: {issue.issueDescription ?? '—'}
+                          </h6>
+                          <Row className="g-4">
+                            <Col md={3}>
+                              <SelectField
+                                label="Status"
+                                name={`issue_${issueId}_status`}
+                                defaultValue={ISSUE_STATUS_OPTIONS.includes(issue.status) ? issue.status : ''}
+                                options={ISSUE_STATUS_OPTIONS}
+                              />
+                            </Col>
+                            <Col md={3}>
+                              <SelectField
+                                label="Approval Status"
+                                name={`issue_${issueId}_approval_status`}
+                                options={ISSUE_APPROVAL_STATUS_OPTIONS}
+                              />
+                            </Col>
+                            <Col md={3}>
+                              <Field
+                                label="Assigned To (Employee ID)"
+                                name={`issue_${issueId}_assigned_to`}
+                                type="number"
+                              />
+                            </Col>
+                            <Col md={3}>
+                              <Field
+                                label="Target Date"
+                                name={`issue_${issueId}_target_date`}
+                                type="date"
+                                defaultValue={toDateString(issue.targetDate)}
+                              />
+                            </Col>
+                          </Row>
+                        </div>
+                      );
+                    })
+                  )}
+
                   {/* Section C — Notes */}
                   <h5 id="notes" style={sectionTitleStyle}>C. Notes</h5>
                   <Row className="g-4 mb-5">
                     <Col md={12}>
                       <TextArea
-                        label="Inspector Comments"
+                        label="Notes"
                         name="inspector_comments"
                         defaultValue={gv('inspector_comments')}
                       />
@@ -368,10 +474,13 @@ const RepairApprovalEditDetailsPage = ({ mode = "check-in" }) => {
                       <Field label="Created By" defaultValue={item?.createdBy?.name ?? item?.createdBy ?? ''} readOnly />
                     </Col>
                     <Col md={4}>
-                      <Field label="Created On" defaultValue={toDateString(item?.createdAt)} readOnly />
+                      <Field label="Updated By" defaultValue={item?.updatedBy?.name ?? item?.updatedById ?? ''} readOnly />
                     </Col>
                     <Col md={4}>
-                      <Field label="Last Updated" defaultValue={toDateString(item?.updatedAt)} readOnly />
+                      <Field label="Created Date" defaultValue={toDateString(item?.createdAt)} readOnly />
+                    </Col>
+                    <Col md={4}>
+                      <Field label="Updated Date" defaultValue={toDateString(item?.updatedAt)} readOnly />
                     </Col>
                   </Row>
 

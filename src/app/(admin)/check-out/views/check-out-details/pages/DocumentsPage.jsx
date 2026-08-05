@@ -1,6 +1,7 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { Button } from 'react-bootstrap';
 import { fmtDate, val } from '@/utils/checkInFormat';
+import { resolvePhotoSrc } from '@/utils/imageStorage';
 
 const pageText = '#526b89';
 const bodyText  = '#303746';
@@ -99,7 +100,7 @@ const DocumentsPage = ({ record }) => {
           {/* All Documents table */}
           <div className="mb-4" style={cardStyle}>
             <div className="d-flex align-items-center justify-content-between">
-              <h5 style={titleStyle}>All Documents ({summary.totalDocuments ?? allDocs.length})</h5>
+              <h5 style={titleStyle}>All Documents ({allDocs.length})</h5>
               <input placeholder="Search" style={{ border: 0, borderRadius: 4, boxShadow: '0 8px 18px rgba(15,23,42,0.06)', color: pageText, height: 39, marginRight: 14, outline: 0, padding: '0 15px', width: 325 }} />
             </div>
             <div style={{ padding: '14px 18px 16px' }}>
@@ -127,10 +128,10 @@ const DocumentsPage = ({ record }) => {
                       <td style={{ color: pageText, fontSize: 15, padding: '14px 26px' }}>{doc.uploadedBy ?? '—'}</td>
                       <td style={{ color: pageText, fontSize: 15, padding: '14px 26px' }}>{fmtDate(doc.uploadedOn) || '—'}</td>
                       <td style={{ padding: '14px 26px', whiteSpace: 'nowrap' }}>
-                        <Button variant="link" as="a" href={doc.file ?? '#'} target="_blank" className="p-0 me-2" style={actionButtonStyle}>
+                        <Button variant="link" as="a" href={resolvePhotoSrc(doc.file) || '#'} target="_blank" className="p-0 me-2" style={actionButtonStyle}>
                           <IconifyIcon icon="solar:eye-broken" width={16} height={16} />
                         </Button>
-                        <Button variant="link" as="a" href={doc.file ?? '#'} download className="p-0" style={actionButtonStyle}>
+                        <Button variant="link" as="a" href={resolvePhotoSrc(doc.file) || '#'} download className="p-0" style={actionButtonStyle}>
                           <IconifyIcon icon="ri:download-line" width={16} height={16} />
                         </Button>
                       </td>
@@ -183,6 +184,29 @@ const DocumentsPage = ({ record }) => {
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Missing Documents */}
+          <div className="mt-4" style={cardStyle}>
+            <div className="d-flex align-items-center justify-content-between" style={{ background: '#fbfcfd' }}>
+              <h5 style={titleStyle}>Missing Documents</h5>
+            </div>
+            <div style={{ padding: '22px 42px 18px' }}>
+              {missing.length === 0 ? (
+                <p style={{ color: pageText, fontSize: 15 }}>No documents missing.</p>
+              ) : missing.map((item, i) => (
+                <div key={i} className="d-flex align-items-center justify-content-between gap-3 mb-4">
+                  <div className="d-flex align-items-center gap-4">
+                    <span className="d-inline-flex align-items-center justify-content-center"
+                      style={{ background: '#e35d5d', borderRadius: '50%', color: '#fff', fontWeight: 800, height: 22, width: 22 }}>
+                      !
+                    </span>
+                    <p className="mb-0" style={{ color: pageText, fontSize: 15 }}>{val(item.documentType)}</p>
+                  </div>
+                  <span style={{ color: pageText, fontSize: 15 }}>{val(item.tenant)}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>

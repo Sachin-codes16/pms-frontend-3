@@ -23,9 +23,8 @@ const FIELD_PATHS = {
   emergency_contact_number: ["tenantDetails", "contactDetails", "emergencyContactNumber"],
   profession:               ["tenantDetails", "professionalDetails", "profession"],
   company_name:             ["tenantDetails", "professionalDetails", "companyName"],
-  // flat fallbacks
+  // flat fallback
   tenant_code:              [],
-  alternate_mobile_number:  [],
 };
 
 const getValue = (item, name) => {
@@ -85,7 +84,7 @@ const TextArea = ({ label, name, defaultValue }) => (
   </div>
 );
 
-const TenantDetailsEditDetailsPage = ({ mode = "check-out" }) => {
+const TenantDetailsEditDetailsPage = () => {
   const location   = useLocation();
   const params = new URLSearchParams(location.search);
   const id     = params.get("id");
@@ -218,7 +217,7 @@ const TenantDetailsEditDetailsPage = ({ mode = "check-out" }) => {
                     </Col>
                     <Col md={4}>
                       <SelectField label="Marital Status" name="marital_status" defaultValue={gv("marital_status")}
-                        options={["Single", "Married"]} />
+                        options={["Single", "Married", "Divorced", "Widowed"]} />
                     </Col>
                     <Col md={4}>
                       <SelectField label="Nationality" name="tenant_nationality" defaultValue={gv("tenant_nationality")}
@@ -237,7 +236,6 @@ const TenantDetailsEditDetailsPage = ({ mode = "check-out" }) => {
                   <h5 style={sectionTitleStyle}>C. Contact Details</h5>
                   <Row className="g-4 mb-5">
                     <Col md={4}><Field label="Mobile Number" name="tenant_mobile_number" defaultValue={gv("tenant_mobile_number")} /></Col>
-                    <Col md={4}><Field label="Alternate Mobile" name="alternate_mobile_number" defaultValue={gv("alternate_mobile_number")} /></Col>
                     <Col md={4}><Field label="Email" name="tenant_email" type="email" defaultValue={gv("tenant_email")} /></Col>
                     <Col md={4}><Field label="Emergency Contact Name" name="emergency_contact_name" defaultValue={gv("emergency_contact_name")} /></Col>
                     <Col md={4}><Field label="Emergency Contact Number" name="emergency_contact_number" defaultValue={gv("emergency_contact_number")} /></Col>

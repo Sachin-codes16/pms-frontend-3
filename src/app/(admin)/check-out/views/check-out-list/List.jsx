@@ -16,7 +16,7 @@ const getRecordsFromResponse = (data) => data?.data?.data ?? [];
 const mapRow = (item, idx) => ({
   id:               item.checkOutId,
   srNo:             idx + 1,
-  tenantId:         item.tenantCode ?? item.tenantId ?? "",
+  tenantId:         item.tenantId ?? "",
   tenantName:       item.tenantName || "",
   property:         item.buildingName || "",
   unitNo:           item.flatUnitNumber || "",

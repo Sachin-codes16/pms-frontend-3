@@ -1,180 +1,29 @@
 ﻿import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import api from "@/helpers/api";
-import { propertyData } from "@/assets/data/other";
-import { useEffect, useState } from "react";
+import { resolvePhotoSrc } from "@/utils/imageStorage";
+import { useState } from "react";
 import { Card, CardBody, CardFooter, Col, Row } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 
-const propertyStatuses = [
-  "Rented",
-  "Vacant",
-  "Rented",
-  "Rented",
-  "Vacant",
-  "Rented",
-];
+const DEFAULT_ICON = "solar:home-2-broken";
 
-const getFirstValue = (item, keys, fallback = "") => {
-  for (const key of keys) {
-    if (
-      item?.[key] !== undefined &&
-      item?.[key] !== null &&
-      item?.[key] !== ""
-    ) {
-      return item[key];
-    }
-  }
-
-  return fallback;
-};
-
-const getPropertiesFromResponse = (responseData) => {
-  if (Array.isArray(responseData)) return responseData;
-  if (Array.isArray(responseData?.data)) return responseData.data;
-  if (Array.isArray(responseData?.data?.data)) return responseData.data.data;
-  if (Array.isArray(responseData?.results)) return responseData.results;
-  if (Array.isArray(responseData?.properties)) return responseData.properties;
-  if (Array.isArray(responseData?.property)) return responseData.property;
-
-  return [];
-};
-
-const getPropertyImage = (item, fallbackImage) => {
-  const image = getFirstValue(
-    item,
-    [
-      "image",
-      "photo",
-      "property_image",
-      "propertyImage",
-      "thumbnail",
-      "cover_image",
-    ],
-    "",
-  );
-
-  if (
-    !image ||
-    ["string", "n/a", "na", "null", "undefined"].includes(
-      String(image).trim().toLowerCase(),
-    )
-  ) {
-    return fallbackImage;
-  }
-
-  if (typeof image === "string" && image.startsWith("/")) {
-    return `https://essdemo.alwijha.net${image}`;
-  }
-
-  if (typeof image === "string" && !image.startsWith("http")) {
-    return `https://essdemo.alwijha.net/${image.replace(/^\/+/, "")}`;
-  }
-
-  return image;
-};
-
-const getApiErrorMessage = (err) => {
-  const data = err?.response?.data;
-  const status = err?.response?.status;
-
-  if (status === 401) {
-    return "Session expired. Please sign in again.";
-  }
-
-  if (typeof data === "string") {
-    if (data.includes("AnonymousUser")) {
-      return "Authentication token missing or invalid. Please set a valid token in localStorage.";
-    }
-
-    if (data.toLowerCase().includes("token has expired")) {
-      return "Session expired. Please sign in again.";
-    }
-
-    if (data.includes("<!DOCTYPE html>")) {
-      return "Server error while loading properties. Please check the API response in Network tab.";
-    }
-
-    return data;
-  }
-
-  const message = data?.message || data?.detail || data?.error;
-  if (
-    typeof message === "string" &&
-    message.toLowerCase().includes("token has expired")
-  ) {
-    return "Session expired. Please sign in again.";
-  }
-
-  if (typeof message === "string") {
-    return message;
-  }
-
-  return err?.message || "Unable to load properties.";
-};
-
-const mapProperty = (item, idx) => {
-  const fallbackProperty = propertyData[idx % propertyData.length];
+const mapProperty = (item) => {
+  const details = item?.propertyDetails ?? {};
+  const villa = item?.villaData ?? {};
+  const flat = item?.flatData ?? {};
 
   return {
-    id: getFirstValue(
-      item,
-      ["id", "property_id", "propertyId"],
-      fallbackProperty.id,
-    ),
-    name: getFirstValue(
-      item,
-      ["name", "title", "property_name", "propertyName", "buildingDetails"],
-      fallbackProperty.name,
-    ),
-    location: getFirstValue(
-      item,
-      ["location", "address", "property_location", "propertyLocation", "block"],
-      fallbackProperty.location,
-    ),
-    image: getPropertyImage(item, fallbackProperty.image),
-    icon: getFirstValue(item, ["icon"], fallbackProperty.icon),
-    beds: getFirstValue(
-      item,
-      ["beds", "bedrooms", "bedroom", "no_of_bedrooms"],
-      fallbackProperty.beds,
-    ),
-    bath: getFirstValue(
-      item,
-      ["bath", "baths", "bathrooms", "bathroom", "no_of_bathrooms"],
-      fallbackProperty.bath,
-    ),
-    size: getFirstValue(
-      item,
-      [
-        "size",
-        "area",
-        "property_size",
-        "square_feet",
-        "sqft",
-        "dimensionAreaSqft",
-      ],
-      fallbackProperty.size,
-    ),
-    flor: getFirstValue(
-      item,
-      ["flor", "floor", "floors", "no_of_floors"],
-      fallbackProperty.flor,
-    ),
-    price: getFirstValue(
-      item,
-      ["price", "rent", "amount", "monthly_rent", "expectedRent"],
-      fallbackProperty.price,
-    ),
-    type: getFirstValue(
-      item,
-      ["type", "property_for", "listing_type", "rentalType", "rentalFor"],
-      fallbackProperty.type,
-    ),
-    status: getFirstValue(
-      item,
-      ["status", "property_status"],
-      propertyStatuses[idx % propertyStatuses.length],
-    ),
+    id: item?.propertyId,
+    name: item?.buildingDetails || details.buildingName || `Property #${item?.propertyId}`,
+    location: [details.city, details.country].filter(Boolean).join(", ") || item?.block || "—",
+    image: resolvePhotoSrc(item?.photos?.[0]) || "",
+    icon: DEFAULT_ICON,
+    beds: villa.numberOfBedrooms ?? "—",
+    bath: villa.numberOfBathrooms ?? flat.noOfBathrooms ?? "—",
+    size: item?.dimensionAreaSqft ?? "—",
+    flor: item?.floor || "—",
+    price: details.monthlyRent ?? item?.expectedRent ?? "—",
+    type: item?.rentalType || item?.rentalFor || "—",
+    status: details.currentStatus || "—",
   };
 };
 
@@ -187,13 +36,18 @@ const PropertiesCard = ({
   location,
   name,
   price,
-  type,
   image,
   status,
   id,
 }) => {
   const navigate = useNavigate();
-  const isVacant = status === "Vacant";
+  const [imgError, setImgError] = useState(false);
+  const statusBadge = {
+    Occupied: "bg-success",
+    Vacant: "bg-danger",
+    Booked: "bg-warning",
+    "Under Maintenance": "bg-secondary",
+  }[status] ?? "bg-secondary";
   const openDetails = () => {
     navigate(`/landlord/detailspage?property_id=${id}`, {
       state: {
@@ -211,18 +65,25 @@ const PropertiesCard = ({
           onClick={openDetails}
           aria-label={`Open ${name} details`}
         >
-          <img
-            src={image}
-            alt="properties"
-            className="img-fluid rounded-top w-100"
-            style={{ cursor: "pointer" }}
-          />
+          {image && !imgError ? (
+            <img
+              src={image}
+              alt="properties"
+              className="img-fluid rounded-top w-100"
+              style={{ cursor: "pointer", height: 180, objectFit: "cover" }}
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div
+              className="d-flex align-items-center justify-content-center rounded-top w-100"
+              style={{ cursor: "pointer", height: 180, background: "#e9ecef" }}
+            >
+              <IconifyIcon icon="solar:home-2-bold-duotone" width={48} height={48} className="text-muted" />
+            </div>
+          )}
         </button>
-        <span className="position-absolute top-0 start-0 p-1"></span>
         <span className="position-absolute top-0 end-0 p-1">
-          <span
-            className={`badge text-white fs-13 ${isVacant ? "bg-danger" : "bg-success"}`}
-          >
+          <span className={`badge text-white fs-13 ${statusBadge}`}>
             {status}
           </span>
         </span>
@@ -298,17 +159,9 @@ const PropertiesCard = ({
             </span>
           </Col>
         </Row>
-        <br></br>
-        <p>Landlord : Ali Shaikh | Tenant Assigned : Zara Hamilton</p>
       </CardBody>
       <CardFooter className="bg-light-subtle d-flex justify-content-between align-items-center border-top">
-        {type == "" ? (
-          <p className="fw-medium text-muted text-decoration-line-through fs-16 mb-0">
-            {}.00{" "}
-          </p>
-        ) : (
-          <p className="fw-medium text-dark fs-16 mb-0">OMR {price}.00 </p>
-        )}
+        <p className="fw-medium text-dark fs-16 mb-0">{price === '—' ? '—' : `OMR ${price}.00`}</p>
         <div>
           <Link to="" className="link-primary fw-medium">
             More Inquiry{" "}
@@ -319,32 +172,16 @@ const PropertiesCard = ({
     </Card>
   );
 };
-const ListingGrid = () => {
-  const [propertiesData, setPropertiesData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+const ListingGrid = ({ properties = [], loading, error, presentPage = 1, totalPage = 1, goToPage = () => {} }) => {
+  const propertiesData = properties.map(mapProperty);
 
-  useEffect(() => {
-    const fetchProperties = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const response = await api.get("/property/get_all/");
-        const properties = getPropertiesFromResponse(response.data).map(
-          mapProperty,
-        );
-
-        setPropertiesData(properties);
-      } catch (err) {
-        setError(getApiErrorMessage(err));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProperties();
-  }, []);
+  const pageNumbers = Array.from(
+    { length: Math.min(totalPage, 5) },
+    (_, i) => {
+      const start = Math.max(1, Math.min(presentPage - 2, totalPage - 4));
+      return start + i;
+    },
+  ).filter((n) => n >= 1 && n <= totalPage);
 
   return (
     <Col xl={9} lg={12}>
@@ -360,48 +197,37 @@ const ListingGrid = () => {
       <Row>
         {!loading &&
           !error &&
-          propertiesData?.map((item, idx) => (
-            <Col lg={4} md={6} key={item.id ?? idx}>
-              <PropertiesCard
-                {...item}
-                status={
-                  item.status ?? propertyStatuses[idx % propertyStatuses.length]
-                }
-              />
+          propertiesData.map((item) => (
+            <Col lg={4} md={6} key={item.id}>
+              <PropertiesCard {...item} />
             </Col>
           ))}
       </Row>
-      <div className="p-3 border-top">
-        <nav aria-label="Page navigation example">
-          <ul className="pagination justify-content-end mb-0">
-            <li className="page-item">
-              <Link className="page-link" to="">
-                Previous
-              </Link>
-            </li>
-            <li className="page-item active">
-              <Link className="page-link" to="">
-                1
-              </Link>
-            </li>
-            <li className="page-item">
-              <Link className="page-link" to="">
-                2
-              </Link>
-            </li>
-            <li className="page-item">
-              <Link className="page-link" to="">
-                3
-              </Link>
-            </li>
-            <li className="page-item">
-              <Link className="page-link" to="">
-                Next
-              </Link>
-            </li>
-          </ul>
-        </nav>
-      </div>
+      {!loading && !error && totalPage > 1 && (
+        <div className="p-3 border-top">
+          <nav aria-label="Property pagination">
+            <ul className="pagination justify-content-end mb-0">
+              <li className={`page-item ${presentPage <= 1 ? "disabled" : ""}`}>
+                <button type="button" className="page-link" onClick={() => goToPage(presentPage - 1)}>
+                  Previous
+                </button>
+              </li>
+              {pageNumbers.map((n) => (
+                <li key={n} className={`page-item ${n === presentPage ? "active" : ""}`}>
+                  <button type="button" className="page-link" onClick={() => goToPage(n)}>
+                    {n}
+                  </button>
+                </li>
+              ))}
+              <li className={`page-item ${presentPage >= totalPage ? "disabled" : ""}`}>
+                <button type="button" className="page-link" onClick={() => goToPage(presentPage + 1)}>
+                  Next
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      )}
     </Col>
   );
 };

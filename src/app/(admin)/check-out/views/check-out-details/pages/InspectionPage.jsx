@@ -1,6 +1,6 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { resolvePhotoSrc } from '@/utils/imageStorage';
-import { fmtDate, fmtDateTime, val } from '@/utils/checkInFormat';
+import { fmtDate, val } from '@/utils/checkInFormat';
 
 const pageText = '#526b89';
 
@@ -68,7 +68,7 @@ const InspectionPage = ({ record }) => {
   ];
 
   // Compute max count for bar width
-  const maxCat = Math.max(...topCats.map((c) => c.count ?? c[1] ?? 0), 1);
+  const maxCat = Math.max(...topCats.map((c) => c.issueCount ?? c.count ?? c[1] ?? 0), 1);
 
   return (
     <div style={{ padding: 24 }}>
@@ -227,7 +227,7 @@ const InspectionPage = ({ record }) => {
                 <p style={{ color: pageText, fontSize: 15 }}>No issue categories recorded.</p>
               ) : topCats.map((cat, i) => {
                 const label = cat.category ?? cat[0] ?? '—';
-                const count = cat.count ?? cat[1] ?? 0;
+                const count = cat.issueCount ?? cat.count ?? cat[1] ?? 0;
                 const color = BAR_COLORS[i % BAR_COLORS.length];
                 const width = Math.round((count / maxCat) * 100);
                 return (

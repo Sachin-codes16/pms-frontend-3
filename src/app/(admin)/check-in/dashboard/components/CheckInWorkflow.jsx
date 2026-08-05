@@ -73,10 +73,11 @@ const CheckInWorkflow = ({ steps = [] }) => {
                 style={{
                   height: DOT_SIZE,
                   marginBottom: i < steps.length - 1 ? ROW_GAP : 0,
+                  gap: 16,
                 }}
               >
                 <span
-                  style={{ color: "#526b89", fontSize: 16, fontWeight: 600 }}
+                  style={{ color: "#526b89", fontSize: 16, fontWeight: 600, whiteSpace: "nowrap" }}
                 >
                   {step.label}
                 </span>
@@ -85,6 +86,7 @@ const CheckInWorkflow = ({ steps = [] }) => {
                     color: step.valueColor,
                     fontWeight: 700,
                     fontSize: 16,
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {step.value}

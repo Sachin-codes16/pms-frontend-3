@@ -28,24 +28,23 @@ export default function useCheckOut({ id } = {}) {
     }
   }, [id]);
 
+  // Note: does not touch `loading` — that reflects the initial record fetch,
+  // not a mutation in flight. Callers key their form's remount on `loading`,
+  // so toggling it here would wipe unsaved input on every submit.
   const create = useCallback(async (payload) => {
-    setLoading(true);
     setError(null);
     try {
       const res = await api.post(CREATE_ENDPOINT, payload);
-      setLoading(false);
       return res.data;
     } catch (err) {
       setError(err);
       console.error("useCheckOut.create error:", err?.response?.status, err?.response?.data || err?.message);
-      setLoading(false);
       throw err;
     }
   }, []);
 
   const updateSections = useCallback(async (checkOutId, sections) => {
     const entries = Object.entries(sections).filter(([, body]) => body && Object.keys(body).length > 0);
-    setLoading(true);
     setError(null);
     try {
       const results = await Promise.all(
@@ -53,12 +52,10 @@ export default function useCheckOut({ id } = {}) {
           api.patch(`${UPDATE_ENDPOINT}/${sectionKey}/`, { check_out_id: checkOutId, ...body })
         )
       );
-      setLoading(false);
       return results.map((res) => res.data);
     } catch (err) {
       setError(err);
       console.error("useCheckOut.updateSections error:", err?.response?.status, err?.response?.data || err?.message);
-      setLoading(false);
       throw err;
     }
   }, []);

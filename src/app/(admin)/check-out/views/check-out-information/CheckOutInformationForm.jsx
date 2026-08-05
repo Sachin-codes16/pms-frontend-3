@@ -7,7 +7,19 @@ import { toast } from "react-toastify";
 import Spinner from "@/components/Spinner";
 import useCheckOut from "@/hooks/useCheckOut";
 
-const DOCUMENT_UPLOAD_ENDPOINT = "/checkin-checkout/check_in/document/upload/";
+const DOCUMENT_UPLOAD_ENDPOINT = "/checkin-checkout/check_out/document/upload/";
+
+// Confirmed against the live API schema (CheckOutDocumentUploadDocumentTypeEnum) —
+// each upload field must send its own type; there's no generic "Property Photo" catch-all.
+const FILE_FIELD_DOCUMENT_TYPES = {
+  meter_photo: "Meter Reading Photo",
+  payment_proof: "Other",
+  tenant_id_proof: "Tenant ID Proof",
+  passport_copy: "Passport Copy",
+  agreement_copy: "Agreement Copy",
+  inspection_photos: "Inspection Photo",
+  meter_reading_photos: "Meter Reading Photo",
+};
 
 const NUMERIC_FIELDS = [
   "property_id",
@@ -167,16 +179,6 @@ const SECTION_FIELD_MAP = {
   comments: ["internal_comments", "tenant_remarks", "special_instructions"],
 };
 
-const FILE_FIELDS = [
-  "meter_photo",
-  "payment_proof",
-  "tenant_id_proof",
-  "passport_copy",
-  "agreement_copy",
-  "inspection_photos",
-  "meter_reading_photos",
-];
-
 const fileToBase64 = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -271,18 +273,24 @@ const CheckOutInformationForm = () => {
   const { item, loading, create, updateSections, fetchItem } = useCheckOut({ id });
   const formRef = useRef(null);
   const [submitting, setSubmitting] = useState(false);
+  // Set once create() succeeds so a retry after a later failure (e.g. document
+  // upload) updates that same record instead of creating a duplicate.
+  const [createdId, setCreatedId] = useState(null);
   const [properties, setProperties]             = useState([]);
   const [propertiesLoading, setPropertiesLoading] = useState(true);
   const [selectedPropertyId, setSelectedPropertyId] = useState("");
   const [tenants, setTenants]             = useState([]);
   const [tenantsLoading, setTenantsLoading] = useState(true);
   const [selectedTenantId, setSelectedTenantId] = useState("");
+  const [employees, setEmployees]         = useState([]);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
 
   // Fetch properties list
   useEffect(() => {
     let cancelled = false;
     checkInApi
-      .get("/property/get_all/")
+      .get("/property/get_all/?limit=999999")
       .then((res) => { if (!cancelled) setProperties(res.data?.data?.data ?? []); })
       .catch(() => { if (!cancelled) setProperties([]); })
       .finally(() => { if (!cancelled) setPropertiesLoading(false); });
@@ -294,19 +302,13 @@ const CheckOutInformationForm = () => {
     let cancelled = false;
     const fetchAllTenants = async () => {
       try {
-        const base    = "/lead/get_all/?filter_key=purpose&filter_value=tenant";
-        const first   = await checkInApi.get(base);
-        const payload = first.data?.data ?? {};
-        const totalPages = payload.totalPage ?? 1;
-        let all = payload.data ?? [];
-        if (totalPages > 1) {
-          const rest = await Promise.all(
-            Array.from({ length: totalPages - 1 }, (_, i) =>
-              checkInApi.get(`${base}&page_num=${i + 2}`).then((r) => r.data?.data?.data ?? [])
-            )
-          );
-          all = all.concat(...rest);
-        }
+        // purpose casing is inconsistent in the backend data ("Tenant" vs "tenant"),
+        // so filter client-side case-insensitively instead of relying on an exact
+        // server-side match that silently drops differently-cased records.
+        const res = await checkInApi.get("/lead/get_all/?limit=999999");
+        const all = (res.data?.data?.data ?? []).filter(
+          (l) => l.purpose?.toLowerCase() === "tenant"
+        );
         if (!cancelled) setTenants(all);
       } catch {
         if (!cancelled) setTenants([]);
@@ -318,9 +320,21 @@ const CheckOutInformationForm = () => {
     return () => { cancelled = true; };
   }, []);
 
+  // Fetch employees list
+  useEffect(() => {
+    let cancelled = false;
+    checkInApi
+      .get("/marketing/manager/get_all/")
+      .then((res) => { if (!cancelled) setEmployees(res.data?.data?.data ?? []); })
+      .catch(() => { if (!cancelled) setEmployees([]); })
+      .finally(() => { if (!cancelled) setEmployeesLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
   // Sync dropdowns when editing an existing record
   useEffect(() => { if (item?.propertyId) setSelectedPropertyId(String(item.propertyId)); }, [item?.propertyId]);
   useEffect(() => { if (item?.tenantId)   setSelectedTenantId(String(item.tenantId)); },   [item?.tenantId]);
+  useEffect(() => { if (item?.assignedEmployeeId) setSelectedEmployeeId(String(item.assignedEmployeeId)); }, [item?.assignedEmployeeId]);
 
   // Autofill property fields when a property is selected
   const handlePropertyChange = (e) => {
@@ -332,7 +346,9 @@ const CheckOutInformationForm = () => {
       const el = formRef.current.elements[name];
       if (el && value !== null && value !== undefined && value !== "") el.value = String(value);
     };
-    set("assigned_employee_id", property.assignedTo?.userId);
+    if (property.assignedTo?.userId) {
+      setSelectedEmployeeId(String(property.assignedTo.userId));
+    }
     set("property_type",        property.rentalType);
     set("building_name",        property.buildingDetails || property.propertyDetails?.buildingName);
     set("flat_unit_number",     property.flatNumber ?? property.flatData?.flatNumber);
@@ -345,21 +361,47 @@ const CheckOutInformationForm = () => {
   };
 
   // Autofill tenant fields when a tenant is selected
-  const handleTenantChange = (e) => {
+  const handleTenantChange = async (e) => {
     const tid = e.target.value;
     setSelectedTenantId(tid);
-    const tenant = tenants.find((t) => String(t.leadId) === tid);
-    if (!tenant || !formRef.current) return;
+    const summary = tenants.find((t) => String(t.leadId) === tid);
+    if (!summary || !formRef.current) return;
     const set = (name, value) => {
-      const el = formRef.current.elements[name];
+      const el = formRef.current?.elements[name];
       if (el && value !== null && value !== undefined && value !== "") el.value = String(value);
     };
-    const fullName = [tenant.firstName, tenant.lastName].filter(Boolean).join(" ");
+
+    // Prefill from list data immediately (fields available in get_all)
+    const fullName = [summary.firstName, summary.lastName].filter(Boolean).join(" ");
     set("tenant_name",           fullName);
-    set("tenant_mobile_number",  tenant.phoneNumber);
-    set("tenant_civil_id",       tenant.civil_id);
-    set("tenant_passport_number", tenant.passportOrId);
-    set("tenant_nationality",    tenant.nationality);
+    set("tenant_mobile_number",  summary.phoneNumber);
+    set("tenant_civil_id",       summary.civil_id);
+    set("tenant_passport_number", summary.passportOrId);
+    set("tenant_nationality",    summary.nationality);
+
+    // Fetch full lead record for fields not returned by get_all
+    try {
+      const res  = await checkInApi.get(`/lead/get/?lead_id=${tid}`);
+      const lead = res.data?.data ?? res.data ?? {};
+      setTimeout(() => {
+        if (!formRef.current) return;
+        set("tenant_code",              lead.tenantCode);
+        set("tenant_email",             lead.email);
+        set("tenant_civil_id",          lead.civil_id ?? lead.civilId);
+        set("tenant_passport_number",   lead.passportOrId);
+        set("tenant_nationality",       lead.nationality);
+        set("tenant_type",              lead.tenantType);
+        set("date_of_birth",            lead.dateOfBirth);
+        set("gender",                   lead.gender);
+        set("marital_status",           lead.maritalStatus);
+        set("emergency_contact_name",   lead.emergencyContactName);
+        set("emergency_contact_number", lead.emergencyContactNumber);
+        set("profession",               lead.profession);
+        set("company_name",             lead.companyName);
+      }, 0);
+    } catch {
+      // full record unavailable — list-level fields already filled above
+    }
   };
 
   const getValue = (name) => {
@@ -393,10 +435,15 @@ const CheckOutInformationForm = () => {
       payload[k] = NUMERIC_FIELDS.includes(k) ? Number(v) : v;
     }
 
+    // If an earlier submit already created the record but failed on a later
+    // step (e.g. document upload), retry against that same record instead of
+    // calling create() again and producing a duplicate.
+    const effectiveId = id || createdId;
+
     try {
       setSubmitting(true);
 
-      if (id) {
+      if (effectiveId) {
         // Update mode — split payload into per-section bodies
         const sections = {};
         for (const [sectionKey, fields] of Object.entries(SECTION_FIELD_MAP)) {
@@ -406,16 +453,16 @@ const CheckOutInformationForm = () => {
           }
           sections[sectionKey] = body;
         }
-        await updateSections(id, sections);
+        await updateSections(effectiveId, sections);
 
         // Upload any documents via document endpoint
         if (fileUploads.length > 0) {
           await Promise.all(
-            fileUploads.map(async ({ file }) => {
+            fileUploads.map(async ({ fieldName, file }) => {
               const base64 = await fileToBase64(file);
               return checkInApi.post(DOCUMENT_UPLOAD_ENDPOINT, {
-                check_in_id:   Number(id),
-                document_type: "Property Photo",
+                check_out_id:  Number(effectiveId),
+                document_type: FILE_FIELD_DOCUMENT_TYPES[fieldName] ?? "Other",
                 document_name: file.name,
                 file:          base64,
               });
@@ -423,7 +470,7 @@ const CheckOutInformationForm = () => {
           );
         }
 
-        await fetchItem();
+        if (id) await fetchItem();
         setSubmitting(false);
         toast.success("Check-Out updated successfully");
         alert("Check-Out updated successfully.");
@@ -431,15 +478,16 @@ const CheckOutInformationForm = () => {
         // Create mode
         const res   = await create(payload);
         const newId = res?.data?.check_out_id;
+        if (newId) setCreatedId(newId);
 
         // Upload documents after creation if files selected
         if (fileUploads.length > 0 && newId) {
           await Promise.all(
-            fileUploads.map(async ({ file }) => {
+            fileUploads.map(async ({ fieldName, file }) => {
               const base64 = await fileToBase64(file);
               return checkInApi.post(DOCUMENT_UPLOAD_ENDPOINT, {
-                check_in_id:   Number(newId),
-                document_type: "Property Photo",
+                check_out_id:  Number(newId),
+                document_type: FILE_FIELD_DOCUMENT_TYPES[fieldName] ?? "Other",
                 document_name: file.name,
                 file:          base64,
               });
@@ -597,7 +645,8 @@ const CheckOutInformationForm = () => {
                       />
                     </Col>
                     <Col md={4}>
-                      <DateField label="Check-Out Date *" name="check_out_date" defaultValue={getValue("check_out_date")} />
+                      <DateField label="Check-Out Date *" name="check_out_date"
+                        defaultValue={getValue("check_out_date") || (!id ? new Date().toISOString().split("T")[0] : "")} />
                     </Col>
                     <Col md={4}>
                       <FormField
@@ -616,13 +665,27 @@ const CheckOutInformationForm = () => {
                       </FormField>
                     </Col>
                     <Col md={4}>
-                      <FormField
-                        label="Assigned Employee ID *"
-                        name="assigned_employee_id"
-                        defaultValue={getValue("assigned_employee_id")}
-                        type="number"
-                        placeholder="Employee Name"
-                      />
+                      <div>
+                        <label style={labelStyle}>Assigned Employee *</label>
+                        <select
+                          name="assigned_employee_id"
+                          style={fieldStyle}
+                          value={selectedEmployeeId}
+                          onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                        >
+                          <option value="" disabled>
+                            {employeesLoading ? "Loading employees…" : "Select Employee"}
+                          </option>
+                          {!employeesLoading && employees.length === 0 && (
+                            <option disabled>No employees available</option>
+                          )}
+                          {employees.map((emp) => (
+                            <option key={emp.managerId ?? emp.userId} value={String(emp.managerId ?? emp.userId)}>
+                              {emp.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </Col>
                     <Col md={12}>
                       <FormField
@@ -661,6 +724,9 @@ const CheckOutInformationForm = () => {
                             style={{ color: '#526b89', pointerEvents: 'none', position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }} />
                         </div>
                       </div>
+                    </Col>
+                    <Col md={4}>
+                      <FormField label="Tenant Code" name="tenant_code" defaultValue={getValue("tenant_code")} placeholder="TXD132456" />
                     </Col>
                     <Col md={4}>
                       <FormField label="Tenant Name" name="tenant_name" defaultValue={getValue("tenant_name")} placeholder="Full Name or Company Name" />
@@ -704,6 +770,8 @@ const CheckOutInformationForm = () => {
                       <FormField label="Marital Status" name="marital_status" defaultValue={getValue("marital_status")} placeholder="Select Status" as="select">
                         <option>Single</option>
                         <option>Married</option>
+                        <option>Divorced</option>
+                        <option>Widowed</option>
                       </FormField>
                     </Col>
                     <Col md={4}>
@@ -877,6 +945,11 @@ const CheckOutInformationForm = () => {
                     <Col md={4}>
                       <FormField label="Charge Type" name="charge_type" defaultValue={getValue("charge_type")} placeholder="Select Type" as="select">
                         <option>Security Deposit Refund</option>
+                        <option>Deduction</option>
+                        <option>Pending Dues</option>
+                        <option>Rent</option>
+                        <option>Maintenance</option>
+                        <option>Damage</option>
                         <option>Other</option>
                       </FormField>
                     </Col>
@@ -887,6 +960,7 @@ const CheckOutInformationForm = () => {
                       <FormField label="Payment Status" name="payment_status" defaultValue={getValue("payment_status")} placeholder="Select Status" as="select">
                         <option>Pending</option>
                         <option>Paid</option>
+                        <option>Partially Paid</option>
                         <option>Refunded</option>
                       </FormField>
                     </Col>
@@ -929,6 +1003,7 @@ const CheckOutInformationForm = () => {
                       <FormField label="Key Return Status" name="key_return_status" defaultValue={getValue("key_return_status")} placeholder="Select Status" as="select">
                         <option>Pending</option>
                         <option>Returned</option>
+                        <option>Not Returned</option>
                         <option>Lost</option>
                       </FormField>
                     </Col>

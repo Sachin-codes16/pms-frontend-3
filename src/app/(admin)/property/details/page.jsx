@@ -38,7 +38,7 @@ const PropertyDetailsPage = () => {
 
   useEffect(() => {
     if (initialProperty) {
-      const id = initialProperty?.propertyDetails?.landlord_id;
+      const id = initialProperty?.propertyDetails?.landlordId;
       fetchLandlordName(id).then((n) => setLandlordName(n || ''));
       return;
     }
@@ -63,17 +63,39 @@ const PropertyDetailsPage = () => {
 
         if (!found) throw new Error('not_found');
 
+        // /property/get/ omits landlordId/currentTenantId (present on /property/get_all/
+        // for the same record) — backfill them from the list endpoint when missing.
+        if (found?.propertyDetails && found.propertyDetails.landlordId === undefined) {
+          try {
+            const allRes = await api.get('/property/get_all/', { params: { limit: 999999 } });
+            const list = allRes.data?.data?.data ?? allRes.data?.data ?? [];
+            const listMatch = list.find((p) => p.propertyId === initialId);
+            if (listMatch?.propertyDetails) {
+              found = {
+                ...found,
+                propertyDetails: {
+                  ...found.propertyDetails,
+                  landlordId: listMatch.propertyDetails.landlordId,
+                  currentTenantId: listMatch.propertyDetails.currentTenantId,
+                },
+              };
+            }
+          } catch {
+            // non-fatal — proceed with the fields we already have
+          }
+        }
+
         setProperty(found);
-        const name = await fetchLandlordName(found?.propertyDetails?.landlord_id);
+        const name = await fetchLandlordName(found?.propertyDetails?.landlordId);
         setLandlordName(name || '');
       } catch {
         try {
-          const allRes = await api.get('/property/get_all/');
+          const allRes = await api.get('/property/get_all/', { params: { limit: 999999 } });
           const list = allRes.data?.data?.data ?? allRes.data?.data ?? [];
           const found = list.find((p) => p.propertyId === initialId) ?? null;
           setProperty(found);
           if (!found) { setError(`Property #${initialId} not found.`); return; }
-          const name = await fetchLandlordName(found?.propertyDetails?.landlord_id);
+          const name = await fetchLandlordName(found?.propertyDetails?.landlordId);
           setLandlordName(name || '');
         } catch (e2) {
           setError(e2?.response?.data?.message || e2?.message || 'Failed to load property');

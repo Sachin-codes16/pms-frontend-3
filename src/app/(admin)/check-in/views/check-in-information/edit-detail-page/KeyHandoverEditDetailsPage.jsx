@@ -9,18 +9,40 @@ import useCheckIn from "@/hooks/useCheckIn";
 import checkInApi from "@/helpers/checkInApi";
 
 const KEY_UPDATE_ENDPOINT = "/checkin-checkout/check_in/key/update/";
+const KEY_CREATE_ENDPOINT = "/checkin-checkout/check_in/key/create/";
+const DOCUMENT_UPLOAD_ENDPOINT = "/checkin-checkout/check_in/document/upload/";
 
-// Fields submitted to PATCH /update/key_handover/
+// Confirmed against the live API schema (Status82bEnum) — the previous
+// options included "Handovered", which isn't a valid choice and gets rejected.
+const KEY_STATUS_OPTIONS = ["Pending", "Handed Over"];
+
+const KEY_DOCUMENT_SLOTS = [
+  { key: "key_handover_photo", label: "Key Handover Photo", documentType: "Key Handover Photo" },
+  { key: "tenant_id_proof", label: "Tenant ID Proof", documentType: "Tenant ID Proof" },
+  { key: "key_receipt", label: "Key Receipt", documentType: "Key Receipt" },
+];
+
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+// Fields submitted to PATCH /update/key_handover/. key_booked_on / key_prepared_on /
+// key_notified_on / handover_completed_on aren't in this Figma but are the real,
+// confirmed fields that drive the Key Handover Timeline beyond its first step.
 const FIELD_PATHS = {
-  key_handover_status:      ["keyHandover", "keyHandoverInformation", "keyHandoverStatus"],
-  key_number:               ["keyHandover", "keyHandoverInformation", "keyNumber"],
-  key_type:                 ["keyHandover", "keyHandoverInformation", "keyType"],
-  key_available:            ["keyHandover", "keyHandoverInformation", "keyAvailable"],
   key_booking_date:         ["keyHandover", "keyHandoverInformation", "keyBookingDate"],
   expected_handover_date:   ["keyHandover", "keyHandoverInformation", "expectedHandoverDate"],
   key_delivery_date:        ["keyHandover", "keyHandoverInformation", "keyHandoverDate"],
   confirmation_received:    ["keyHandover", "keyHandoverInformation", "confirmationReceived"],
   handover_notes:           ["keyHandover", "keyHandoverInformation", "handoverNotes"],
+  key_booked_on:            [],  // flat: keyBookedOn
+  key_prepared_on:          [],  // flat: keyPreparedOn
+  key_notified_on:          [],  // flat: keyNotifiedOn
+  handover_completed_on:    [],  // flat: handoverCompletedOn
   tenant_confirmation_notes: [],  // flat: tenantConfirmationNotes
 };
 
@@ -118,6 +140,34 @@ const TextArea = ({ label, name, defaultValue }) => (
   </div>
 );
 
+const NewKeyRow = ({ rowId, onRemove, removable }) => (
+  <div className="mb-4" style={{ background: "#fbfcfd", border: "1px solid #e7e9ef", borderRadius: 8, padding: 20 }}>
+    <div className="d-flex justify-content-between align-items-center mb-3">
+      <h6 className="mb-0" style={{ color: "#526b89", fontSize: 15, fontWeight: 700 }}>New Key</h6>
+      {removable && (
+        <button
+          type="button"
+          onClick={() => onRemove(rowId)}
+          style={{ background: "none", border: "none", color: "#bd2d3a", fontSize: 14, padding: 0 }}
+        >
+          Remove
+        </button>
+      )}
+    </div>
+    <Row className="g-4">
+      <Col md={4}>
+        <Field label="Key Number" name={`new_key_${rowId}_number`} />
+      </Col>
+      <Col md={4}>
+        <Field label="Key Type" name={`new_key_${rowId}_type`} />
+      </Col>
+      <Col md={4}>
+        <SelectField label="Key Status" name={`new_key_${rowId}_status`} defaultValue="Pending" options={KEY_STATUS_OPTIONS} />
+      </Col>
+    </Row>
+  </div>
+);
+
 const KeyHandoverEditDetailsPage = ({ mode = "check-in" }) => {
   const location   = useLocation();
   const isCheckOut = mode === "check-out";
@@ -130,19 +180,25 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-in" }) => {
   const { item, loading, updateSections, fetchItem } = useCheckIn({ id });
   const formRef    = useRef(null);
   const [submitting, setSubmitting] = useState(false);
+  const [newKeyRowIds, setNewKeyRowIds] = useState([1]);
+  const nextKeyRowId = useRef(2);
 
   const gv       = (name) => getValue(item, name);
   const keyRows  = item?.keyHandover?.keyDetails ?? [];
 
+  const addKeyRow = () => setNewKeyRowIds((rows) => [...rows, nextKeyRowId.current++]);
+  const removeKeyRow = (rowId) => setNewKeyRowIds((rows) => rows.filter((r) => r !== rowId));
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formRef.current) return;
+    const form = formRef.current;
+    if (!form) return;
     if (!id) {
       alert("Cannot submit: no check-in id in the URL.");
       return;
     }
 
-    const formData = new FormData(formRef.current);
+    const formData = new FormData(form);
     const values   = {};
     for (const [k, v] of formData.entries()) {
       if (v !== "") values[k] = v;
@@ -164,12 +220,50 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-in" }) => {
       })
       .filter(Boolean);
 
+    // Build create payloads for filled-in "New Key" rows
+    const newKeyPayloads = newKeyRowIds
+      .map((rowId) => {
+        const keyNumber = values[`new_key_${rowId}_number`];
+        const keyType    = values[`new_key_${rowId}_type`];
+        if (!keyNumber || !keyType) return null;
+        return {
+          check_in_id: Number(id),
+          key_number: keyNumber,
+          key_type: keyType,
+          status: values[`new_key_${rowId}_status`] || "Pending",
+        };
+      })
+      .filter(Boolean);
+
+    // Document uploads
+    const documentUploads = KEY_DOCUMENT_SLOTS
+      .map(({ key, documentType }) => {
+        const file = form.querySelector(`[name="doc_${key}"]`)?.files?.[0];
+        return file ? { file, documentType } : null;
+      })
+      .filter(Boolean);
+
     try {
       setSubmitting(true);
       const requests = [];
       if (Object.keys(sectionBody).length > 0) {
         requests.push(updateSections(id, { key_handover: sectionBody }));
       }
+      newKeyPayloads.forEach((body) => {
+        requests.push(checkInApi.post(KEY_CREATE_ENDPOINT, body));
+      });
+      documentUploads.forEach(({ file, documentType }) => {
+        requests.push(
+          (async () => {
+            const base64 = await fileToBase64(file);
+            return checkInApi.post(DOCUMENT_UPLOAD_ENDPOINT, {
+              check_in_id: Number(id),
+              document_type: documentType,
+              file: base64,
+            });
+          })()
+        );
+      });
       keyPayloads.forEach((body) => {
         requests.push(checkInApi.patch(KEY_UPDATE_ENDPOINT, body));
       });
@@ -281,56 +375,12 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-in" }) => {
 
                 <div style={{ padding: "34px 36px" }}>
 
-                  {/* Section A — Key Handover Information */}
-                  <h5 id="key-handover-info" style={sectionTitleStyle}>A. Key Handover Information</h5>
-                  <Row className="g-4 mb-5">
-                    <Col md={4}>
-                      <SelectField
-                        label="Key Handover Status"
-                        name="key_handover_status"
-                        defaultValue={gv("key_handover_status")}
-                        options={["Pending", "Booked", "Handed Over", "Returned"]}
-                      />
-                    </Col>
-                    <Col md={4}>
-                      <Field
-                        label="Key Number"
-                        name="key_number"
-                        defaultValue={gv("key_number")}
-                      />
-                    </Col>
-                    <Col md={4}>
-                      <SelectField
-                        label="Key Type"
-                        name="key_type"
-                        defaultValue={gv("key_type")}
-                        options={["Main Door Key", "Mail Box Key", "Utility Room Key", "Basement Parking Key", "Terrace Key", "Bedroom Key", "Parking Key"]}
-                      />
-                    </Col>
-                    <Col md={4}>
-                      <SelectField
-                        label="Key Available"
-                        name="key_available"
-                        defaultValue={gv("key_available")}
-                        options={["Yes", "No"]}
-                      />
-                    </Col>
-                    <Col md={4}>
-                      <SelectField
-                        label="Confirmation Received"
-                        name="confirmation_received"
-                        defaultValue={gv("confirmation_received")}
-                        options={["Yes", "No"]}
-                      />
-                    </Col>
-                  </Row>
-
-                  {/* Section B — Dates */}
-                  <h5 id="dates" style={sectionTitleStyle}>B. Dates &amp; Time</h5>
+                  {/* Section A — Date & Time Details */}
+                  <h5 id="dates" style={sectionTitleStyle}>A. Date &amp; Time Details</h5>
                   <Row className="g-4 mb-5">
                     <Col md={4}>
                       <Field
-                        label="Key Booking Date"
+                        label="Key Booking Date & Time"
                         name="key_booking_date"
                         type="date"
                         defaultValue={toDateString(gv("key_booking_date"))}
@@ -338,7 +388,7 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-in" }) => {
                     </Col>
                     <Col md={4}>
                       <Field
-                        label="Expected Handover Date"
+                        label="Expected Handover Date & Time"
                         name="expected_handover_date"
                         type="date"
                         defaultValue={toDateString(gv("expected_handover_date"))}
@@ -346,7 +396,7 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-in" }) => {
                     </Col>
                     <Col md={4}>
                       <Field
-                        label="Key Handover Date"
+                        label="Actual Key Handover Date & Time"
                         name="key_delivery_date"
                         type="date"
                         defaultValue={toDateString(gv("key_delivery_date"))}
@@ -368,15 +418,55 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-in" }) => {
                     </Col>
                     <Col md={4}>
                       <Field
-                        label="Tenant Contact"
+                        label="Tenant Contact Number"
                         defaultValue={item?.keyHandover?.keyHandoverInformation?.tenantContact ?? ""}
                         readOnly
                       />
                     </Col>
+                    <Col md={4}>
+                      <SelectField
+                        label="Confirmation Received"
+                        name="confirmation_received"
+                        defaultValue={gv("confirmation_received")}
+                        options={["Yes", "No"]}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Field
+                        label="Key Booked On"
+                        name="key_booked_on"
+                        type="date"
+                        defaultValue={toDateString(gv("key_booked_on"))}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Field
+                        label="Key Prepared On"
+                        name="key_prepared_on"
+                        type="date"
+                        defaultValue={toDateString(gv("key_prepared_on"))}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Field
+                        label="Key Notified On"
+                        name="key_notified_on"
+                        type="date"
+                        defaultValue={toDateString(gv("key_notified_on"))}
+                      />
+                    </Col>
+                    <Col md={4}>
+                      <Field
+                        label="Handover Completed On"
+                        name="handover_completed_on"
+                        type="date"
+                        defaultValue={toDateString(gv("handover_completed_on"))}
+                      />
+                    </Col>
                   </Row>
 
-                  {/* Section C — Key Details (per-key status) */}
-                  <h5 id="key-details" style={sectionTitleStyle}>C. Key Details</h5>
+                  {/* Section B — Key Details (existing + new) */}
+                  <h5 id="key-details" style={sectionTitleStyle}>B. Key Details</h5>
                   {keyRows.length === 0 ? (
                     <p style={{ color: "#526b89", fontSize: 15, marginBottom: 40 }}>No individual key records found.</p>
                   ) : (
@@ -402,7 +492,7 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-in" }) => {
                                   style={{ ...selectFieldStyle, height: 38, padding: "6px 32px 6px 10px", width: 160 }}
                                 >
                                   <option value="">— Select —</option>
-                                  {["Pending", "Handovered"].map((o) => (
+                                  {KEY_STATUS_OPTIONS.map((o) => (
                                     <option key={o} value={o}>{o}</option>
                                   ))}
                                 </select>
@@ -413,6 +503,37 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-in" }) => {
                       </table>
                     </div>
                   )}
+
+                  {newKeyRowIds.map((rowId) => (
+                    <NewKeyRow
+                      key={rowId}
+                      rowId={rowId}
+                      onRemove={removeKeyRow}
+                      removable={newKeyRowIds.length > 1}
+                    />
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={addKeyRow}
+                    className="mb-5"
+                    style={{ background: "none", border: "1px dashed #8a96a8", borderRadius: 5, color: "#526b89", fontSize: 15, padding: "10px 16px" }}
+                  >
+                    + Add Another Key
+                  </button>
+
+                  {/* Section C — Documents Upload */}
+                  <h5 id="documents-upload" style={sectionTitleStyle}>C. Documents Upload</h5>
+                  <Row className="g-4 mb-5">
+                    {KEY_DOCUMENT_SLOTS.map(({ key, label }) => (
+                      <Col md={4} key={key}>
+                        <div>
+                          <label style={labelStyle}>{label}</label>
+                          <input type="file" name={`doc_${key}`} accept=".pdf,.jpg,.jpeg,.png" style={{ ...fieldStyle, padding: "7px 8px" }} />
+                        </div>
+                      </Col>
+                    ))}
+                  </Row>
 
                   {/* Section D — Handover Notes */}
                   <h5 id="notes" style={sectionTitleStyle}>D. Notes</h5>

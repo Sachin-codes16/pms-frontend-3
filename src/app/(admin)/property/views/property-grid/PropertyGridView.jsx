@@ -4,14 +4,14 @@ import ListingGrid from '../../Properties/components/ListingGrid';
 import PropertiesFilter from '../../Properties/components/PropertiesFilter';
 
 const PropertyGridView = () => {
-  usePropertyGridController();
+  const gridController = usePropertyGridController();
 
   return (
     <>
       <h4 className="mb-3 fw-semibold">Listing Grid</h4>
       <Row>
         <PropertiesFilter />
-        <ListingGrid />
+        <ListingGrid {...gridController} />
       </Row>
     </>
   );

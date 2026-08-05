@@ -9,6 +9,19 @@ import useCheckOut from "@/hooks/useCheckOut";
 import checkInApi from "@/helpers/checkInApi";
 
 const KEY_UPDATE_ENDPOINT = "/checkin-checkout/check_out/key/update/";
+const KEY_CREATE_ENDPOINT = "/checkin-checkout/check_out/key/create/";
+const DOCUMENT_UPLOAD_ENDPOINT = "/checkin-checkout/check_out/document/upload/";
+
+// Confirmed against the live API schema (Status508Enum)
+const NEW_KEY_STATUS_OPTIONS = ["Pending", "Returned"];
+
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
 // Top-level fields for key_return section update
 const FIELD_MAP = {
@@ -79,7 +92,36 @@ const TextArea = ({ label, name, defaultValue }) => (
   </div>
 );
 
-const KeyHandoverEditDetailsPage = ({ mode = "check-out" }) => {
+const NewKeyRow = ({ rowId, onRemove }) => {
+  const prefix = `new_key_${rowId}`;
+  return (
+    <div className="mb-4" style={{ background: "#fbfcfd", border: "1px solid #e7e9ef", borderRadius: 8, padding: 20 }}>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h6 className="mb-0" style={{ color: "#526b89", fontSize: 15, fontWeight: 700 }}>New Key #{rowId}</h6>
+        <Button type="button" variant="link" className="p-0" style={{ color: "#e35d5d" }} onClick={() => onRemove(rowId)}>
+          Remove
+        </Button>
+      </div>
+      <Row className="g-4">
+        <Col md={3}>
+          <Field label="Key Number" name={`${prefix}_key_number`} />
+        </Col>
+        <Col md={3}>
+          <SelectField label="Key Type" name={`${prefix}_key_type`}
+            options={["Main Door Key","Mail Box Key","Utility Room Key","Basement Parking Key","Terrace Key","Bedroom Key","Parking Key"]} />
+        </Col>
+        <Col md={3}>
+          <SelectField label="Status" name={`${prefix}_status`} defaultValue="Pending" options={NEW_KEY_STATUS_OPTIONS} />
+        </Col>
+        <Col md={3}>
+          <Field label="Remarks" name={`${prefix}_remarks`} />
+        </Col>
+      </Row>
+    </div>
+  );
+};
+
+const KeyHandoverEditDetailsPage = () => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const id     = params.get("id");
@@ -88,15 +130,21 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-out" }) => {
   const { item, loading, updateSections, fetchItem } = useCheckOut({ id });
   const formRef    = useRef(null);
   const [submitting, setSubmitting] = useState(false);
+  const [newKeyRowIds, setNewKeyRowIds] = useState([]);
+  const nextKeyRowId = useRef(1);
 
   const gv       = (name) => getValue(item, name);
   const keyRows  = item?.keyReturn?.keyDetails ?? [];
+
+  const addNewKeyRow    = () => setNewKeyRowIds((prev) => [...prev, nextKeyRowId.current++]);
+  const removeNewKeyRow = (rowId) => setNewKeyRowIds((prev) => prev.filter((r) => r !== rowId));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formRef.current || !id) return;
 
-    const formData = new FormData(formRef.current);
+    const form = formRef.current;
+    const formData = new FormData(form);
     const values   = {};
     for (const [k, v] of formData.entries()) {
       if (v !== "") values[k] = v;
@@ -108,8 +156,14 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-out" }) => {
       if (values[f] !== undefined) sectionBody[f] = values[f];
     });
 
+    // Comments section — tenant confirmation notes live under a separate endpoint
+    const commentsBody = {};
+    if (values.tenant_confirmation_notes !== undefined) {
+      commentsBody.tenant_remarks = values.tenant_confirmation_notes;
+    }
+
     // Per-key update payloads
-    const keyPayloads = keyRows
+    const keyUpdatePayloads = keyRows
       .map((row) => {
         const kid    = row.checkOutKeyId;
         const status = values[`key_${kid}_status`];
@@ -117,12 +171,42 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-out" }) => {
       })
       .filter(Boolean);
 
+    // New key creation payloads
+    const keyCreatePayloads = newKeyRowIds
+      .map((rowId) => {
+        const prefix    = `new_key_${rowId}`;
+        const keyNumber = values[`${prefix}_key_number`];
+        const keyType   = values[`${prefix}_key_type`];
+        if (!keyNumber || !keyType) return null;
+        const body = { check_out_id: Number(id), key_number: keyNumber, key_type: keyType };
+        const status  = values[`${prefix}_status`];
+        const remarks = values[`${prefix}_remarks`];
+        if (status !== undefined) body.status = status;
+        if (remarks !== undefined) body.remarks = remarks;
+        return body;
+      })
+      .filter(Boolean);
+
+    const photoFile = form.querySelector('[name="key_return_photo"]')?.files?.[0];
+
     try {
       setSubmitting(true);
       const requests = [];
       if (Object.keys(sectionBody).length > 0) requests.push(updateSections(id, { key_return: sectionBody }));
-      keyPayloads.forEach((body) => requests.push(checkInApi.patch(KEY_UPDATE_ENDPOINT, body)));
+      if (Object.keys(commentsBody).length > 0) requests.push(updateSections(id, { comments: commentsBody }));
+      keyUpdatePayloads.forEach((body) => requests.push(checkInApi.patch(KEY_UPDATE_ENDPOINT, body)));
+      keyCreatePayloads.forEach((body) => requests.push(checkInApi.post(KEY_CREATE_ENDPOINT, body)));
+      if (photoFile) {
+        requests.push(
+          fileToBase64(photoFile).then((base64) => checkInApi.post(DOCUMENT_UPLOAD_ENDPOINT, {
+            check_out_id: Number(id),
+            document_type: "Key Return Photo",
+            file: base64,
+          }))
+        );
+      }
       await Promise.all(requests);
+      setNewKeyRowIds([]);
       await fetchItem();
       setSubmitting(false);
       toast.success("Key return details updated successfully");
@@ -305,8 +389,30 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-out" }) => {
                     </div>
                   )}
 
-                  {/* D — Tenant Confirmation */}
-                  <h5 id="tenant-confirmation" style={sectionTitleStyle}>D. Tenant Confirmation</h5>
+                  {/* D — Add New Key */}
+                  <h5 id="add-key" style={sectionTitleStyle}>D. Add New Key</h5>
+                  {newKeyRowIds.map((rowId) => (
+                    <NewKeyRow key={rowId} rowId={rowId} onRemove={removeNewKeyRow} />
+                  ))}
+                  <Button type="button" variant="outline-secondary" className="mb-5"
+                    style={{ borderColor: "#526b89", color: "#526b89", borderRadius: 5 }}
+                    onClick={addNewKeyRow}>
+                    + Add Key
+                  </Button>
+
+                  {/* E — Key Return Photo */}
+                  <h5 id="key-photo" style={sectionTitleStyle}>E. Key Return Photo</h5>
+                  <Row className="g-4 mb-5">
+                    <Col md={4}>
+                      <div>
+                        <label style={labelStyle}>Upload Photo</label>
+                        <input type="file" name="key_return_photo" accept="image/*" style={{ ...fieldStyle, padding: "7px 8px" }} />
+                      </div>
+                    </Col>
+                  </Row>
+
+                  {/* F — Tenant Confirmation */}
+                  <h5 id="tenant-confirmation" style={sectionTitleStyle}>F. Tenant Confirmation</h5>
                   <Row className="g-4 mb-5">
                     <Col md={12}>
                       <TextArea label="Confirmation Notes" name="tenant_confirmation_notes"
@@ -314,8 +420,8 @@ const KeyHandoverEditDetailsPage = ({ mode = "check-out" }) => {
                     </Col>
                   </Row>
 
-                  {/* E — System Fields */}
-                  <h5 id="system-fields" style={sectionTitleStyle}>E. System Fields</h5>
+                  {/* G — System Fields */}
+                  <h5 id="system-fields" style={sectionTitleStyle}>G. System Fields</h5>
                   <Row className="g-4 mb-4">
                     <Col md={4}><Field label="Created By" defaultValue={item?.createdBy?.name ?? item?.createdBy ?? ""} readOnly /></Col>
                     <Col md={4}><Field label="Created On" defaultValue={toDateString(item?.createdAt)} readOnly /></Col>

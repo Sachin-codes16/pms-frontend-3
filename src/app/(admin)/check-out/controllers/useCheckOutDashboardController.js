@@ -150,9 +150,10 @@ export const useCheckOutDashboardController = () => {
           checkInApi.get(SUMMARY_ENDPOINT),
           checkInApi.get(UPCOMING_ENDPOINT, { params: { page_num: 1, limit: 10 } }),
           checkInApi.get(WIDGETS_ENDPOINT),
-          checkInApi.get(CHECK_OUTS_ENDPOINT, {
-            params: { page_num: 1, limit: 10, filter_key: 'check_out_status', filter_value: 'Pending' },
-          }),
+          // filter_key only supports "is_active" server-side (confirmed against the API
+          // schema) — "check_out_status" is silently ignored, so status filtering for the
+          // "Pending Check-Outs" widget is done client-side below instead.
+          checkInApi.get(CHECK_OUTS_ENDPOINT, { params: { page_num: 1, limit: 50 } }),
         ]);
 
         if (cancelled) return;
@@ -169,7 +170,9 @@ export const useCheckOutDashboardController = () => {
         const upcomingItems = upcomingRes.data?.data?.data ?? [];
         setUpcomingCheckOuts(upcomingItems.map(mapUpcomingItem));
 
-        const pendingItems = pendingRes.data?.data?.data ?? [];
+        const pendingItems = (pendingRes.data?.data?.data ?? [])
+          .filter((item) => item.checkOutStatus === 'Pending')
+          .slice(0, 10);
         setPendingCheckOuts(pendingItems.map(mapPendingRow));
       } catch (err) {
         const status = err?.response?.status;

@@ -111,13 +111,13 @@ const UtilityReadingsPage = ({ record }) => {
                 <p style={{ color: pageText, fontSize: 15 }}>No meter photos uploaded.</p>
               ) : (
                 readings
-                  .filter((r) => photos.some((p) => String(p.linkedTo) === String(r.checkOutUtilityReadingId)))
+                  .filter((r) => photos.some((p) => p.linkedTo?.toLowerCase().startsWith((r.utility ?? '\0').toLowerCase())))
                   .map((r) => (
                     <div key={r.checkOutUtilityReadingId} className="mb-3">
                       <p className="mb-2" style={{ color: pageText, fontSize: 14, fontWeight: 600 }}>{val(r.utility)}</p>
                       <div className="d-flex gap-3" style={{ overflowX: 'auto', paddingBottom: 4 }}>
                         {photos
-                          .filter((p) => String(p.linkedTo) === String(r.checkOutUtilityReadingId))
+                          .filter((p) => p.linkedTo?.toLowerCase().startsWith((r.utility ?? '\0').toLowerCase()))
                           .map((p) => (
                             <img key={p.documentId} alt={`${r.utility} meter`} src={resolvePhotoSrc(p.file)}
                               style={{ borderRadius: 8, flex: '0 0 auto', height: 78, objectFit: 'cover', width: 110 }} />

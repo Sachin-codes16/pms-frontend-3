@@ -9,6 +9,35 @@ import useCheckOut from "@/hooks/useCheckOut";
 import checkInApi from "@/helpers/checkInApi";
 
 const READING_UPDATE_ENDPOINT = "/checkin-checkout/check_out/utility_reading/update/";
+const READING_CREATE_ENDPOINT = "/checkin-checkout/check_out/utility_reading/create/";
+const DOCUMENT_UPLOAD_ENDPOINT = "/checkin-checkout/check_out/document/upload/";
+
+// Confirmed against the live API schema (UtilityTypeEnum / StatusFb7Enum)
+const STATUS_OPTIONS = ["Normal", "Fixed", "Issues", "Not Applicable"];
+
+// The 3 common utility types a fixed "add" section is always shown for,
+// each with its own default unit — only rendered when no reading of that
+// type already exists in readingsList (avoids creating a duplicate).
+const FIXED_UTILITY_TYPES = [
+  { type: "Electricity", label: "Electricity Reading", unit: "kWh" },
+  { type: "Water", label: "Water Reading", unit: "m3" },
+  { type: "Gas", label: "Gas Reading", unit: "m3" },
+];
+
+const METER_PHOTO_SLOTS = [
+  { key: "electricity", label: "Electricity Meter Photo" },
+  { key: "water", label: "Water Meter Photo" },
+  { key: "gas", label: "Gas Meter Photo" },
+  { key: "additional", label: "Additional Photo" },
+];
+
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
 const fieldStyle = {
   background: "#f9f9fc", border: "1px solid #e7e9ef", borderRadius: 5,
@@ -64,14 +93,56 @@ const UtilitySection = ({ reading, index }) => {
         <Col md={4}><Field label="Charges"          name={`${prefix}_charges`}         type="number" defaultValue={reading.charges ?? ""} /></Col>
         <Col md={4}>
           <SelectField label="Status" name={`${prefix}_status`} defaultValue={reading.status ?? ""}
-            options={["Normal", "Fixed", "Issues", "Not Applicable"]} />
+            options={STATUS_OPTIONS} />
+        </Col>
+        <Col md={8}>
+          <Field label="Remarks / Notes" name={`${prefix}_remarks`} defaultValue={reading.remarks ?? ""} />
         </Col>
       </Row>
     </div>
   );
 };
 
-const UtilityReadingsEditDetailsPage = ({ mode = "check-out" }) => {
+// Fixed "add new reading" block for one of the 3 common utility types —
+// only rendered by the parent when no reading of that type exists yet.
+const NewReadingSection = ({ utilityType, label, unit, letter }) => {
+  const prefix = `new_${utilityType}`;
+  return (
+    <div className="mb-5">
+      <h5 style={sectionTitleStyle}>{letter}. {label}</h5>
+      <Row className="g-4">
+        <Col md={4}><Field label="Meter Number" name={`${prefix}_meter_no`} /></Col>
+        <Col md={4}><Field label="Check-Out Reading" name={`${prefix}_reading_value`} type="number" /></Col>
+        <Col md={4}><Field label="Consumption" name={`${prefix}_consumption`} type="number" /></Col>
+        <Col md={4}><Field label="Unit" name={`${prefix}_unit`} defaultValue={unit} /></Col>
+        <Col md={4}><Field label="Rate / Unit" name={`${prefix}_rate_per_unit`} type="number" /></Col>
+        <Col md={4}><Field label="Charges" name={`${prefix}_charges`} type="number" /></Col>
+        <Col md={4}>
+          <SelectField label="Status" name={`${prefix}_status`} defaultValue="Normal" options={STATUS_OPTIONS} />
+        </Col>
+        <Col md={8}><Field label="Remarks / Notes" name={`${prefix}_remarks`} /></Col>
+      </Row>
+    </div>
+  );
+};
+
+const MeterPhotoUpload = ({ letter }) => (
+  <div className="mb-5">
+    <h5 style={sectionTitleStyle}>{letter}. Meter Photo Upload</h5>
+    <Row className="g-4">
+      {METER_PHOTO_SLOTS.map(({ key, label }) => (
+        <Col md={4} key={key}>
+          <div>
+            <label style={labelStyle}>{label}</label>
+            <input type="file" name={`meter_photo_${key}`} accept="image/*" style={{ ...fieldStyle, padding: "7px 8px" }} />
+          </div>
+        </Col>
+      ))}
+    </Row>
+  </div>
+);
+
+const UtilityReadingsEditDetailsPage = () => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const id     = params.get("id");
@@ -83,24 +154,31 @@ const UtilityReadingsEditDetailsPage = ({ mode = "check-out" }) => {
 
   const readingsList = item?.utilityReadings?.readingsList ?? [];
 
+  // Only offer a fixed "add" section for a common utility type when no
+  // reading of that type exists yet — avoids creating an accidental duplicate.
+  const missingFixedTypes = FIXED_UTILITY_TYPES.filter(
+    ({ type }) => !readingsList.some((r) => r.utility === type)
+  );
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formRef.current || !id) return;
 
-    const formData = new FormData(formRef.current);
+    const form = formRef.current;
+    const formData = new FormData(form);
     const values   = {};
     for (const [k, v] of formData.entries()) {
       if (v !== "") values[k] = v;
     }
 
-    // Top-level meter readings (section update)
+    // Top-level meter readings (section update) — legacy fallback fields
     const meterBody = {};
     ["electricity_meter_reading","water_meter_reading","gas_meter_reading"].forEach((f) => {
       if (values[f] !== undefined) meterBody[f] = values[f];
     });
 
     // Per-reading payloads via individual endpoint
-    const API_FIELDS = ["meter_no","reading_value","consumption","unit","rate_per_unit","charges","status"];
+    const API_FIELDS = ["meter_no","reading_value","consumption","unit","rate_per_unit","charges","status","remarks"];
     const readingPayloads = readingsList
       .map((r) => {
         const rid    = r.checkOutUtilityReadingId ?? r.id;
@@ -115,7 +193,32 @@ const UtilityReadingsEditDetailsPage = ({ mode = "check-out" }) => {
       })
       .filter(Boolean);
 
-    if (Object.keys(meterBody).length === 0 && readingPayloads.length === 0) {
+    // New reading payloads for the fixed "add" sections
+    const createPayloads = missingFixedTypes
+      .map(({ type }) => {
+        const prefix = `new_${type}`;
+        const meterNo = values[`${prefix}_meter_no`];
+        const readingValue = values[`${prefix}_reading_value`];
+        if (!meterNo && !readingValue) return null;
+
+        const body = { check_out_id: Number(id), utility_type: type };
+        for (const field of API_FIELDS) {
+          const v = values[`${prefix}_${field}`];
+          if (v !== undefined) body[field] = v;
+        }
+        return body;
+      })
+      .filter(Boolean);
+
+    // Meter photo uploads
+    const photoUploads = METER_PHOTO_SLOTS
+      .map(({ key, label }) => {
+        const file = form.querySelector(`[name="meter_photo_${key}"]`)?.files?.[0];
+        return file ? { file, label } : null;
+      })
+      .filter(Boolean);
+
+    if (Object.keys(meterBody).length === 0 && readingPayloads.length === 0 && createPayloads.length === 0 && photoUploads.length === 0) {
       toast.info("No changes to save.");
       return;
     }
@@ -125,6 +228,15 @@ const UtilityReadingsEditDetailsPage = ({ mode = "check-out" }) => {
       const requests = [];
       if (Object.keys(meterBody).length > 0) requests.push(updateSections(id, { utility_meter_readings: meterBody }));
       readingPayloads.forEach((body) => requests.push(checkInApi.patch(READING_UPDATE_ENDPOINT, body)));
+      createPayloads.forEach((body) => requests.push(checkInApi.post(READING_CREATE_ENDPOINT, body)));
+      photoUploads.forEach(({ file, label }) => requests.push(
+        fileToBase64(file).then((base64) => checkInApi.post(DOCUMENT_UPLOAD_ENDPOINT, {
+          check_out_id: Number(id),
+          document_type: "Meter Reading Photo",
+          file: base64,
+          linked_to_label: label,
+        }))
+      ));
       await Promise.all(requests);
       await fetchItem();
       setSubmitting(false);
@@ -216,37 +328,30 @@ const UtilityReadingsEditDetailsPage = ({ mode = "check-out" }) => {
                 <div style={{ padding: "34px 36px" }}>
                   {loading ? (
                     <div className="d-flex justify-content-center py-5"><Spinner /></div>
-                  ) : readingsList.length > 0 ? (
+                  ) : (
                     <>
                       {readingsList.map((reading, index) => (
                         <UtilitySection key={reading.checkOutUtilityReadingId ?? index} reading={reading} index={index} />
                       ))}
-                    </>
-                  ) : (
-                    <>
-                      {/* Fallback: simple top-level meter reading fields */}
-                      <h5 style={sectionTitleStyle}>A. Meter Readings</h5>
-                      <Row className="g-4 mb-5">
-                        <Col md={4}>
-                          <Field label="Electricity Meter Reading" name="electricity_meter_reading"
-                            defaultValue={item?.electricityMeterReading ?? ""} />
-                        </Col>
-                        <Col md={4}>
-                          <Field label="Water Meter Reading" name="water_meter_reading"
-                            defaultValue={item?.waterMeterReading ?? ""} />
-                        </Col>
-                        <Col md={4}>
-                          <Field label="Gas Meter Reading" name="gas_meter_reading"
-                            defaultValue={item?.gasMeterReading ?? ""} />
-                        </Col>
-                      </Row>
+
+                      {missingFixedTypes.map(({ type, label, unit }, i) => (
+                        <NewReadingSection
+                          key={type}
+                          utilityType={type}
+                          label={label}
+                          unit={unit}
+                          letter={String.fromCharCode(65 + readingsList.length + i)}
+                        />
+                      ))}
+
+                      <MeterPhotoUpload letter={String.fromCharCode(65 + readingsList.length + missingFixedTypes.length)} />
                     </>
                   )}
 
                   {/* System Fields */}
                   {!loading && (
                     <>
-                      <h5 style={sectionTitleStyle}>{readingsList.length > 0 ? `${String.fromCharCode(65 + readingsList.length)}. ` : 'B. '}System Fields</h5>
+                      <h5 style={sectionTitleStyle}>{String.fromCharCode(65 + readingsList.length + missingFixedTypes.length + 1)}. System Fields</h5>
                       <Row className="g-4 mb-4">
                         <Col md={4}><Field label="Created By" defaultValue={item?.createdBy?.name ?? item?.createdBy ?? ""} readOnly /></Col>
                         <Col md={4}><Field label="Created On" defaultValue={toDateString(item?.createdAt)} readOnly /></Col>

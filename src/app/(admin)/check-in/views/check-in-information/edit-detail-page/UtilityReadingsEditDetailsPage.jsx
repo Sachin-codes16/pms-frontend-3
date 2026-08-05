@@ -9,6 +9,35 @@ import useCheckIn from "@/hooks/useCheckIn";
 import checkInApi from "@/helpers/checkInApi";
 
 const READING_UPDATE_ENDPOINT = "/checkin-checkout/check_in/utility_reading/update/";
+const READING_CREATE_ENDPOINT = "/checkin-checkout/check_in/utility_reading/create/";
+const DOCUMENT_UPLOAD_ENDPOINT = "/checkin-checkout/check_in/document/upload/";
+
+// Confirmed against the live API schema (UtilityTypeEnum / StatusFb7Enum)
+const STATUS_OPTIONS = ["Normal", "Fixed", "Issues", "Not Applicable"];
+
+// The 3 common utility types Figma always shows a fixed "add" section for,
+// each with its own default unit — only rendered when no reading of that
+// type already exists in readingsList (avoids creating a duplicate).
+const FIXED_UTILITY_TYPES = [
+  { type: "Electricity", label: "Electricity Reading", unit: "kWh" },
+  { type: "Water", label: "Water Reading", unit: "m3" },
+  { type: "Gas", label: "Gas Reading", unit: "m3" },
+];
+
+const METER_PHOTO_SLOTS = [
+  { key: "electricity", label: "Electricity Meter Photo" },
+  { key: "water", label: "Water Meter Photo" },
+  { key: "gas", label: "Gas Meter Photo" },
+  { key: "additional", label: "Additional Photo" },
+];
+
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
 const fieldStyle = {
   background: "#f9f9fc",
@@ -146,13 +175,74 @@ const UtilitySection = ({ reading, index }) => {
             label="Status"
             name={`${prefix}_status`}
             defaultValue={reading.status ?? ""}
-            options={["Normal", "Fixed", "Issues", "Not Applicable"]}
+            options={STATUS_OPTIONS}
+          />
+        </Col>
+        <Col md={8}>
+          <Field
+            label="Remarks / Notes"
+            name={`${prefix}_remarks`}
+            defaultValue={reading.remarks ?? ""}
           />
         </Col>
       </Row>
     </div>
   );
 };
+
+// Fixed "add new reading" block for one of the 3 common utility types —
+// only rendered by the parent when no reading of that type exists yet.
+const NewReadingSection = ({ utilityType, label, unit, letter }) => {
+  const prefix = `new_${utilityType}`;
+
+  return (
+    <div className="mb-5">
+      <h5 style={sectionTitleStyle}>{letter}. {label}</h5>
+      <Row className="g-4">
+        <Col md={4}>
+          <Field label="Meter Number" name={`${prefix}_meter_no`} />
+        </Col>
+        <Col md={4}>
+          <Field label="Check-In Reading" name={`${prefix}_reading_value`} type="number" />
+        </Col>
+        <Col md={4}>
+          <Field label="Consumption" name={`${prefix}_consumption`} type="number" />
+        </Col>
+        <Col md={4}>
+          <Field label="Unit" name={`${prefix}_unit`} defaultValue={unit} />
+        </Col>
+        <Col md={4}>
+          <Field label="Rate / Unit" name={`${prefix}_rate_per_unit`} type="number" />
+        </Col>
+        <Col md={4}>
+          <Field label="Charges" name={`${prefix}_charges`} type="number" />
+        </Col>
+        <Col md={4}>
+          <SelectField label="Status" name={`${prefix}_status`} defaultValue="Normal" options={STATUS_OPTIONS} />
+        </Col>
+        <Col md={8}>
+          <Field label="Remarks / Notes" name={`${prefix}_remarks`} />
+        </Col>
+      </Row>
+    </div>
+  );
+};
+
+const MeterPhotoUpload = ({ letter }) => (
+  <div className="mb-5">
+    <h5 style={sectionTitleStyle}>{letter}. Meter Photo Upload</h5>
+    <Row className="g-4">
+      {METER_PHOTO_SLOTS.map(({ key, label }) => (
+        <Col md={4} key={key}>
+          <div>
+            <label style={labelStyle}>{label}</label>
+            <input type="file" name={`meter_photo_${key}`} accept="image/*" style={{ ...fieldStyle, padding: "7px 8px" }} />
+          </div>
+        </Col>
+      ))}
+    </Row>
+  </div>
+);
 
 const UtilityReadingsEditDetailsPage = ({ mode = "check-in" }) => {
   const location   = useLocation();
@@ -169,6 +259,12 @@ const UtilityReadingsEditDetailsPage = ({ mode = "check-in" }) => {
 
   const readingsList = item?.utilityReadings?.readingsList ?? [];
 
+  // Only offer a fixed "add" section for a common utility type when no
+  // reading of that type exists yet — avoids creating an accidental duplicate.
+  const missingFixedTypes = FIXED_UTILITY_TYPES.filter(
+    ({ type }) => !readingsList.some((r) => r.utility === type)
+  );
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formRef.current) return;
@@ -177,21 +273,22 @@ const UtilityReadingsEditDetailsPage = ({ mode = "check-in" }) => {
       return;
     }
 
-    const formData  = new FormData(formRef.current);
+    const form      = formRef.current;
+    const formData  = new FormData(form);
     const values    = {};
     for (const [k, v] of formData.entries()) {
       if (v !== "") values[k] = v;
     }
 
-    // Build one payload per reading using the r_{id}_ prefix
-    const API_FIELDS = ["meter_no", "reading_value", "consumption", "unit", "rate_per_unit", "charges", "status"];
-    const payloads = readingsList
+    // Build one PATCH payload per existing reading using the r_{id}_ prefix
+    const UPDATE_FIELDS = ["meter_no", "reading_value", "consumption", "unit", "rate_per_unit", "charges", "status", "remarks"];
+    const updatePayloads = readingsList
       .map((r) => {
         const rid    = r.checkInUtilityReadingId ?? r.id;
         const prefix = `r_${rid}`;
         const body   = { check_in_utility_reading_id: rid };
         let hasChanges = false;
-        for (const field of API_FIELDS) {
+        for (const field of UPDATE_FIELDS) {
           const val = values[`${prefix}_${field}`];
           if (val !== undefined) {
             body[field] = val;
@@ -202,14 +299,52 @@ const UtilityReadingsEditDetailsPage = ({ mode = "check-in" }) => {
       })
       .filter(Boolean);
 
-    if (payloads.length === 0) {
+    // Build one POST payload per filled-in "new reading" fixed section
+    const createPayloads = missingFixedTypes
+      .map(({ type }) => {
+        const prefix = `new_${type}`;
+        const meterNo = values[`${prefix}_meter_no`];
+        const readingValue = values[`${prefix}_reading_value`];
+        if (!meterNo && !readingValue) return null;
+
+        const body = { check_in_id: Number(id), utility_type: type };
+        for (const field of UPDATE_FIELDS) {
+          const val = values[`${prefix}_${field}`];
+          if (val !== undefined) body[field] = val;
+        }
+        return body;
+      })
+      .filter(Boolean);
+
+    // Meter photo uploads
+    const photoUploads = METER_PHOTO_SLOTS
+      .map(({ key, label }) => {
+        const file = form.querySelector(`[name="meter_photo_${key}"]`)?.files?.[0];
+        return file ? { file, label } : null;
+      })
+      .filter(Boolean);
+
+    if (updatePayloads.length === 0 && createPayloads.length === 0 && photoUploads.length === 0) {
       toast.info("No changes to save.");
       return;
     }
 
     try {
       setSubmitting(true);
-      await Promise.all(payloads.map((body) => checkInApi.patch(READING_UPDATE_ENDPOINT, body)));
+      const requests = [
+        ...updatePayloads.map((body) => checkInApi.patch(READING_UPDATE_ENDPOINT, body)),
+        ...createPayloads.map((body) => checkInApi.post(READING_CREATE_ENDPOINT, body)),
+        ...photoUploads.map(async ({ file, label }) => {
+          const base64 = await fileToBase64(file);
+          return checkInApi.post(DOCUMENT_UPLOAD_ENDPOINT, {
+            check_in_id: Number(id),
+            document_type: "Meter Reading Photo",
+            file: base64,
+            linked_to_label: label,
+          });
+        }),
+      ];
+      await Promise.all(requests);
       await fetchItem();
       setSubmitting(false);
       toast.success("Utility readings updated successfully");
@@ -320,12 +455,24 @@ const UtilityReadingsEditDetailsPage = ({ mode = "check-in" }) => {
                     <div className="d-flex justify-content-center py-5">
                       <Spinner />
                     </div>
-                  ) : readingsList.length === 0 ? (
-                    <p style={{ color: "#526b89", fontSize: 15 }}>No utility readings found for this check-in.</p>
                   ) : (
-                    readingsList.map((reading, index) => (
-                      <UtilitySection key={reading.checkInUtilityReadingId ?? index} reading={reading} index={index} />
-                    ))
+                    <>
+                      {readingsList.map((reading, index) => (
+                        <UtilitySection key={reading.checkInUtilityReadingId ?? index} reading={reading} index={index} />
+                      ))}
+
+                      {missingFixedTypes.map(({ type, label, unit }, i) => (
+                        <NewReadingSection
+                          key={type}
+                          utilityType={type}
+                          label={label}
+                          unit={unit}
+                          letter={String.fromCharCode(65 + readingsList.length + i)}
+                        />
+                      ))}
+
+                      <MeterPhotoUpload letter={String.fromCharCode(65 + readingsList.length + missingFixedTypes.length)} />
+                    </>
                   )}
 
                   {/* System Fields */}

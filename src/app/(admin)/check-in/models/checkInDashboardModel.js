@@ -48,12 +48,17 @@ export const STATUS_OVERVIEW_META = [
   { key: 'cancelled', label: 'Canceled', color: '#F0D44A' },
 ];
 
+// Each step now shows a real date pulled from the most recent check-in's own
+// record (see useCheckInDashboardController.js), not an aggregate count.
+// getDate(record) reads the field that backs that step; agreementCompleted has
+// no dedicated backend field, so tenantSignedOn (final signature) is used as
+// the closest real completion signal.
 export const WORKFLOW_META = [
-  { key: 'visitScheduled', label: 'Visit Scheduled', dotColor: '#8DC63F', valueColor: '#4A90D9' },
-  { key: 'inspectionCompleted', label: 'Inspection Completed', dotColor: '#4DC0D7', valueColor: '#E53935' },
-  { key: 'agreementInProgress', label: 'Agreement in Progress', dotColor: '#F4A25D', valueColor: '#43A047' },
-  { key: 'companySigned', label: 'Company Signed', dotColor: '#58B67A', valueColor: '#FB8C00' },
-  { key: 'agreementCompleted', label: 'Agreement Completed', dotColor: '#8D67F0', valueColor: '#E91E8C' },
+  { key: 'visitScheduled', label: 'Visit Scheduled', dotColor: '#8DC63F', valueColor: '#4A90D9', getDate: (r) => r?.inspectionDate },
+  { key: 'inspectionCompleted', label: 'Inspection Completed', dotColor: '#4DC0D7', valueColor: '#E53935', getDate: (r) => r?.inspection?.inspectionOverview?.inspectionDate },
+  { key: 'agreementInProgress', label: 'Agreement in Progress', dotColor: '#F4A25D', valueColor: '#43A047', getDate: (r) => r?.agreement?.agreementDetails?.generatedOn },
+  { key: 'companySigned', label: 'Company Signed', dotColor: '#58B67A', valueColor: '#FB8C00', getDate: (r) => r?.agreement?.agreementDetails?.managerSignedOn },
+  { key: 'agreementCompleted', label: 'Agreement Completed', dotColor: '#8D67F0', valueColor: '#E91E8C', getDate: (r) => r?.agreement?.agreementDetails?.tenantSignedOn },
 ];
 
 // propertyTypeOverview now always includes every known rental type (Flat, Commercial,

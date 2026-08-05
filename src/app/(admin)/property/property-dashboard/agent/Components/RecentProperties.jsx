@@ -3,14 +3,7 @@ import clsx from 'clsx';
 import { Button, Card, CardBody, CardFooter, CardHeader, CardTitle } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 
-const recentProperties = [
-  { name: 'Silver Apartment', location: 'P.O.Box 1609, Muscat, Oman', date: 'Dec 2025' },
-  { name: 'D Residency', location: 'P.O.Box 1609, Muscat, Oman', date: 'Dec 2025' },
-  { name: 'Luxury Penthouse', location: 'P.O.Box 1609, Muscat, Oman', date: 'Dec 2025' },
-  { name: 'Weekend Villa', location: 'P.O.Box 1609, Muscat, Oman', date: 'Dec 2025' },
-];
-
-const RecentProperties = () => {
+const RecentProperties = ({ recentProperties = [], totalProperties = 0 }) => {
   const navigate = useNavigate();
   const joinDataLength = recentProperties.length - 1;
   return <Card className="border-0 shadow-sm" style={{
@@ -30,7 +23,7 @@ const RecentProperties = () => {
           <p className="mb-0" style={{
             color: '#647c99',
             fontSize: 14
-          }}>450 Properties</p>
+          }}>{totalProperties} Properties</p>
         </div>
       </CardHeader>
       <CardBody style={{

@@ -6,6 +6,28 @@ import { Link, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import Spinner from "@/components/Spinner";
 import useCheckIn from "@/hooks/useCheckIn";
+import checkInApi from "@/helpers/checkInApi";
+
+const DOCUMENT_UPLOAD_ENDPOINT = "/checkin-checkout/check_in/document/upload/";
+
+// Confirmed against the live API schema (AgreementTypeEnum / AgreementStatusEnum)
+const AGREEMENT_TYPE_OPTIONS = ["Government Agreement", "Internal Agreement"];
+const AGREEMENT_STATUS_OPTIONS = ["Pending", "Prepared", "Signed", "Executed", "Terminated"];
+
+// Confirmed valid check-in document types
+const AGREEMENT_DOCUMENT_SLOTS = [
+  { key: "agreement_signed", label: "Agreement Doc (Signed)", documentType: "Agreement Signed" },
+  { key: "tenant_id_proof", label: "Tenant ID Proof", documentType: "Tenant ID Proof" },
+  { key: "company_seal", label: "Company Seal", documentType: "Company Seal" },
+];
+
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
 const FIELD_PATHS = {
   agreement_type:           ["agreement", "agreementDetails", "agreementType"],
@@ -22,6 +44,10 @@ const FIELD_PATHS = {
   auto_reminder_enabled:    ["agreement", "agreementDetails", "autoReminderEnabled"],
   agreement_notes:          [],   // flat: agreementNotes
 };
+
+// Only these fields are ever sent to the agreement_details PATCH — keeps the
+// Documents Upload file inputs (added below) from leaking into it.
+const AGREEMENT_DETAIL_FIELDS = Object.keys(FIELD_PATHS);
 
 const getValue = (item, name) => {
   const path = FIELD_PATHS[name];
@@ -146,20 +172,41 @@ const AgreementEditDetailsPage = ({ mode = "check-in" }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formRef.current) return;
+    const form = formRef.current;
+    if (!form) return;
     if (!id) {
       alert("Cannot submit: no check-in id in the URL.");
       return;
     }
-    const formData = new FormData(formRef.current);
+    const formData = new FormData(form);
     const payload  = {};
     for (const [k, v] of formData.entries()) {
+      if (!AGREEMENT_DETAIL_FIELDS.includes(k)) continue;
       if (v === "") continue;
       payload[k] = k === "auto_reminder_enabled" ? v === "Enabled" : v;
     }
+
+    const documentUploads = AGREEMENT_DOCUMENT_SLOTS
+      .map(({ key, documentType }) => {
+        const file = form.querySelector(`[name="doc_${key}"]`)?.files?.[0];
+        return file ? { file, documentType } : null;
+      })
+      .filter(Boolean);
+
     try {
       setSubmitting(true);
-      await updateSections(id, { agreement_details: payload });
+      const requests = [
+        updateSections(id, { agreement_details: payload }),
+        ...documentUploads.map(async ({ file, documentType }) => {
+          const base64 = await fileToBase64(file);
+          return checkInApi.post(DOCUMENT_UPLOAD_ENDPOINT, {
+            check_in_id: Number(id),
+            document_type: documentType,
+            file: base64,
+          });
+        }),
+      ];
+      await Promise.all(requests);
       await fetchItem();
       setSubmitting(false);
       toast.success("Agreement details updated successfully");
@@ -275,7 +322,7 @@ const AgreementEditDetailsPage = ({ mode = "check-in" }) => {
                         label="Agreement Type"
                         name="agreement_type"
                         defaultValue={gv("agreement_type")}
-                        options={["Internal Agreement", "External Agreement", "Rental", "Lease"]}
+                        options={AGREEMENT_TYPE_OPTIONS}
                       />
                     </Col>
                     <Col md={4}>
@@ -290,7 +337,7 @@ const AgreementEditDetailsPage = ({ mode = "check-in" }) => {
                         label="Agreement Status"
                         name="agreement_status"
                         defaultValue={gv("agreement_status")}
-                        options={["Draft", "Pending", "Sent", "Signed", "Active", "Expired", "Cancelled", "Completed"]}
+                        options={AGREEMENT_STATUS_OPTIONS}
                       />
                     </Col>
                     <Col md={4}>
@@ -317,19 +364,6 @@ const AgreementEditDetailsPage = ({ mode = "check-in" }) => {
                       />
                     </Col>
                     <Col md={4}>
-                      <SelectField
-                        label="Agreement Template"
-                        name="agreement_template"
-                        defaultValue={gv("agreement_template")}
-                        options={["Standard Residential", "Commercial", "Custom"]}
-                      />
-                    </Col>
-                  </Row>
-
-                  {/* Section B — Financial (read-only from rental_details) */}
-                  <h5 id="financial" style={sectionTitleStyle}>B. Financial Summary</h5>
-                  <Row className="g-4 mb-5">
-                    <Col md={4}>
                       <AmountField label="Rent (Monthly)" defaultValue={details.rentMonthly ?? ""} readOnly />
                     </Col>
                     <Col md={4}>
@@ -341,10 +375,43 @@ const AgreementEditDetailsPage = ({ mode = "check-in" }) => {
                     <Col md={4}>
                       <AmountField label="Maintenance Charges" defaultValue={details.maintenanceCharges ?? ""} readOnly />
                     </Col>
+                    <Col md={4}>
+                      <SelectField
+                        label="Agreement Template"
+                        name="agreement_template"
+                        defaultValue={gv("agreement_template")}
+                        options={["Standard Residential", "Commercial", "Custom"]}
+                      />
+                    </Col>
                   </Row>
 
-                  {/* Section C — Timeline Dates */}
-                  <h5 id="agreement-timeline" style={sectionTitleStyle}>C. Agreement Timeline</h5>
+                  {/* Section B — Documents Upload */}
+                  <h5 id="documents-upload" style={sectionTitleStyle}>B. Documents Upload</h5>
+                  <Row className="g-4 mb-5">
+                    {AGREEMENT_DOCUMENT_SLOTS.map(({ key, label }) => (
+                      <Col md={4} key={key}>
+                        <div>
+                          <label style={labelStyle}>{label}</label>
+                          <input type="file" name={`doc_${key}`} accept=".pdf,.jpg,.jpeg,.png" style={{ ...fieldStyle, padding: "7px 8px" }} />
+                        </div>
+                      </Col>
+                    ))}
+                  </Row>
+
+                  {/* Section C — Notes */}
+                  <h5 id="agreement-notes" style={sectionTitleStyle}>C. Agreement Notes</h5>
+                  <Row className="g-4 mb-5">
+                    <Col md={12}>
+                      <TextArea
+                        label="Notes"
+                        name="agreement_notes"
+                        defaultValue={item?.agreement?.agreementNotes ?? item?.agreementNotes ?? ""}
+                      />
+                    </Col>
+                  </Row>
+
+                  {/* Section D — Timeline Dates */}
+                  <h5 id="agreement-timeline" style={sectionTitleStyle}>D. Agreement Timeline</h5>
                   <Row className="g-4 mb-5">
                     <Col md={4}>
                       <Field
@@ -392,18 +459,6 @@ const AgreementEditDetailsPage = ({ mode = "check-in" }) => {
                         name="auto_reminder_enabled"
                         defaultValue={gv("auto_reminder_enabled") === true || gv("auto_reminder_enabled") === "true" ? "Enabled" : gv("auto_reminder_enabled") === false || gv("auto_reminder_enabled") === "false" ? "Disabled" : ""}
                         options={["Enabled", "Disabled"]}
-                      />
-                    </Col>
-                  </Row>
-
-                  {/* Section D — Notes */}
-                  <h5 id="agreement-notes" style={sectionTitleStyle}>D. Agreement Notes</h5>
-                  <Row className="g-4 mb-5">
-                    <Col md={12}>
-                      <TextArea
-                        label="Notes"
-                        name="agreement_notes"
-                        defaultValue={item?.agreement?.agreementNotes ?? item?.agreementNotes ?? ""}
                       />
                     </Col>
                   </Row>

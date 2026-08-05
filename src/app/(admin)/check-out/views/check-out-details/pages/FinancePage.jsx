@@ -13,8 +13,6 @@ const STAT_ICONS_BG  = ['#eee7ff','#e9f8ef','#fff0e8','#e8fbfb'];
 const STAT_COLORS    = ['#6747ff','#47c878','#ff8d3c','#36c8cf'];
 const DONUT_COLORS   = ['#5cc481','#5c45df','#f49345','#edf049'];
 
-const fmt = (v) => (v === null || v === undefined || v === '') ? '—' : v;
-
 const StatCard = ({ label, value, color, bg }) => (
   <div style={{
     alignItems: 'center', background: '#fff', borderRadius: 5,
@@ -36,7 +34,6 @@ const FinancePage = ({ record }) => {
   const cards   = fd.summaryCards ?? {};
   const charges = fd.chargesAndDeductions ?? [];
   const settle  = fd.settlementSummary ?? {};
-  const overview = fd.financeOverview ?? {};
   const payments = fd.payments ?? fd.paymentTransactions ?? [];
   const notes   = record?.remarksNotes ?? '';
 
@@ -170,7 +167,7 @@ const FinancePage = ({ record }) => {
                         <td style={cellStyle}>{fmtDate(row.paymentDate)}</td>
                         <td style={cellStyle}>{val(row.paymentMethod)}</td>
                         <td style={cellStyle}>{val(row.transactionId)}</td>
-                        <td style={cellStyle}>{val(row.paidBy)}</td>
+                        <td style={cellStyle}>{val(record?.tenantName)}</td>
                         <td style={cellStyle}>{row.amount != null ? `${row.amount} OMR` : '—'}</td>
                         <td style={cellStyle}>{val(row.status)}</td>
                         <td style={{ padding: '9px 12px' }}>
