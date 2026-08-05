@@ -2,7 +2,7 @@
 import { deleteCookie, getCookie } from "cookies-next";
 
 const checkInApi = axios.create({
-  baseURL: "http://127.0.0.1:8000",
+  baseURL: "https://essdemo.alwijha.net",
 });
 
 const authSessionKey = "_LAHOMES_AUTH_KEY_";
