@@ -2,42 +2,38 @@
 // Live values (amounts, counts, percentages) come from the dashboard APIs — see
 // useCheckInDashboardController.js.
 
+import dashboardIcon1 from '@/assets/icons/Dashboard1.png';
+import dashboardIcon2 from '@/assets/icons/Dashboard2.png';
+import dashboardIcon3 from '@/assets/icons/Dashboard3.png';
+import dashboardIcon4 from '@/assets/icons/Dashboard4.png';
+import dashboardIcon5 from '@/assets/icons/Dashboard5.png';
+
 export const STAT_CARD_META = [
   {
     key: 'totalCheckIns',
     title: 'Total Check-Ins',
-    icon: 'solar:calendar-date-bold-duotone',
-    color: '#604ae3',
-    bg: '#f0ebff',
+    icon: dashboardIcon1,
   },
   {
     key: 'completed',
     title: 'Completed',
-    icon: 'solar:chart-square-bold-duotone',
-    color: '#58bd7d',
-    bg: '#eaf8f0',
+    icon: dashboardIcon2,
     changeKey: 'completedChangePercentage',
   },
   {
     key: 'inProgress',
     title: 'In Progress',
-    icon: 'solar:user-plus-rounded-bold-duotone',
-    color: '#ff8b3d',
-    bg: '#fff3ec',
+    icon: dashboardIcon3,
   },
   {
     key: 'pending',
     title: 'Pending',
-    icon: 'solar:chart-2-bold-duotone',
-    color: '#38c6cf',
-    bg: '#eafafa',
+    icon: dashboardIcon4,
   },
   {
     key: 'cancelled',
     title: 'Cancelled',
-    icon: 'solar:chart-2-bold-duotone',
-    color: '#e65f5c',
-    bg: '#fdecec',
+    icon: dashboardIcon5,
   },
 ];
 

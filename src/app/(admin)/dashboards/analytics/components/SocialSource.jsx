@@ -9,7 +9,7 @@ const StatusOverviewCard = ({ data = [] }) => {
   const series = data.map((item) => item.value);
 
   return <Col xl={4} lg={6}>
-      <Card className="h-100 shadow-sm border-0" style={{ borderRadius: '8px', minHeight: '372px' }}>
+      <Card className="h-100 shadow-sm border-0" style={{ borderRadius: '8px', minHeight: '372px', overflow: 'hidden' }}>
         <CardHeader className="border-0" style={{ backgroundColor: '#fbfcfe', padding: '22px 28px 18px' }}>
           <CardTitle as={'h4'} className="mb-0 fw-semibold" style={{ color: '#516986', fontSize: '17px' }}>
             Status Overview
@@ -17,20 +17,23 @@ const StatusOverviewCard = ({ data = [] }) => {
         </CardHeader>
         <CardBody className="d-flex flex-column justify-content-center" style={{ padding: '12px 16px 0' }}>
           <Row className="align-items-center g-0">
-            <Col xs={12} md={5}>
-              <div className="d-flex justify-content-center justify-content-md-start">
-                <ReactApexChart options={options} series={series} width={210} height={210} type="donut" className="apex-charts" />
+            <Col xs={12} md={4}>
+              <div
+                className="d-flex justify-content-center justify-content-md-start"
+                style={{ width: 160, height: 160, overflow: 'hidden', flexShrink: 0 }}
+              >
+                <ReactApexChart options={options} series={series} width={160} height={160} type="donut" className="apex-charts" />
               </div>
             </Col>
-            <Col xs={12} md={7} className="ps-md-4">
-              <div className="d-flex flex-column" style={{ gap: '20px', paddingLeft: '4px', paddingRight: '4px' }}>
+            <Col xs={12} md={8} className="ps-md-4">
+              <div className="d-flex flex-column" style={{ gap: '20px', paddingLeft: '4px', paddingRight: '20px' }}>
                 {data.map((item, idx) => (
                   <div
                     key={idx}
                     className="align-items-center"
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '184px 64px',
+                      gridTemplateColumns: '140px 72px',
                       justifyContent: 'space-between',
                     }}
                   >

@@ -89,6 +89,22 @@ const ReadOnlyField = ({ label, value }) => (
   </div>
 );
 
+const PropertyTypeSelect = ({ value, options, onChange }) => (
+  <div>
+    <label className="form-label">Select Property Type</label>
+    <select
+      className="form-select"
+      style={{ backgroundColor: fieldBg }}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>{option.label}</option>
+      ))}
+    </select>
+  </div>
+);
+
 const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] }) => {
   const [propertyType , setPropertyType] = useState('flat')
   const [selectedCountry, setSelectedCountry] = useState({ code: 'OM', name: 'Oman' });
@@ -150,10 +166,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
   }, [initialData, mode]);
 
   const selectedPropertyType = propertyTypeOptions.find((option) => option.value === propertyType) ?? propertyTypeOptions[0];
-  const cyclePropertyType = () => {
-    const currentIndex = propertyTypeOptions.findIndex((option) => option.value === propertyType);
-    const nextIndex = (currentIndex + 1) % propertyTypeOptions.length;
-    const nextType = propertyTypeOptions[nextIndex].value;
+  const handlePropertyTypeChange = (nextType) => {
     setPropertyType(nextType);
     setValue('property_type', nextType, { shouldDirty: true });
   };
@@ -409,17 +422,6 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
             <h3 className="property-add-title mb-0">
               Add New Property
             </h3>
-            <div className="d-flex align-items-center gap-3">
-              <span className="property-type-label">Select Property Type:</span>
-              <button
-                type="button"
-                onClick={cyclePropertyType}
-                className="property-type-toggle d-flex align-items-center justify-content-between"
-              >
-                <span>{selectedPropertyType.label}</span>
-                <span className="property-type-toggle-arrow" />
-              </button>
-            </div>
           </div>
 
           <div className="property-add-card-body">
@@ -430,7 +432,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
           <Row className="g-3">
             {propertyType === 'flat' && 
             <>
-            <Col lg={4}><ReadOnlyField label="Property Type" value={selectedPropertyType.fieldValue} /></Col>
+            <Col lg={4}><PropertyTypeSelect value={propertyType} options={propertyTypeOptions} onChange={handlePropertyTypeChange} /></Col>
             <Col lg={4}><TextFormInput control={control}style ={{ backgroundColor: '#F9F9FC' }} name="property_code" label="Property Code / ID" placeholder="Auto-Generated" /></Col>
             <Col lg={4}>
               <TextFormInput control={control} name="building_name" label="Building Name" style={{ backgroundColor: '#F9F9FC' }}/>
@@ -472,7 +474,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
 
             {propertyType === 'villa' && 
             <>
-            <Col lg={4}><ReadOnlyField label="Property Type" value={selectedPropertyType.fieldValue} /></Col>
+            <Col lg={4}><PropertyTypeSelect value={propertyType} options={propertyTypeOptions} onChange={handlePropertyTypeChange} /></Col>
             <Col lg={4} ><TextFormInput control={control} name="property_code" label="Property Code / ID" placeholder="Auto-Generated" style={{ backgroundColor: '#F9F9FC' }}/></Col>
             <Col lg={4}>
               <TextFormInput control={control} name="building_name" label="Villa Name / Number" style={{ backgroundColor: '#F9F9FC' }}/>
@@ -484,7 +486,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
 
             {propertyType === 'commercial' && 
             <>
-            <Col lg={4}><ReadOnlyField label="Property Type" value={selectedPropertyType.fieldValue} /></Col>
+            <Col lg={4}><PropertyTypeSelect value={propertyType} options={propertyTypeOptions} onChange={handlePropertyTypeChange} /></Col>
             <Col lg={4}><TextFormInput control={control} name="property_code" label="Property Code / ID" placeholder="Auto-Generated"style={{ backgroundColor: '#F9F9FC' }} /></Col>
             <Col lg={4}>
               <label className="form-label">Commercial Category</label>
@@ -506,7 +508,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
 
               {propertyType === 'warehouse' && 
             <>
-            <Col lg={4}><ReadOnlyField label="Property Type" value={selectedPropertyType.fieldValue} /></Col>
+            <Col lg={4}><PropertyTypeSelect value={propertyType} options={propertyTypeOptions} onChange={handlePropertyTypeChange} /></Col>
             <Col lg={4}><TextFormInput control={control} name="property_code" label="Property Code / ID" placeholder="Auto-Generated"style={{ backgroundColor: '#F9F9FC' }} /></Col>
             <Col lg={4}>
               <label className="form-label"style ={{ backgroundColor: '#F9F9FC' }}>Warehouse Category</label>

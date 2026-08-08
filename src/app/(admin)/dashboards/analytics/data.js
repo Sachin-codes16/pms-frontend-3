@@ -297,21 +297,19 @@ export const checkInOutOptions = {
   plotOptions: {
     bar: {
       horizontal: false,
-      columnWidth: '82%',
+      columnWidth: '96%',
       borderRadius: 5,
       borderRadiusApplication: 'end',
     },
   },
   dataLabels: { enabled: false },
   stroke: {
-    show: true,
-    width: 1,
-    colors: ['transparent']
+    show: false,
   },
   xaxis: {
     tickPlacement: 'between',
     categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'June'],
-    axisBorder: { show: true, color: '#8e969f', height: 2 },
+    axisBorder: { show: true, color: '#000000', height: 2, offsetX: -11 },
     axisTicks: { show: false },
     labels: {
       show: true,
@@ -339,7 +337,7 @@ export const checkInOutOptions = {
     },
     axisBorder: {
       show: true,
-      color: '#8e969f',
+      color: '#000000',
       width: 2
     },
     axisTicks: {
@@ -348,7 +346,7 @@ export const checkInOutOptions = {
   },
   grid: {
     show: true,
-    borderColor: '#bfc5cc',
+    borderColor: '#000000',
     strokeDashArray: 0,
     xaxis: {
       lines: {
@@ -368,7 +366,17 @@ export const checkInOutOptions = {
     }
   },
   fill: {
-    opacity: 1,
+    type: 'gradient',
+    gradient: {
+      shade: 'light',
+      type: 'vertical',
+      shadeIntensity: 0.5,
+      gradientToColors: ['#9fc9b9', '#cdbb7f'],
+      inverseColors: false,
+      opacityFrom: 1,
+      opacityTo: 1,
+      stops: [0, 100],
+    },
   },
   colors: ['#3f8fc8', '#f0bd2e'],
   legend: {

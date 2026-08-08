@@ -2,16 +2,22 @@
 // Live values (amounts, counts, percentages) come from the dashboard APIs — see
 // useAnalyticsDashboardController.js.
 
+import dashboardIcon1 from '@/assets/icons/Dashboard1.png';
+import dashboardIcon2 from '@/assets/icons/Dashboard2.png';
+import dashboardIcon3 from '@/assets/icons/Dashboard3.png';
+import dashboardIcon4 from '@/assets/icons/Dashboard4.png';
+import dashboardIcon5 from '@/assets/icons/Dashboard5.png';
+
 export const STAT_CARD_META = [
-  { key: 'totalCheckIns', title: 'Total Check-Ins', icon: 'solar:calendar-date-bold-duotone', variant: 'primary' },
-  { key: 'pendingCheckIns', title: 'Pending Check-Ins', icon: 'solar:chart-square-bold-duotone', variant: 'success' },
-  { key: 'totalCheckOuts', title: 'Total Check-Outs', icon: 'solar:user-plus-rounded-bold-duotone', variant: 'warning' },
-  { key: 'pendingCheckOuts', title: 'Pending Check-Outs', icon: 'solar:chart-2-bold-duotone', variant: 'info' },
+  { key: 'totalCheckIns', title: 'Total Check-Ins', icon: dashboardIcon1, variant: 'primary' },
+  { key: 'pendingCheckIns', title: 'Pending Check-Ins', icon: dashboardIcon2, variant: 'success' },
+  { key: 'totalCheckOuts', title: 'Total Check-Outs', icon: dashboardIcon3, variant: 'warning' },
+  { key: 'pendingCheckOuts', title: 'Pending Check-Outs', icon: dashboardIcon4, variant: 'info' },
 ];
 
 export const PENDING_SETTLEMENTS_STAT_META = {
   title: 'Pending Settlements',
-  icon: 'solar:chart-bold-duotone',
+  icon: dashboardIcon5,
   variant: 'danger',
 };
 

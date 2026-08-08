@@ -1,10 +1,12 @@
 import checkInApi from '@/helpers/checkInApi';
 import { useEffect, useState } from 'react';
+import * as XLSX from 'xlsx';
 import { occupancyReportFilters } from '../models/occupancyReportModel';
 
 const SUMMARY_ENDPOINT = '/property/occupancy/summary/';
 const LIST_ENDPOINT = '/property/occupancy/get_all/';
 const PAGE_SIZE = 8;
+const EXPORT_PAGE_SIZE = 500;
 
 const formatDate = (value) => {
   if (!value) return '-';
@@ -13,12 +15,13 @@ const formatDate = (value) => {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-// backend expects DD-MM-YY; the <input type="date"> gives YYYY-MM-DD
-const toApiDateParam = (isoValue) => {
-  if (!isoValue) return '';
-  const [year, month, day] = isoValue.split('-');
-  if (!year || !month || !day) return '';
-  return `${day}-${month}-${year.slice(-2)}`;
+// backend expects DD-MM-YY; fromDate/toDate are Date objects from the date picker
+const toApiDateParam = (date) => {
+  if (!date) return '';
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+  return `${day}-${month}-${year}`;
 };
 
 const mapRow = (item, index, presentPage) => ({
@@ -81,8 +84,10 @@ export const useOccupancyReportController = () => {
   const [search, setSearch] = useState('');
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [selectedStatuses, setSelectedStatuses] = useState([]);
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportError, setExportError] = useState('');
   const [presentPage, setPresentPage] = useState(1);
   const [totalPage, setTotalPage] = useState(1);
   const [rows, setRows] = useState([]);
@@ -147,6 +152,56 @@ export const useOccupancyReportController = () => {
     setPresentPage(clamped);
   };
 
+  const exportExcel = async () => {
+    setExportLoading(true);
+    setExportError('');
+
+    const params = { limit: EXPORT_PAGE_SIZE };
+    if (search) params.search = search;
+    if (selectedTypes.length) params.property_types = selectedTypes.join(',');
+    if (selectedStatuses.length) params.statuses = selectedStatuses.join(',');
+    if (fromDate) params.from_date = toApiDateParam(fromDate);
+    if (toDate) params.to_date = toApiDateParam(toDate);
+
+    try {
+      let page = 1;
+      let totalPages = 1;
+      const allItems = [];
+
+      do {
+        const res = await checkInApi.get(LIST_ENDPOINT, { params: { ...params, page_num: page } });
+        const data = res.data?.data ?? {};
+        allItems.push(...(data.data ?? []));
+        totalPages = data.totalPage ?? 1;
+        page += 1;
+      } while (page <= totalPages);
+
+      const excelRows = allItems.map((item, index) => ({
+        'Sr. No.': index + 1,
+        'P. ID': item.propertyId,
+        'Property Name': item.propertyName || '-',
+        Type: item.type || '-',
+        'Building/Project': item.buildingProject || '-',
+        'Unit No': item.unitNo || '-',
+        'Start Date': formatDate(item.startDate),
+        'End Date': formatDate(item.endDate),
+        'Rent (OMR)': item.rent ?? '-',
+        Status: item.status || '-',
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(excelRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Occupancy Report');
+      XLSX.writeFile(workbook, `Occupancy_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (err) {
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Unable to export occupancy report.';
+      setExportError(status ? `HTTP ${status}: ${detail}` : detail);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   return {
     filters: occupancyReportFilters,
     selectedTypes,
@@ -168,5 +223,8 @@ export const useOccupancyReportController = () => {
     stats,
     summaryLoading,
     summaryError,
+    exportExcel,
+    exportLoading,
+    exportError,
   };
 };

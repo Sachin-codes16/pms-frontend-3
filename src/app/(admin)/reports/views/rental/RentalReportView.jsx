@@ -1,9 +1,14 @@
+import { forwardRef, useState } from 'react';
 import { Button, Card, CardBody, CardHeader, Col, Row } from 'react-bootstrap';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { useRentalReportController } from '../../controllers/useRentalReportController';
 
 const RentalReportView = () => {
   const { breadcrumb, filterSummary, filters, rows, title, totalProperties } = useRentalReportController();
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
 
   return (
     <div className="rental-report-page">
@@ -166,20 +171,36 @@ const RentalReportView = () => {
         </div>
 
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <Button variant="outline-primary" className="toolbar-btn">
-            <IconifyIcon icon="ri:arrow-down-s-line" className="me-1" />
-            From Date
-          </Button>
-          <Button variant="outline-primary" className="toolbar-btn">
-            <IconifyIcon icon="ri:arrow-down-s-line" className="me-1" />
-            To Date
-          </Button>
+          <DatePicker
+            selected={fromDate}
+            onChange={(date) => setFromDate(date)}
+            selectsStart
+            startDate={fromDate}
+            endDate={toDate}
+            maxDate={toDate || undefined}
+            dateFormat="dd-MM-yyyy"
+            placeholderText="dd-mm-yyyy"
+            isClearable
+            customInput={<DateFilterButton label="From Date" />}
+          />
+          <DatePicker
+            selected={toDate}
+            onChange={(date) => setToDate(date)}
+            selectsEnd
+            startDate={fromDate}
+            endDate={toDate}
+            minDate={fromDate || undefined}
+            dateFormat="dd-MM-yyyy"
+            placeholderText="dd-mm-yyyy"
+            isClearable
+            customInput={<DateFilterButton label="To Date" />}
+          />
           <Button className="primary-action">Export Excel</Button>
         </div>
       </div>
 
       <Row className="g-3">
-        <Col xl={2} lg={12}>
+        <Col xl={3} lg={12}>
           <Card className="report-card">
             <CardHeader className="bg-white border-bottom" style={{ padding: '16px 20px' }}>
               <h5 className="filter-title mb-1">Property</h5>
@@ -237,7 +258,7 @@ const RentalReportView = () => {
           </Card>
         </Col>
 
-        <Col xl={10} lg={12}>
+        <Col xl={9} lg={12}>
           <Card className="report-card">
             <CardHeader className="bg-white border-0" style={{ padding: '18px 20px 14px' }}>
               <h5 className="mb-0" style={{ color: '#536b86', fontSize: 16, fontWeight: 700 }}>
@@ -326,15 +347,29 @@ const RentalReportView = () => {
   );
 };
 
+const DateFilterButton = forwardRef(({ label, value, onClick }, ref) => (
+  <Button
+    variant="outline-primary"
+    className="toolbar-btn d-inline-flex align-items-center gap-2"
+    onClick={onClick}
+    ref={ref}
+  >
+    <IconifyIcon icon="ri:calendar-line" width={16} height={16} />
+    <span>{value || label}</span>
+    <IconifyIcon icon="ri:arrow-down-s-line" width={16} height={16} />
+  </Button>
+));
+DateFilterButton.displayName = 'DateFilterButton';
+
 const FilterCheckboxGroup = ({ title, items, checkedItem }) => (
   <div className="filter-section">
     <h5 className="filter-label">{title}</h5>
     <Row className="g-0">
       {items.map((item) => (
-        <Col xs={6} key={item}>
+        <Col xs={6} key={item} className="overflow-hidden">
           <div className="d-flex align-items-center gap-2 mb-3">
-            <input className="form-check-input" type="checkbox" id={`rental-${item}`} defaultChecked={item === checkedItem} />
-            <label className="form-check-label" htmlFor={`rental-${item}`} style={{ color: '#536b86', fontSize: 14 }}>
+            <input className="form-check-input flex-shrink-0" type="checkbox" id={`rental-${item}`} defaultChecked={item === checkedItem} />
+            <label className="form-check-label text-truncate" htmlFor={`rental-${item}`} style={{ color: '#536b86', fontSize: 14, minWidth: 0 }}>
               {item}
             </label>
           </div>

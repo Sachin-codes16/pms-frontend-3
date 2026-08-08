@@ -1,7 +1,7 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { Card, CardBody, Col, Row } from 'react-bootstrap';
 
-const StatCard = ({ title, amount, icon, color, bg, change }) => {
+const StatCard = ({ title, amount, icon, change }) => {
   return (
     <Card className="border-0 shadow-sm h-100" style={{ borderRadius: 5 }}>
       <CardBody style={{ padding: '22px 24px' }}>
@@ -19,16 +19,8 @@ const StatCard = ({ title, amount, icon, color, bg, change }) => {
               {amount}
             </h3>
           </div>
-          <div
-            className="flex-centered"
-            style={{
-              backgroundColor: bg,
-              borderRadius: 5,
-              height: 56,
-              width: 56
-            }}
-          >
-            <IconifyIcon icon={icon} width={30} height={30} style={{ color }} />
+          <div className="flex-shrink-0">
+            <img src={icon} alt="" width={56} height={56} />
           </div>
         </div>
       </CardBody>

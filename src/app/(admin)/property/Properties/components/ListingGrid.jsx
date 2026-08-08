@@ -98,15 +98,15 @@ const PropertiesCard = ({
               className="fs-24 text-primary"
             />
           </div>
-          <div>
-            <Link to="" className="text-dark fw-medium fs-16">
+          <div className="flex-grow-1" style={{ minWidth: 0 }}>
+            <Link to="" className="text-dark fw-medium fs-16 d-block text-truncate">
               {name}
             </Link>
-            <p className="text-muted mb-0">{location}</p>
+            <p className="text-muted mb-0 text-truncate">{location}</p>
           </div>
         </div>
         <Row className="mt-2 g-2">
-          <Col lg={3} xs={3}>
+          <Col lg={3} xs={3} className="overflow-hidden">
             <span
               className="badge bg-light-subtle text-muted border fs-12
       d-flex align-items-center gap-1 w-100"
@@ -116,10 +116,10 @@ const PropertiesCard = ({
                 icon="solar:bed-broken"
                 className="fs-14 flex-shrink-0"
               />
-              <span className="text-nowrap">{beds} Bed</span>
+              <span className="text-truncate" style={{ minWidth: 0 }}>{beds} Bed</span>
             </span>
           </Col>
-          <Col lg={3} xs={3}>
+          <Col lg={3} xs={3} className="overflow-hidden">
             <span
               className="badge bg-light-subtle text-muted border fs-12
       d-flex align-items-center gap-1 w-100"
@@ -129,10 +129,10 @@ const PropertiesCard = ({
                 icon="solar:bath-broken"
                 className="fs-14 flex-shrink-0"
               />
-              <span className="text-nowrap">{bath} Bath</span>
+              <span className="text-truncate" style={{ minWidth: 0 }}>{bath} Bath</span>
             </span>
           </Col>
-          <Col lg={3} xs={3}>
+          <Col lg={3} xs={3} className="overflow-hidden">
             <span
               className="badge bg-light-subtle text-muted border fs-12
       d-flex align-items-center gap-1 w-100"
@@ -142,10 +142,10 @@ const PropertiesCard = ({
                 icon="solar:scale-broken"
                 className="fs-14 flex-shrink-0"
               />
-              <span className="text-nowrap">{ft} ft</span>
+              <span className="text-truncate" style={{ minWidth: 0 }}>{ft} ft</span>
             </span>
           </Col>
-          <Col lg={3} xs={3}>
+          <Col lg={3} xs={3} className="overflow-hidden">
             <span
               className="badge bg-light-subtle text-muted border fs-12
       d-flex align-items-center gap-1 w-100"
@@ -155,7 +155,7 @@ const PropertiesCard = ({
                 icon="solar:double-alt-arrow-up-broken"
                 className="fs-14 flex-shrink-0"
               />
-              <span className="text-nowrap">{flor} Floor</span>
+              <span className="text-truncate" style={{ minWidth: 0 }}>{flor} Floor</span>
             </span>
           </Col>
         </Row>

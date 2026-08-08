@@ -1,4 +1,7 @@
+import { forwardRef } from 'react';
 import { Alert, Button, Card, CardBody, CardHeader, Col, Row, Spinner } from 'react-bootstrap';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { useOccupancyReportController } from '../../controllers/useOccupancyReportController';
 
@@ -24,6 +27,9 @@ const OccupancyReportView = () => {
     stats,
     summaryLoading,
     summaryError,
+    exportExcel,
+    exportLoading,
+    exportError,
   } = useOccupancyReportController();
 
   return (
@@ -210,25 +216,41 @@ const OccupancyReportView = () => {
         </div>
 
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <input
-            type="date"
-            className="form-control outline-action"
-            style={{ minHeight: 39 }}
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            aria-label="From Date"
+          <DatePicker
+            selected={fromDate}
+            onChange={(date) => setFromDate(date)}
+            selectsStart
+            startDate={fromDate}
+            endDate={toDate}
+            maxDate={toDate || undefined}
+            dateFormat="dd-MM-yyyy"
+            placeholderText="dd-mm-yyyy"
+            isClearable
+            customInput={<DateFilterButton label="From Date" />}
           />
-          <input
-            type="date"
-            className="form-control outline-action"
-            style={{ minHeight: 39 }}
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            aria-label="To Date"
+          <DatePicker
+            selected={toDate}
+            onChange={(date) => setToDate(date)}
+            selectsEnd
+            startDate={fromDate}
+            endDate={toDate}
+            minDate={fromDate || undefined}
+            dateFormat="dd-MM-yyyy"
+            placeholderText="dd-mm-yyyy"
+            isClearable
+            customInput={<DateFilterButton label="To Date" />}
           />
-          <Button className="primary-action">Export Excel</Button>
+          <Button className="primary-action" onClick={exportExcel} disabled={exportLoading}>
+            {exportLoading ? <Spinner animation="border" size="sm" /> : 'Export Excel'}
+          </Button>
         </div>
       </div>
+
+      {exportError && (
+        <Alert variant="danger" className="mb-3">
+          {exportError}
+        </Alert>
+      )}
 
       {rowsError && (
         <Alert variant="danger" className="mb-3">
@@ -237,7 +259,7 @@ const OccupancyReportView = () => {
       )}
 
       <Row className="g-3">
-        <Col xl={2} lg={12}>
+        <Col xl={3} lg={12}>
           <Card className="soft-card">
             <CardHeader className="bg-white border-0" style={{ padding: '20px 24px 12px' }}>
               <h5 className="mb-1" style={{ color: '#536b86', fontSize: 16, fontWeight: 700 }}>
@@ -256,7 +278,7 @@ const OccupancyReportView = () => {
 
         </Col>
 
-        <Col xl={10} lg={12}>
+        <Col xl={9} lg={12}>
           <Card className="soft-card">
             <CardHeader className="bg-white border-bottom" style={{ padding: '18px 20px' }}>
               <h5 className="mb-0" style={{ color: '#536b86', fontSize: 16, fontWeight: 700 }}>
@@ -372,12 +394,26 @@ const OccupancyReportView = () => {
   );
 };
 
+const DateFilterButton = forwardRef(({ label, value, onClick }, ref) => (
+  <Button
+    variant="outline-primary"
+    className="outline-action d-inline-flex align-items-center gap-2"
+    onClick={onClick}
+    ref={ref}
+  >
+    <IconifyIcon icon="ri:calendar-line" width={16} height={16} />
+    <span>{value || label}</span>
+    <IconifyIcon icon="ri:arrow-down-s-line" width={16} height={16} />
+  </Button>
+));
+DateFilterButton.displayName = 'DateFilterButton';
+
 const FilterCheckboxGroup = ({ title, items, selected, onToggle }) => (
   <div className="filter-section">
     <h5 className="filter-label">{title}</h5>
-    <Row className="g-0">
+    <Row className="gy-0" style={{ '--bs-gutter-x': '29px' }}>
       {items.map((item) => (
-        <Col xs={12} key={item}>
+        <Col xs={6} key={item}>
           <div className="d-flex align-items-center gap-2 mb-3">
             <input
               className="form-check-input"

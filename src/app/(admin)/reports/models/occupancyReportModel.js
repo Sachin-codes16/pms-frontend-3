@@ -1,4 +1,4 @@
 export const occupancyReportFilters = {
   propertyTypes: ['Apartment', 'Villa', 'Warehouse', 'Commercial'],
-  statuses: ['Vacant', 'Booked', 'Occupied', 'Under Maintenance'],
+  statuses: ['Booked', 'Vacant', 'Rented', 'Police'],
 };

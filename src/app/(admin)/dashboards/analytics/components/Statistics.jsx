@@ -1,11 +1,9 @@
-import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { Card, CardBody, Col, Row } from 'react-bootstrap';
 
 const StatCard = ({
   amount,
   icon,
-  title,
-  variant
+  title
 }) => {
   return <Card className="shadow-sm border-0 h-100" style={{ borderRadius: '6px' }}>
       <CardBody className="d-flex align-items-center" style={{ minHeight: '100px', padding: '20px' }}>
@@ -14,8 +12,8 @@ const StatCard = ({
             <p className="mb-2 fw-medium" style={{ color: '#516986', fontSize: '15px' }}>{title}</p>
             <h3 className="text-dark fw-bold mb-0" style={{ fontSize: '24px' }}>{amount}</h3>
           </div>
-          <div className={`avatar-md bg-${variant} bg-opacity-10 rounded flex-centered flex-shrink-0`} style={{ width: '56px', height: '56px' }}>
-            <IconifyIcon icon={icon} width={28} height={28} className={`text-${variant}`} />
+          <div className="flex-shrink-0">
+            <img src={icon} alt="" width={56} height={56} />
           </div>
         </div>
       </CardBody>

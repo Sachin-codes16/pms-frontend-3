@@ -2,12 +2,18 @@
 // Live values (amounts, counts, percentages) come from the dashboard APIs — see
 // useCheckOutDashboardController.js.
 
+import dashboardIcon1 from '@/assets/icons/Dashboard1.png';
+import dashboardIcon2 from '@/assets/icons/Dashboard2.png';
+import dashboardIcon3 from '@/assets/icons/Dashboard3.png';
+import dashboardIcon4 from '@/assets/icons/Dashboard4.png';
+import dashboardIcon5 from '@/assets/icons/Dashboard5.png';
+
 export const STAT_CARD_META = [
-  { key: 'totalCheckOuts', title: 'Total Check-Outs', icon: 'solar:calendar-date-bold-duotone', color: '#604ae3', bg: '#f0ebff' },
-  { key: 'pendingCheckOuts', title: 'Pending Check-Outs', icon: 'solar:chart-square-bold-duotone', color: '#58bd7d', bg: '#eaf8f0' },
-  { key: 'completedCheckOuts', title: 'Completed Check-Outs', icon: 'solar:user-plus-rounded-bold-duotone', color: '#ff8b3d', bg: '#fff3ec' },
-  { key: 'pendingSettlements', title: 'Pending Settlements', icon: 'solar:chart-2-bold-duotone', color: '#38c6cf', bg: '#eafafa' },
-  { key: 'overdueCheckOuts', title: 'Overdue Check-Outs', icon: 'solar:chart-2-bold-duotone', color: '#e65f5c', bg: '#fdecec' },
+  { key: 'totalCheckOuts', title: 'Total Check-Outs', icon: dashboardIcon1 },
+  { key: 'pendingCheckOuts', title: 'Pending Check-Outs', icon: dashboardIcon2 },
+  { key: 'completedCheckOuts', title: 'Completed Check-Outs', icon: dashboardIcon3 },
+  { key: 'pendingSettlements', title: 'Pending Settlements', icon: dashboardIcon4 },
+  { key: 'overdueCheckOuts', title: 'Overdue Check-Outs', icon: dashboardIcon5 },
 ];
 
 export const PROGRESS_STEP_META = [

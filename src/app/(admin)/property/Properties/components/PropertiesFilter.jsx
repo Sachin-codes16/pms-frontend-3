@@ -163,14 +163,22 @@ const PropertiesFilter = () => {
             grid-template-columns: repeat(4, minmax(0, 1fr));
           }
 
+          .bedroom-options > div {
+            min-width: 0;
+          }
+
           .bedroom-options .btn {
+            align-items: center;
             border-color: #604ae3;
             border-radius: 5px;
             color: #604ae3;
-            font-size: 14px;
+            display: flex;
+            font-size: 13px;
+            justify-content: center;
             min-height: 39px;
-            padding: 8px 6px;
-            white-space: nowrap;
+            padding: 8px 4px;
+            text-align: center;
+            white-space: normal;
           }
 
           .bedroom-options .btn-check:checked + .btn {
