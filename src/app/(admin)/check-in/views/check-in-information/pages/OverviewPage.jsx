@@ -230,46 +230,58 @@ const OverviewPage = ({ record }) => {
           </div>
           {tenantDocuments.length > 0 ? (
             <div style={{ padding: '10px 18px 18px' }}>
-              {tenantDocuments.map((document, index) => (
-                <div
-                  key={document.id ?? document.name ?? index}
-                  className="d-flex align-items-center justify-content-between gap-3"
-                  style={{ marginBottom: 14 }}
-                >
-                  <div className="d-flex align-items-center gap-3">
-                    <span
-                      className="d-inline-flex align-items-center justify-content-center"
-                      style={{ border: '1px solid #cfd6de', borderRadius: 4, height: 36, width: 36 }}
-                    >
-                      <IconifyIcon icon="vscode-icons:file-type-pdf2" width={22} height={22} />
-                    </span>
-                    <div>
-                      <p className="mb-1" style={{ color: bodyText, fontSize: 16, fontWeight: 500 }}>
-                        {val(document.name ?? document.documentType)}
-                      </p>
-                      <p className="mb-0" style={{ color: bodyText, fontSize: 14 }}>
-                        {document.uploadedOn ? `Uploaded on ${fmtDate(document.uploadedOn)}` : 'Not uploaded'}
-                      </p>
+              {tenantDocuments.map((document, index) => {
+                const docUrl = resolvePhotoSrc(document);
+                return (
+                  <div
+                    key={document.id ?? document.name ?? index}
+                    className="d-flex align-items-center justify-content-between gap-3"
+                    style={{ marginBottom: 14 }}
+                  >
+                    <div className="d-flex align-items-center gap-3">
+                      <span
+                        className="d-inline-flex align-items-center justify-content-center"
+                        style={{ border: '1px solid #cfd6de', borderRadius: 4, height: 36, width: 36 }}
+                      >
+                        <IconifyIcon icon="vscode-icons:file-type-pdf2" width={22} height={22} />
+                      </span>
+                      <div>
+                        <p className="mb-1" style={{ color: bodyText, fontSize: 16, fontWeight: 500 }}>
+                          {val(document.name ?? document.documentType)}
+                        </p>
+                        <p className="mb-0" style={{ color: bodyText, fontSize: 14 }}>
+                          {document.uploadedOn ? `Uploaded on ${fmtDate(document.uploadedOn)}` : 'Not uploaded'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="d-flex gap-2">
+                      <Button
+                        as="a"
+                        href={docUrl || undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        disabled={!docUrl}
+                        variant="outline-secondary"
+                        className="d-inline-flex align-items-center justify-content-center p-0"
+                        style={{ borderColor: '#c9ced5', borderRadius: 4, height: 36, width: 36 }}
+                      >
+                        <IconifyIcon icon="solar:eye-broken" width={18} height={18} />
+                      </Button>
+                      <Button
+                        as="a"
+                        href={docUrl || undefined}
+                        download
+                        disabled={!docUrl}
+                        variant="outline-secondary"
+                        className="d-inline-flex align-items-center justify-content-center p-0"
+                        style={{ borderColor: '#c9ced5', borderRadius: 4, height: 36, width: 36 }}
+                      >
+                        <IconifyIcon icon="ri:download-line" width={18} height={18} />
+                      </Button>
                     </div>
                   </div>
-                  <div className="d-flex gap-2">
-                    <Button
-                      variant="outline-secondary"
-                      className="d-inline-flex align-items-center justify-content-center p-0"
-                      style={{ borderColor: '#c9ced5', borderRadius: 4, height: 36, width: 36 }}
-                    >
-                      <IconifyIcon icon="solar:eye-broken" width={18} height={18} />
-                    </Button>
-                    <Button
-                      variant="outline-secondary"
-                      className="d-inline-flex align-items-center justify-content-center p-0"
-                      style={{ borderColor: '#c9ced5', borderRadius: 4, height: 36, width: 36 }}
-                    >
-                      <IconifyIcon icon="ri:download-line" width={18} height={18} />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p style={emptyTextStyle}>No documents uploaded</p>

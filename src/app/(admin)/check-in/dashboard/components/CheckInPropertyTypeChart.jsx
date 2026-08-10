@@ -139,7 +139,8 @@ const CheckInPropertyTypeChart = ({ data = [] }) => {
                     fontSize: "16px",
                     color: "#6f6f6f",
                     textAlign: "center",
-                    width: "64px",
+                    minWidth: "64px",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {d.label}

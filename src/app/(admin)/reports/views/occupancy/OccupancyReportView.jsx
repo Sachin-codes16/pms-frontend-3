@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import { Alert, Button, Card, CardBody, CardHeader, Col, Row, Spinner } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
@@ -36,6 +37,12 @@ const OccupancyReportView = () => {
     <div className="occupancy-report-page">
       <style>
         {`
+          @media (min-width: 1400px) {
+            .container-fluid:has(> .occupancy-report-page) {
+              max-width: 100%;
+            }
+          }
+
           .occupancy-report-page {
             color: #526b89;
           }
@@ -190,7 +197,11 @@ const OccupancyReportView = () => {
                     </h3>
                   </div>
                   <span className="d-flex align-items-center justify-content-center" style={{ width: 56, height: 56, borderRadius: 5, background: item.bg }}>
-                    <IconifyIcon icon={item.icon} width={30} height={30} style={{ color: item.color }} />
+                    {item.iconImage ? (
+                      <img src={item.iconImage} alt="" width={30} height={30} />
+                    ) : (
+                      <IconifyIcon icon={item.icon} width={30} height={30} style={{ color: item.color }} />
+                    )}
                   </span>
                 </div>
               </CardBody>
@@ -335,10 +346,22 @@ const OccupancyReportView = () => {
                         </td>
                         <td className="action-cell" style={cellStyle}>
                           <div className="d-flex gap-2">
-                            <Button variant="light" size="sm" style={actionButtonStyle}>
+                            <Button
+                              as={Link}
+                              to={`/landlord/detailspage?property_id=${row.id}`}
+                              variant="light"
+                              size="sm"
+                              style={actionButtonStyle}
+                            >
                               <IconifyIcon icon="solar:eye-broken" className="align-middle fs-16" />
                             </Button>
-                            <Button variant="light" size="sm" style={{ ...actionButtonStyle, background: '#f0edff', color: '#293052' }}>
+                            <Button
+                              as={Link}
+                              to={`/landlord/add-property?property_id=${row.id}`}
+                              variant="light"
+                              size="sm"
+                              style={{ ...actionButtonStyle, background: '#f0edff', color: '#293052' }}
+                            >
                               <IconifyIcon icon="solar:pen-2-broken" className="align-middle fs-16" />
                             </Button>
                           </div>

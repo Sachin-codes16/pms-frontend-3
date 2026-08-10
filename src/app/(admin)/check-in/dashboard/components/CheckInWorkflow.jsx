@@ -77,7 +77,15 @@ const CheckInWorkflow = ({ steps = [] }) => {
                 }}
               >
                 <span
-                  style={{ color: "#526b89", fontSize: 16, fontWeight: 600, whiteSpace: "nowrap" }}
+                  style={{
+                    color: "#526b89",
+                    fontSize: 16,
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    minWidth: 0,
+                  }}
                 >
                   {step.label}
                 </span>
@@ -87,6 +95,7 @@ const CheckInWorkflow = ({ steps = [] }) => {
                     fontWeight: 700,
                     fontSize: 16,
                     whiteSpace: "nowrap",
+                    flexShrink: 0,
                   }}
                 >
                   {step.value}

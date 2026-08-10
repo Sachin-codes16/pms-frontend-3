@@ -3,8 +3,8 @@
 //
 
 @include media-breakpoint-up(xxl) {
-     .container-fluid {
-          max-width: 96%;
+     .container-fluid:not(:has(> .check-in-list-page)):not(:has(> .check-out-list-page)) {
+          max-width: 100%;
      }
 }
 

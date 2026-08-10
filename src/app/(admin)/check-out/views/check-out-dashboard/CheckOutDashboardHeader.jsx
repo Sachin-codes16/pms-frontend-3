@@ -29,8 +29,7 @@ const CheckOutDashboardHeader = () => {
         <Button
           as={Link}
           to="/check-out-start"
-          variant="primary"
-          style={{ backgroundColor: '#604ae3', borderColor: '#604ae3', borderRadius: 4, minWidth: 100, padding: '10px 18px' }}
+          style={{ backgroundColor: '#292F57', borderColor: '#292F57', color: '#FFFFFF', borderRadius: 4, minWidth: 100, padding: '10px 18px' }}
         >
           Create Check out
         </Button>

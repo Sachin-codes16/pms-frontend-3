@@ -9,6 +9,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '@/helpers/api';
 import { useAuthContext } from '@/context/useAuthContext';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import  './PropertyAdd.css';
 
 const schema = yup.object({
@@ -55,6 +57,23 @@ const LandlordSelect = ({ control, landlords }) => (
           <div className="text-danger small mt-1">{fieldState.error.message}</div>
         )}
       </>
+    )} />
+  </div>
+);
+
+const AvailableFromField = ({ control }) => (
+  <div>
+    <label className="form-label">Available From</label>
+    <Controller name="available_from" control={control} defaultValue={null} render={({ field }) => (
+      <DatePicker
+        selected={field.value instanceof Date ? field.value : (field.value ? new Date(field.value) : null)}
+        onChange={(date) => field.onChange(date)}
+        dateFormat="dd-MM-yyyy"
+        placeholderText="dd-mm-yyyy"
+        className="form-control"
+        wrapperClassName="d-block"
+        isClearable
+      />
     )} />
   </div>
 );
@@ -161,6 +180,9 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
   useEffect(() => {
     if (initialData && mode === 'update') {
       reset(initialData);
+      if (initialData.property_type) {
+        setPropertyType(initialData.property_type);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData, mode]);
@@ -420,7 +442,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
             className="property-add-header d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3"
           >
             <h3 className="property-add-title mb-0">
-              Add New Property
+              {mode === 'update' ? 'Edit Property' : 'Add New Property'}
             </h3>
           </div>
 
@@ -1006,7 +1028,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
                 </select>
               )} />
             </Col>
-            <Col lg={4}><TextFormInput control={control} name="available_from" label="Available From" placeholder="dd-mm-yyyy" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+            <Col lg={4}><AvailableFromField control={control} /></Col>
             {/* <Col lg={4}><TextFormInput control={control} name="current_tenant" label="Current Tenant" style={{ backgroundColor: '#F9F9FC' }}/></Col> */}
           </Row>
         </CardBody>
@@ -1104,7 +1126,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
                 </select>
               )} />
             </Col>
-            <Col lg={4}><TextFormInput control={control} name="available_from" label="Available From" placeholder="dd-mm-yyyy" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+            <Col lg={4}><AvailableFromField control={control} /></Col>
           </Row>
         </CardBody>
       </Card>)}
@@ -1137,7 +1159,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
                 </select>
               )} />
             </Col>
-            <Col lg={4}><TextFormInput control={control} name="available_from" label="Available From" placeholder="dd-mm-yyyy" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+            <Col lg={4}><AvailableFromField control={control} /></Col>
           </Row>
         </CardBody>
       </Card>)}
@@ -1229,7 +1251,7 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
                 </select>
               )} />
             </Col>
-            <Col lg={4}><TextFormInput control={control} name="available_from" label="Available From" placeholder="dd-mm-yyyy" style={{ backgroundColor: '#F9F9FC' }}/></Col>
+            <Col lg={4}><AvailableFromField control={control} /></Col>
           </Row>
         </CardBody>
       </Card>)}
@@ -1333,7 +1355,7 @@ style ={{ backgroundColor: '#F9F9FC' }}
   className="w-100"
   style={{ backgroundColor: '#5D7186', borderColor: '#5D7186' }}
 >
-  Add Property
+  {mode === 'update' ? 'Save Changes' : 'Add Property'}
 </Button>
           </Col>
         </Row>

@@ -2,7 +2,7 @@ import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import checkInApi from "@/helpers/checkInApi";
 import { useEffect, useRef, useState } from "react";
 import { Button, Card, CardBody, Col, Row } from "react-bootstrap";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Spinner from "@/components/Spinner";
 import useCheckOut from "@/hooks/useCheckOut";
@@ -266,6 +266,7 @@ const DateField = ({ label, name, defaultValue }) => (
 
 const CheckOutInformationForm = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
   const id     = params.get("id");
   const backPath = id ? `/check-out-details?id=${id}&tab=overview` : "/check-out-list";
@@ -473,7 +474,7 @@ const CheckOutInformationForm = () => {
         if (id) await fetchItem();
         setSubmitting(false);
         toast.success("Check-Out updated successfully");
-        alert("Check-Out updated successfully.");
+        navigate("/check-out-list");
       } else {
         // Create mode
         const res   = await create(payload);

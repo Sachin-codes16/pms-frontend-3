@@ -1,5 +1,6 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { useState } from 'react';
+import { Modal } from 'react-bootstrap';
 import { resolvePhotoSrc } from '@/utils/imageStorage';
 import { fmtDate, val } from '@/utils/checkInFormat';
 
@@ -87,6 +88,8 @@ const PriorityBadge = ({ priority }) => {
 
 const InspectionPage = ({ record }) => {
   const [search, setSearch] = useState('');
+  const [viewItem, setViewItem] = useState(null);
+  const [viewAllSection, setViewAllSection] = useState(null); // 'photos' | 'issues' | 'categories' | null
 
   const inspection          = record?.inspection ?? {};
   const summary             = inspection.summary ?? {};
@@ -192,7 +195,12 @@ const InspectionPage = ({ record }) => {
                           <StatusBadge status={item.status} />
                         </td>
                         <td style={{ padding: '14px 20px', textAlign: 'center' }}>
-                          <span style={{ color: '#2f7ee6', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>view</span>
+                          <span
+                            onClick={() => setViewItem(item)}
+                            style={{ color: '#2f7ee6', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
+                          >
+                            view
+                          </span>
                         </td>
                       </tr>
                     ))}
@@ -211,7 +219,12 @@ const InspectionPage = ({ record }) => {
             <div style={{ padding: '22px 24px 0' }}>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <h5 className="mb-0" style={{ color: pageText, fontSize: 16, fontWeight: 700 }}>Inspection Photos</h5>
-                <span style={{ color: '#2f7ee6', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>View All</span>
+                <span
+                  onClick={() => setViewAllSection('photos')}
+                  style={{ color: '#2f7ee6', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
+                >
+                  View All
+                </span>
               </div>
               {photos.length > 0 ? (
                 <div className="d-flex gap-3 mb-4">
@@ -232,7 +245,12 @@ const InspectionPage = ({ record }) => {
             <div style={{ padding: '0 24px 24px' }}>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <h6 className="mb-0" style={{ color: pageText, fontSize: 15, fontWeight: 700 }}>Recent Issues</h6>
-                <span style={{ color: '#2f7ee6', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>View All</span>
+                <span
+                  onClick={() => setViewAllSection('issues')}
+                  style={{ color: '#2f7ee6', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
+                >
+                  View All
+                </span>
               </div>
               {recentIssues.length > 0 ? (
                 recentIssues.map((issue, index) => (
@@ -289,7 +307,12 @@ const InspectionPage = ({ record }) => {
           <div style={cardStyle}>
             <div className="d-flex align-items-center justify-content-between" style={{ padding: '22px 28px 14px' }}>
               <h5 className="mb-0" style={{ color: pageText, fontSize: 16, fontWeight: 700 }}>Top Issues Categories</h5>
-              <span style={{ color: '#2f7ee6', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>View All</span>
+              <span
+                onClick={() => setViewAllSection('categories')}
+                style={{ color: '#2f7ee6', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
+              >
+                View All
+              </span>
             </div>
             {topIssuesCategories.length > 0 ? (
               <div style={{ padding: '4px 28px 28px' }}>
@@ -321,6 +344,110 @@ const InspectionPage = ({ record }) => {
           </div>
         </div>
       </div>
+
+      {/* Inspection item detail modal ("view") */}
+      <Modal show={!!viewItem} onHide={() => setViewItem(null)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title style={{ fontSize: 18 }}>{val(viewItem?.category ?? viewItem?.name)}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', rowGap: 12 }}>
+            <span style={{ color: pageText }}>Total Items</span>
+            <span style={{ color: bodyText, fontWeight: 500 }}>{val(viewItem?.totalItems)}</span>
+            <span style={{ color: pageText }}>Good</span>
+            <span style={{ color: bodyText, fontWeight: 500 }}>{val(viewItem?.good)}</span>
+            <span style={{ color: pageText }}>Issues</span>
+            <span style={{ color: bodyText, fontWeight: 500 }}>{val(viewItem?.issues)}</span>
+            <span style={{ color: pageText }}>N/A</span>
+            <span style={{ color: bodyText, fontWeight: 500 }}>{val(viewItem?.notApplicable)}</span>
+            <span style={{ color: pageText }}>Status</span>
+            <span><StatusBadge status={viewItem?.status} /></span>
+            {(viewItem?.remarks ?? viewItem?.notes) && (
+              <>
+                <span style={{ color: pageText }}>Notes</span>
+                <span style={{ color: bodyText, fontWeight: 500 }}>{viewItem.remarks ?? viewItem.notes}</span>
+              </>
+            )}
+          </div>
+        </Modal.Body>
+      </Modal>
+
+      {/* "View All" modal shared by Photos / Recent Issues / Top Issues Categories */}
+      <Modal show={!!viewAllSection} onHide={() => setViewAllSection(null)} centered scrollable>
+        <Modal.Header closeButton>
+          <Modal.Title style={{ fontSize: 18 }}>
+            {viewAllSection === 'photos' && 'Inspection Photos'}
+            {viewAllSection === 'issues' && 'Recent Issues'}
+            {viewAllSection === 'categories' && 'Top Issues Categories'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {viewAllSection === 'photos' && (
+            photos.length > 0 ? (
+              <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr 1fr' }}>
+                {photos.map((photo, i) => (
+                  <img
+                    key={photo ?? i}
+                    alt="Inspection"
+                    src={resolvePhotoSrc(photo)}
+                    style={{ borderRadius: 8, height: 140, objectFit: 'cover', width: '100%' }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: pageText, fontSize: 15, margin: 0 }}>No photos uploaded</p>
+            )
+          )}
+
+          {viewAllSection === 'issues' && (
+            recentIssues.length > 0 ? (
+              recentIssues.map((issue, index) => (
+                <div key={issue.checkInInspectionItemId ?? issue.id ?? index} className="d-flex align-items-center justify-content-between mb-3">
+                  <div className="d-flex align-items-center gap-3">
+                    {issue.photo ? (
+                      <img alt={issue.itemName ?? issue.title} src={resolvePhotoSrc(issue.photo)} style={{ borderRadius: 4, height: 40, objectFit: 'cover', width: 40 }} />
+                    ) : (
+                      <span
+                        className="d-inline-flex align-items-center justify-content-center"
+                        style={{ background: '#edf2f8', borderRadius: 4, height: 40, width: 40 }}
+                      >
+                        <IconifyIcon icon="ri:image-line" width={18} height={18} style={{ color: pageText }} />
+                      </span>
+                    )}
+                    <div>
+                      <p className="mb-1" style={{ color: bodyText, fontSize: 14, fontWeight: 500 }}>
+                        {val(issue.itemName ?? issue.title)}
+                      </p>
+                      <p className="mb-0" style={{ color: pageText, fontSize: 13 }}>
+                        {val(issue.category)}
+                      </p>
+                    </div>
+                  </div>
+                  <PriorityBadge priority={issue.severity ?? issue.priority} />
+                </div>
+              ))
+            ) : (
+              <p style={{ color: pageText, fontSize: 15, margin: 0 }}>No recent issues</p>
+            )
+          )}
+
+          {viewAllSection === 'categories' && (
+            topIssuesCategories.length > 0 ? (
+              topIssuesCategories.map((item, index) => {
+                const count = item.issueCount ?? item.count ?? 0;
+                return (
+                  <div key={item.category ?? index} className="d-flex align-items-center justify-content-between mb-3">
+                    <span style={{ color: pageText, fontSize: 15 }}>{val(item.category)}</span>
+                    <span style={{ color: bodyText, fontSize: 15, fontWeight: 600 }}>{count}</span>
+                  </div>
+                );
+              })
+            ) : (
+              <p style={{ color: pageText, fontSize: 15, margin: 0 }}>No issue categories recorded</p>
+            )
+          )}
+        </Modal.Body>
+      </Modal>
     </div>
   );
 };

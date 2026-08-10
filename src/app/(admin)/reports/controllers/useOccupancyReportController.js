@@ -2,6 +2,7 @@ import checkInApi from '@/helpers/checkInApi';
 import { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { occupancyReportFilters } from '../models/occupancyReportModel';
+import policeIcon from '@/assets/icons/Dashboard5.png';
 
 const SUMMARY_ENDPOINT = '/property/occupancy/summary/';
 const LIST_ENDPOINT = '/property/occupancy/get_all/';
@@ -78,6 +79,7 @@ export const useOccupancyReportController = () => {
     },
     { label: 'Vacant', value: String(summary?.vacant ?? 0), icon: 'solar:user-plus-rounded-bold-duotone', color: '#ff8b3d', bg: '#fff3ec' },
     { label: 'Booked', value: String(summary?.booked ?? 0), icon: 'solar:chart-2-bold-duotone', color: '#38c6cf', bg: '#eafafa' },
+    { label: 'Police', value: String(summary?.police ?? 0), iconImage: policeIcon, bg: '#fde9ea' },
   ];
 
   const [searchInput, setSearchInput] = useState('');

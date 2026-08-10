@@ -1,5 +1,7 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
+import { useState } from 'react';
 import { Button } from 'react-bootstrap';
+import { Link, useLocation } from 'react-router-dom';
 import { fmtDate, fmtDateTime, fmtMoney, val, yesNo } from '@/utils/checkInFormat';
 
 const pageText = '#526b89';
@@ -27,7 +29,7 @@ const TIMELINE_STEPS = ['Agreement Generated', 'Submitted To Tenant', 'Tenant Si
 const DetailRows = ({ items }) => (
   <div>
     {items.map(([label, value, type]) => (
-      <div key={label} style={{ display: 'grid', gridTemplateColumns: '190px 20px 1fr', minHeight: 40 }}>
+      <div key={label} style={{ display: 'grid', gridTemplateColumns: '190px 20px minmax(0, 1fr)', minHeight: 40 }}>
         <span style={{ color: bodyText, fontSize: 16 }}>{label}</span>
         <span style={{ color: bodyText, fontSize: 16 }}>:</span>
         {type === 'pill' || type === 'greenPill' ? (
@@ -40,7 +42,12 @@ const DetailRows = ({ items }) => (
               fontSize: 16,
               height: 30,
               lineHeight: '30px',
-              minWidth: type === 'greenPill' ? 92 : 150,
+              padding: '0 16px',
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              boxSizing: 'border-box',
               textAlign: 'center',
               width: 'fit-content',
             }}
@@ -56,6 +63,12 @@ const DetailRows = ({ items }) => (
 );
 
 const AgreementPage = ({ record }) => {
+  const location = useLocation();
+  const [uploadHover, setUploadHover] = useState(false);
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id');
+  const uploadDocumentsPath = id ? `/check-in-start?id=${id}#agreement-details` : '/check-in-start#agreement-details';
+
   const agreement = record?.agreement ?? {};
   const details = agreement.agreementDetails ?? {};
   const timeline = agreement.agreementTimeline ?? [];
@@ -100,7 +113,7 @@ const AgreementPage = ({ record }) => {
       <div style={{ display: 'grid', gap: 24, gridTemplateColumns: 'minmax(640px, 1.7fr) minmax(430px, 1fr)' }}>
         <div style={cardStyle}>
           <h5 style={titleStyle}>Agreement Details</h5>
-          <div style={{ display: 'grid', gap: 52, gridTemplateColumns: '1fr 1fr', padding: '26px 52px 20px' }}>
+          <div style={{ display: 'grid', gap: 52, gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', padding: '26px 52px 20px' }}>
             <DetailRows items={agreementLeft} />
             <DetailRows items={agreementRight} />
           </div>
@@ -175,7 +188,7 @@ const AgreementPage = ({ record }) => {
         <div style={cardStyle}>
           <h5 style={titleStyle}>Rent &amp; Payment Summary</h5>
           <div style={{ padding: '2px 16px 24px' }}>
-            <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))', marginBottom: 24 }}>
+            <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', marginBottom: 24 }}>
               {summaryCards.map(([label, value, icon]) => (
                 <div key={label} className="d-flex align-items-center gap-3" style={{ background: '#f0eefb', borderRadius: 6, padding: '18px 16px' }}>
                   <span className="d-inline-flex align-items-center justify-content-center" style={{ background: '#fff', borderRadius: 5, height: 35, width: 35 }}>
@@ -231,7 +244,20 @@ const AgreementPage = ({ record }) => {
         <div style={cardStyle}>
           <div className="d-flex align-items-center justify-content-between">
             <h5 style={titleStyle}>Agreement Documents</h5>
-            <Button variant="outline-secondary" style={{ borderColor: '#b8bec6', borderRadius: 8, color: pageText, marginRight: 24 }}>
+            <Button
+              as={Link}
+              to={uploadDocumentsPath}
+              variant="outline-secondary"
+              onMouseEnter={() => setUploadHover(true)}
+              onMouseLeave={() => setUploadHover(false)}
+              style={{
+                background: uploadHover ? '#292F57' : '#fff',
+                borderColor: uploadHover ? '#292F57' : '#b8bec6',
+                borderRadius: 8,
+                color: uploadHover ? '#fff' : pageText,
+                marginRight: 24,
+              }}
+            >
               Upload Documents
             </Button>
           </div>

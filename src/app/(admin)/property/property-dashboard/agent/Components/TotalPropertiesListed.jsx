@@ -61,26 +61,32 @@ const TotalPropertiesListed = ({ typeBreakdown = [], totalProperties = 0 }) => {
               fontSize: 15,
               fontWeight: 500
             }}>Properties</h5>
-            <Row className="mb-3 g-lg-0 g-2">
-              {typeBreakdown.map((item, idx) => <Col lg={3} xs={4} key={idx}>
+            <Row className="mb-3 g-2">
+              {typeBreakdown.map((item, idx) => <Col lg={3} xs={4} key={idx} style={{ minWidth: 0 }}>
                   <p className="mb-2 d-flex align-items-center" style={{
                     color: '#647c99',
-                    fontSize: 14
+                    fontSize: 14,
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap',
+                    textOverflow: 'ellipsis'
                   }}>
                     <IconifyIcon icon="ri:circle-fill" width={11} height={11} style={{
                       color: progressColors[item.variant],
-                      marginRight: 3
-                    }} /> {item.title}
+                      marginRight: 3,
+                      flexShrink: 0
+                    }} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</span>
                   </p>
                   <p className="text-dark fw-medium mb-0" style={{ fontSize: 16 }}>{item.amount}</p>
                 </Col>)}
             </Row>
-            <div className="d-flex align-items-center gap-1">
+            <div className="d-flex align-items-center" style={{ gap: 8 }}>
               {typeBreakdown.map((item, idx) => <div key={idx} style={{
                 height: 9,
                 borderRadius: 10,
                 backgroundColor: progressColors[item.variant],
-                flex: item.progress
+                flex: item.progress,
+                minWidth: 24
               }} />)}
             </div>
           </div>

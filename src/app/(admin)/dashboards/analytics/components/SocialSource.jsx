@@ -25,21 +25,35 @@ const StatusOverviewCard = ({ data = [] }) => {
                 <ReactApexChart options={options} series={series} width={160} height={160} type="donut" className="apex-charts" />
               </div>
             </Col>
-            <Col xs={12} md={8} className="ps-md-4">
-              <div className="d-flex flex-column" style={{ gap: '20px', paddingLeft: '4px', paddingRight: '20px' }}>
+            <Col xs={12} md={8} className="ps-md-5">
+              <div className="d-flex flex-column" style={{ gap: '20px', paddingLeft: '18px', paddingRight: '10px' }}>
                 {data.map((item, idx) => (
                   <div
                     key={idx}
                     className="align-items-center"
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '140px 72px',
+                      gridTemplateColumns: 'minmax(0, 1fr) auto',
                       justifyContent: 'space-between',
+                      alignItems: 'center',
+                      columnGap: '6px',
                     }}
                   >
-                    <div className="d-flex align-items-center" style={{ gap: '11px' }}>
-                      <span className="flex-shrink-0" style={{ width: '15px', height: '15px', backgroundColor: item.color, borderRadius: '50%' }}></span>
-                      <span className="fw-medium text-nowrap" style={{ color: '#7b8ca3', fontSize: '16px' }}>{item.label}</span>
+                    <div className="d-flex align-items-center" style={{ gap: '8px', minWidth: 0 }}>
+                      <span className="flex-shrink-0" style={{ width: '10px', height: '10px', backgroundColor: item.color, borderRadius: '50%' }}></span>
+                      <span
+                        className="fw-medium"
+                        style={{
+                          color: '#7b8ca3',
+                          fontSize: '16px',
+                          minWidth: 0,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {item.label}
+                      </span>
                     </div>
                     <span className="fw-medium text-nowrap" style={{ color: '#3f3f3f', fontSize: '16px', textAlign: 'right' }}>{item.display}</span>
                   </div>

@@ -42,10 +42,10 @@ const CheckOutDashboardView = () => {
       </Row>
 
       <Row className="g-3 align-items-stretch" style={{ marginTop: 8 }}>
-        <Col xs={12} lg={8} className="d-flex align-self-stretch">
+        <Col xs={12} xl={8} className="d-flex align-self-stretch">
           <PendingCheckOuts rows={pendingCheckOuts} />
         </Col>
-        <Col xs={12} lg={4} className="d-flex align-self-stretch">
+        <Col xs={12} xl={4} className="d-flex align-self-stretch">
           <UpcomingCheckOuts data={upcomingCheckOuts} />
         </Col>
       </Row>

@@ -1,6 +1,7 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { Button } from 'react-bootstrap';
 import { fmtDate, fmtMoney, val } from '@/utils/checkInFormat';
+import { resolvePhotoSrc } from '@/utils/imageStorage';
 
 const pageText = '#526b89';
 const bodyText = '#202b3c';
@@ -40,7 +41,7 @@ const InfoRows = ({ items }) => (
   </div>
 );
 
-const DocumentRow = ({ name, date }) => (
+const DocumentRow = ({ name, date, url }) => (
   <div className="d-flex align-items-center justify-content-between gap-3" style={{ marginBottom: 30 }}>
     <div className="d-flex align-items-center gap-4">
       <span
@@ -60,6 +61,11 @@ const DocumentRow = ({ name, date }) => (
     </div>
     <div className="d-flex gap-3">
       <Button
+        as="a"
+        href={url || undefined}
+        target="_blank"
+        rel="noopener noreferrer"
+        disabled={!url}
         variant="outline-secondary"
         className="d-inline-flex align-items-center justify-content-center p-0"
         style={{ borderColor: '#c8cdd3', borderRadius: 4, height: 50, width: 50 }}
@@ -67,6 +73,10 @@ const DocumentRow = ({ name, date }) => (
         <IconifyIcon icon="solar:eye-broken" width={19} height={19} />
       </Button>
       <Button
+        as="a"
+        href={url || undefined}
+        download
+        disabled={!url}
         variant="outline-secondary"
         className="d-inline-flex align-items-center justify-content-center p-0"
         style={{ borderColor: '#c8cdd3', borderRadius: 4, height: 50, width: 50 }}
@@ -232,6 +242,7 @@ const TenantDetailsPage = ({ record }) => {
                     key={document.id ?? document.name ?? index}
                     name={val(document.name ?? document.documentType, 'Document')}
                     date={document.uploadedOn ? `Uploaded on ${fmtDate(document.uploadedOn)}` : 'Not uploaded'}
+                    url={resolvePhotoSrc(document)}
                   />
                 ))}
               </div>

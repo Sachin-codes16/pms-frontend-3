@@ -1,7 +1,9 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { Button, Col, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import List from './List';
 
 const pageText = '#526b89';
@@ -20,7 +22,7 @@ const filterOptions = {
 
 const shellStyle = {
   background: '#f6f7fb',
-  margin: '0 -48px',
+  margin: '0 -24px',
   minHeight: 'calc(100vh - 80px)',
   paddingTop: 10,
 };
@@ -93,12 +95,20 @@ const SelectField = ({ label, options, value, onChange }) => (
   </Col>
 );
 
-const DateFilterButton = ({ label }) => (
-  <Button variant="outline-primary" className="d-inline-flex align-items-center justify-content-center gap-2 px-3" style={outlineButtonStyle}>
+const DateFilterButton = forwardRef(({ label, value, onClick }, ref) => (
+  <Button
+    variant="outline-primary"
+    className="d-inline-flex align-items-center justify-content-center gap-2 px-3"
+    style={outlineButtonStyle}
+    onClick={onClick}
+    ref={ref}
+  >
+    <IconifyIcon icon="ri:calendar-line" width={16} height={16} />
+    <span>{value || label}</span>
     <IconifyIcon icon="ri:arrow-down-s-line" width={16} height={16} />
-    <span>{label}</span>
   </Button>
-);
+));
+DateFilterButton.displayName = 'DateFilterButton';
 
 const CheckOutListView = () => {
   const [search,           setSearch]           = useState('');
@@ -108,9 +118,11 @@ const CheckOutListView = () => {
   const [refundStatus,     setRefundStatus]     = useState('All');
   const [keyReturnStatus,  setKeyReturnStatus]  = useState('All');
   const [requestFrom,      setRequestFrom]      = useState('All');
+  const [fromDate,         setFromDate]         = useState(null);
+  const [toDate,           setToDate]           = useState(null);
 
   return (
-    <div style={shellStyle}>
+    <div className="check-out-list-page" style={shellStyle}>
       <div className="d-flex flex-column flex-md-row align-items-md-start justify-content-between gap-3" style={topBarStyle}>
         <div>
           <h4 className="mb-2" style={{ color: pageText, fontSize: 18, fontWeight: 700 }}>
@@ -165,8 +177,34 @@ const CheckOutListView = () => {
               </select>
               <IconifyIcon icon="ri:arrow-down-s-line" width={16} height={16} style={{ color: pageText, pointerEvents: 'none', position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }} />
             </div>
-            <DateFilterButton label="From Date" />
-            <DateFilterButton label="To Date" />
+            <DatePicker
+              selected={fromDate}
+              onChange={(date) => setFromDate(date)}
+              selectsStart
+              startDate={fromDate}
+              endDate={toDate}
+              maxDate={toDate || undefined}
+              dateFormat="dd-MM-yyyy"
+              placeholderText="dd-mm-yyyy"
+              isClearable
+              portalId="datepicker-portal"
+              popperPlacement="bottom-start"
+              customInput={<DateFilterButton label="From Date" />}
+            />
+            <DatePicker
+              selected={toDate}
+              onChange={(date) => setToDate(date)}
+              selectsEnd
+              startDate={fromDate}
+              endDate={toDate}
+              minDate={fromDate || undefined}
+              dateFormat="dd-MM-yyyy"
+              placeholderText="dd-mm-yyyy"
+              isClearable
+              portalId="datepicker-portal"
+              popperPlacement="bottom-end"
+              customInput={<DateFilterButton label="To Date" />}
+            />
             <Button style={{ ...primaryButtonStyle, background: '#3d5a80', borderColor: '#3d5a80' }}>Export PDF</Button>
           </div>
         </div>
@@ -189,6 +227,8 @@ const CheckOutListView = () => {
           inspectionStatus={inspectionStatus}
           refundStatus={refundStatus}
           keyReturnStatus={keyReturnStatus}
+          fromDate={fromDate}
+          toDate={toDate}
         />
       </div>
     </div>

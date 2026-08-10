@@ -19,7 +19,7 @@ const filterOptions = {
 
 const shellStyle = {
   background: '#f6f7fb',
-  margin: '0 -48px',
+  margin: '0 -24px',
   minHeight: 'calc(100vh - 80px)',
   paddingTop: 10,
 };
@@ -114,7 +114,7 @@ const CheckInListView = () => {
   const [propertyType, setPropertyType] = useState('All');
 
   return (
-    <div style={shellStyle}>
+    <div className="check-in-list-page" style={shellStyle}>
       <div
         className="d-flex flex-column flex-md-row align-items-md-start justify-content-between gap-3"
         style={topBarStyle}

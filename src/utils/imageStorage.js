@@ -17,6 +17,7 @@ export function resolvePhotoSrc(photo) {
     if (!val) return "";
     if (typeof val !== "string") return "";
     if (val.startsWith("http://") || val.startsWith("https://")) return val;
+    if (val.startsWith("data:")) return val;
     if (val.startsWith("/"))
       return appendTokenIfNeeded(`${API_BASE_URL}${val}`);
     return appendTokenIfNeeded(`${API_BASE_URL}/${val}`);

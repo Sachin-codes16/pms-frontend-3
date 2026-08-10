@@ -22,7 +22,7 @@ const Overview = ({ occupiedCount = 0, occupiedPercent = 0, totalProperties = 0 
         <CardBody style={{
           padding: '38px 20px 20px'
         }}>
-          <div className="d-flex align-items-center justify-content-between position-relative">
+          <div className="d-flex align-items-center justify-content-between">
             <div>
               <p className="mb-2" style={{
                 color: '#647c99',
@@ -35,9 +35,6 @@ const Overview = ({ occupiedCount = 0, occupiedPercent = 0, totalProperties = 0 
               }}>{occupiedCount}</h3>
             </div>
             <div className="flex-centered" style={{
-              position: 'absolute',
-              right: -38,
-              top: 0,
               width: 56,
               height: 56,
               borderRadius: 6,

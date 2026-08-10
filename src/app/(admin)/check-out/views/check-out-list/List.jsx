@@ -105,6 +105,8 @@ const List = ({
   refundStatus    = "All",
   keyReturnStatus = "All",
   search          = "",
+  fromDate        = null,
+  toDate          = null,
 }) => {
   const navigate = useNavigate();
   const [allRows,     setAllRows]     = useState([]);
@@ -147,6 +149,11 @@ const List = ({
     if (inspectionStatus !== "All" && row.inspectionStatus !== inspectionStatus) return false;
     if (refundStatus    !== "All" && row.refundStatus  !== refundStatus)    return false;
     if (keyReturnStatus !== "All" && row.keyReturnStatus !== keyReturnStatus) return false;
+    if (row.checkOutDate && (fromDate || toDate)) {
+      const rowDate = new Date(row.checkOutDate);
+      if (fromDate && rowDate < new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate())) return false;
+      if (toDate && rowDate > new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate(), 23, 59, 59)) return false;
+    }
     return true;
   });
 
