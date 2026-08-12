@@ -1,5 +1,5 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
-import { forwardRef, useState } from 'react';
+import { forwardRef, useRef, useState } from 'react';
 import { Button, Col, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
@@ -111,8 +111,10 @@ const DateFilterButton = forwardRef(({ label, value, onClick }, ref) => (
 DateFilterButton.displayName = 'DateFilterButton';
 
 const CheckOutListView = () => {
+  const listRef = useRef(null);
   const [search,           setSearch]           = useState('');
   const [propertyType,     setPropertyType]     = useState('All');
+  const [building,         setBuilding]         = useState('All');
   const [checkOutStatus,   setCheckOutStatus]   = useState('All');
   const [inspectionStatus, setInspectionStatus] = useState('All');
   const [refundStatus,     setRefundStatus]     = useState('All');
@@ -128,7 +130,10 @@ const CheckOutListView = () => {
           <h4 className="mb-2" style={{ color: pageText, fontSize: 18, fontWeight: 700 }}>
             Check-Out List
           </h4>
-          <div style={{ color: pageText, fontSize: 15 }}>Dashboard &gt; Check-Out &gt; Check-Out List</div>
+          <div style={{ color: pageText, fontSize: 15 }}>
+            <Link to="/dashboards" style={{ color: pageText }}>Dashboard</Link> &gt;{' '}
+            <Link to="/check-out-dashboard" style={{ color: pageText }}>Check-Out</Link> &gt; Check-Out List
+          </div>
         </div>
 
         <div className="d-flex flex-wrap gap-2">
@@ -205,14 +210,19 @@ const CheckOutListView = () => {
               popperPlacement="bottom-end"
               customInput={<DateFilterButton label="To Date" />}
             />
-            <Button style={{ ...primaryButtonStyle, background: '#3d5a80', borderColor: '#3d5a80' }}>Export PDF</Button>
+            <Button
+              style={{ ...primaryButtonStyle, background: '#3d5a80', borderColor: '#3d5a80' }}
+              onClick={() => listRef.current?.exportToPDF()}
+            >
+              Export PDF
+            </Button>
           </div>
         </div>
 
         <div className="mb-4" style={{ ...panelStyle, padding: '20px 20px' }}>
           <Row className="g-4">
             <SelectField label="Property Type"     options={filterOptions.propertyType}     value={propertyType}     onChange={(e) => setPropertyType(e.target.value)} />
-            <SelectField label="Building"          options={filterOptions.building}          value="All"              onChange={() => {}} />
+            <SelectField label="Building"          options={filterOptions.building}          value={building}         onChange={(e) => setBuilding(e.target.value)} />
             <SelectField label="Check-Out Status"  options={filterOptions.checkOutStatus}   value={checkOutStatus}   onChange={(e) => setCheckOutStatus(e.target.value)} />
             <SelectField label="Inspection Status" options={filterOptions.inspectionStatus} value={inspectionStatus} onChange={(e) => setInspectionStatus(e.target.value)} />
             <SelectField label="Refund Status"     options={filterOptions.refundStatus}     value={refundStatus}     onChange={(e) => setRefundStatus(e.target.value)} />
@@ -221,8 +231,10 @@ const CheckOutListView = () => {
         </div>
 
         <List
+          ref={listRef}
           search={search}
           propertyType={propertyType}
+          building={building}
           checkOutStatus={checkOutStatus}
           inspectionStatus={inspectionStatus}
           refundStatus={refundStatus}

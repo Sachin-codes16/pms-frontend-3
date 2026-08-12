@@ -1,9 +1,10 @@
 // @refresh reset
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import checkInApi from "@/helpers/checkInApi";
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { Button } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 
 const pageText = "#526b89";
 const detailsPath = "/check-in-information";
@@ -103,9 +104,19 @@ const ActionButton = ({ icon, label, to, bg = "#f4f7fa" }) => (
   </Button>
 );
 
-const List = ({ propertyType = 'All' }) => {
+const List = forwardRef(({
+  propertyType = 'All',
+  building = 'All',
+  status = 'All',
+  assignedEmployee = 'All',
+  assignmentStatus = 'All',
+  keyStatus = 'All',
+  search = '',
+  fromDate = null,
+  toDate = null,
+}, ref) => {
   const navigate = useNavigate();
-  const [rows, setRows] = useState([]);
+  const [allRows, setAllRows] = useState([]);
   const [totalCount, setTotalCount] = useState(null);
   const [loadingList, setLoadingList] = useState(true);
   const [fetchError, setFetchError] = useState(null);
@@ -126,7 +137,7 @@ const List = ({ propertyType = 'All' }) => {
         const records = getRecordsFromResponse(res.data);
         if (!cancelled) {
           const mapped = records.map(mapRow);
-          setRows(mapped);
+          setAllRows(mapped);
           setTotalCount(mapped.length);
         }
       } catch (err) {
@@ -139,7 +150,7 @@ const List = ({ propertyType = 'All' }) => {
         const msg = status ? `HTTP ${status}: ${detail}` : detail;
         console.error("Check-in list fetch failed:", msg);
         if (!cancelled) {
-          setRows([]);
+          setAllRows([]);
           setTotalCount(0);
           setFetchError(msg);
         }
@@ -153,6 +164,46 @@ const List = ({ propertyType = 'All' }) => {
       cancelled = true;
     };
   }, [propertyType]);
+
+  // Client-side filtering
+  const rows = allRows.filter((row) => {
+    const hay = `${row.tenantId} ${row.tenantName} ${row.property} ${row.unitNo}`.toLowerCase();
+    if (search && !hay.includes(search.toLowerCase())) return false;
+    if (building !== "All" && row.property !== building) return false;
+    if (status !== "All" && row.status !== status) return false;
+    if (assignedEmployee !== "All" && row.assignedTo !== assignedEmployee) return false;
+    if (assignmentStatus !== "All" && row.assignmentStatus !== assignmentStatus) return false;
+    if (keyStatus !== "All" && row.keyStatus !== keyStatus) return false;
+    if (row.checkinDate && (fromDate || toDate)) {
+      const rowDate = new Date(row.checkinDate);
+      if (fromDate && rowDate < new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate())) return false;
+      if (toDate && rowDate > new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate(), 23, 59, 59)) return false;
+    }
+    return true;
+  });
+
+  useImperativeHandle(ref, () => ({
+    exportToExcel: () => {
+      const excelRows = rows.map((row) => ({
+        "Sr. No.": row.srNo,
+        "Tenant ID": row.tenantId,
+        "Tenant Name": row.tenantName,
+        Property: row.property,
+        "Unit No.": row.unitNo,
+        "Check-In Date": row.checkinDate,
+        Rent: row.rent,
+        "Assignment Status": row.assignmentStatus,
+        "Key Status": row.keyStatus,
+        Status: row.status,
+        "Assigned To": row.assignedTo,
+        "Request From": row.requestFrom,
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(excelRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Check-In List");
+      XLSX.writeFile(workbook, `Check_In_List_${new Date().toISOString().split("T")[0]}.xlsx`);
+    },
+  }));
 
   return (
     <div style={{ ...panelStyle, overflow: "hidden", width: "100%" }}>
@@ -326,6 +377,8 @@ const List = ({ propertyType = 'All' }) => {
       </div>
     </div>
   );
-};
+});
+
+List.displayName = "List";
 
 export default List;

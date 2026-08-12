@@ -1,7 +1,9 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
-import { useState } from 'react';
+import { forwardRef, useRef, useState } from 'react';
 import { Button, Col, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import List from './List';
 
 const pageText = '#526b89';
@@ -99,19 +101,32 @@ const SelectField = ({ label, options, value, onChange }) => (
   </Col>
 );
 
-const DateFilterButton = ({ label }) => (
+const DateFilterButton = forwardRef(({ label, value, onClick }, ref) => (
   <Button
     variant="outline-primary"
     className="d-inline-flex align-items-center justify-content-center gap-2 px-3"
     style={outlineButtonStyle}
+    onClick={onClick}
+    ref={ref}
   >
+    <IconifyIcon icon="ri:calendar-line" width={16} height={16} />
+    <span>{value || label}</span>
     <IconifyIcon icon="ri:arrow-down-s-line" width={16} height={16} />
-    <span>{label}</span>
   </Button>
-);
+));
+DateFilterButton.displayName = 'DateFilterButton';
 
 const CheckInListView = () => {
+  const listRef = useRef(null);
+  const [search, setSearch] = useState('');
   const [propertyType, setPropertyType] = useState('All');
+  const [building, setBuilding] = useState('All');
+  const [status, setStatus] = useState('All');
+  const [assignedEmployee, setAssignedEmployee] = useState('All');
+  const [assignmentStatus, setAssignmentStatus] = useState('All');
+  const [keyStatus, setKeyStatus] = useState('All');
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
 
   return (
     <div className="check-in-list-page" style={shellStyle}>
@@ -123,7 +138,10 @@ const CheckInListView = () => {
           <h4 className="mb-2" style={{ color: pageText, fontSize: 18, fontWeight: 700 }}>
             Check-In List
           </h4>
-          <div style={{ color: pageText, fontSize: 15 }}>Dashboard &gt; Check-in &gt; Check-In List</div>
+          <div style={{ color: pageText, fontSize: 15 }}>
+            <Link to="/dashboards" style={{ color: pageText }}>Dashboard</Link> &gt;{' '}
+            <Link to="/check-in-dashboard" style={{ color: pageText }}>Check-in</Link> &gt; Check-In List
+          </div>
         </div>
 
         <div className="d-flex flex-wrap gap-2">
@@ -158,15 +176,44 @@ const CheckInListView = () => {
                 placeholder="Check-Ins List"
                 style={{ ...inputStyle, padding: '0 14px 0 40px' }}
                 type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <span style={{ color: pageText, fontSize: 15, whiteSpace: 'nowrap' }}>311 Checkins</span>
           </div>
 
           <div className="d-flex flex-wrap gap-2">
-            <DateFilterButton label="From Date" />
-            <DateFilterButton label="To Date" />
-            <Button style={primaryButtonStyle}>Export Excel</Button>
+            <DatePicker
+              selected={fromDate}
+              onChange={(date) => setFromDate(date)}
+              selectsStart
+              startDate={fromDate}
+              endDate={toDate}
+              maxDate={toDate || undefined}
+              dateFormat="dd-MM-yyyy"
+              placeholderText="dd-mm-yyyy"
+              isClearable
+              portalId="datepicker-portal"
+              popperPlacement="bottom-start"
+              customInput={<DateFilterButton label="From Date" />}
+            />
+            <DatePicker
+              selected={toDate}
+              onChange={(date) => setToDate(date)}
+              selectsEnd
+              startDate={fromDate}
+              endDate={toDate}
+              minDate={fromDate || undefined}
+              dateFormat="dd-MM-yyyy"
+              placeholderText="dd-mm-yyyy"
+              isClearable
+              portalId="datepicker-portal"
+              popperPlacement="bottom-end"
+              customInput={<DateFilterButton label="To Date" />}
+            />
+            <Button style={primaryButtonStyle} onClick={() => listRef.current?.exportToExcel()}>
+              Export Excel
+            </Button>
           </div>
         </div>
 
@@ -178,15 +225,51 @@ const CheckInListView = () => {
               value={propertyType}
               onChange={(e) => setPropertyType(e.target.value)}
             />
-            <SelectField label="Building" options={filterOptions.building} />
-            <SelectField label="Status" options={filterOptions.status} />
-            <SelectField label="Assigned Employee" options={filterOptions.assignedEmployee} />
-            <SelectField label="Assignment Status" options={filterOptions.assignmentStatus} />
-            <SelectField label="Key Status" options={filterOptions.keyStatus} />
+            <SelectField
+              label="Building"
+              options={filterOptions.building}
+              value={building}
+              onChange={(e) => setBuilding(e.target.value)}
+            />
+            <SelectField
+              label="Status"
+              options={filterOptions.status}
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            />
+            <SelectField
+              label="Assigned Employee"
+              options={filterOptions.assignedEmployee}
+              value={assignedEmployee}
+              onChange={(e) => setAssignedEmployee(e.target.value)}
+            />
+            <SelectField
+              label="Assignment Status"
+              options={filterOptions.assignmentStatus}
+              value={assignmentStatus}
+              onChange={(e) => setAssignmentStatus(e.target.value)}
+            />
+            <SelectField
+              label="Key Status"
+              options={filterOptions.keyStatus}
+              value={keyStatus}
+              onChange={(e) => setKeyStatus(e.target.value)}
+            />
           </Row>
         </div>
 
-        <List propertyType={propertyType} />
+        <List
+          ref={listRef}
+          search={search}
+          propertyType={propertyType}
+          building={building}
+          status={status}
+          assignedEmployee={assignedEmployee}
+          assignmentStatus={assignmentStatus}
+          keyStatus={keyStatus}
+          fromDate={fromDate}
+          toDate={toDate}
+        />
       </div>
     </div>
   );

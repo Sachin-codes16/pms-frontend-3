@@ -215,7 +215,8 @@ const CheckInDetailsPage = () => {
             Check-In Details
           </h4>
           <div style={{ color: pageText, fontSize: 15 }}>
-            Dashboard &gt; Check-in &gt; Check-In Details
+            <Link to="/dashboards" style={{ color: pageText }}>Dashboard</Link> &gt;{' '}
+            <Link to="/check-in-dashboard" style={{ color: pageText }}>Check-in</Link> &gt; Check-In Details
           </div>
         </div>
 

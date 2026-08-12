@@ -123,7 +123,12 @@ const PropertyDetailsPage = () => {
 
       <div className="d-flex gap-2 mb-3">
         <Button variant="outline-secondary" onClick={() => navigate(-1)}>← Back</Button>
-        <Button variant="primary" onClick={() => navigate('/')}>Home</Button>
+        <Button
+          onClick={() => navigate('/')}
+          style={{ backgroundColor: '#292F57', borderColor: '#292F57', color: '#FFFFFF' }}
+        >
+          Home
+        </Button>
       </div>
 
       {loading ? (
@@ -135,7 +140,12 @@ const PropertyDetailsPage = () => {
           <p className="text-danger mb-3">{error}</p>
           <div className="d-flex justify-content-center gap-2">
             <Button variant="outline-secondary" onClick={() => navigate(-1)}>← Back</Button>
-            <Button variant="primary" onClick={() => navigate('/')}>Home</Button>
+            <Button
+              onClick={() => navigate('/')}
+              style={{ backgroundColor: '#292F57', borderColor: '#292F57', color: '#FFFFFF' }}
+            >
+              Home
+            </Button>
           </div>
         </div>
       ) : !property ? (

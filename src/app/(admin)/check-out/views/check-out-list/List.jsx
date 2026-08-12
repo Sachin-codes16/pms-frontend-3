@@ -1,9 +1,10 @@
 // @refresh reset
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import checkInApi from "@/helpers/checkInApi";
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { Button } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 
 const pageText    = "#526b89";
 const detailsPath = "/check-out-details";
@@ -98,8 +99,9 @@ const ActionButton = ({ icon, label, to, bg = "#f4f7fa" }) => (
   </Button>
 );
 
-const List = ({
+const List = forwardRef(({
   propertyType    = "All",
+  building        = "All",
   checkOutStatus  = "All",
   inspectionStatus = "All",
   refundStatus    = "All",
@@ -107,7 +109,7 @@ const List = ({
   search          = "",
   fromDate        = null,
   toDate          = null,
-}) => {
+}, ref) => {
   const navigate = useNavigate();
   const [allRows,     setAllRows]     = useState([]);
   const [totalCount,  setTotalCount]  = useState(null);
@@ -145,6 +147,7 @@ const List = ({
     const hay = `${row.tenantId} ${row.tenantName} ${row.property} ${row.unitNo}`.toLowerCase();
     if (search && !hay.includes(search.toLowerCase())) return false;
     if (propertyType    !== "All" && row.property      !== propertyType)    return false;
+    if (building        !== "All" && row.property      !== building)       return false;
     if (checkOutStatus  !== "All" && row.status        !== checkOutStatus)  return false;
     if (inspectionStatus !== "All" && row.inspectionStatus !== inspectionStatus) return false;
     if (refundStatus    !== "All" && row.refundStatus  !== refundStatus)    return false;
@@ -162,6 +165,29 @@ const List = ({
     "Check-Out Date", "Security\nDeposit", "Inspection\nStatus",
     "Key Return\nStatus", "Refund Status", "Status", "Request From", "Action",
   ];
+
+  useImperativeHandle(ref, () => ({
+    exportToPDF: () => {
+      const excelRows = rows.map((row) => ({
+        "Sr. No.": row.srNo,
+        "Tenant ID": row.tenantId,
+        "Tenant Name": row.tenantName,
+        Property: row.property,
+        "Unit No.": row.unitNo,
+        "Check-Out Date": row.checkOutDate,
+        "Security Deposit": row.securityDeposit,
+        "Inspection Status": row.inspectionStatus,
+        "Key Return Status": row.keyReturnStatus,
+        "Refund Status": row.refundStatus,
+        Status: row.status,
+        "Request From": row.requestFrom,
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(excelRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Check-Out List");
+      XLSX.writeFile(workbook, `Check_Out_List_${new Date().toISOString().split("T")[0]}.xlsx`);
+    },
+  }));
 
   return (
     <div style={{ ...panelStyle, overflow: "hidden", width: "100%" }}>
@@ -270,6 +296,8 @@ const List = ({
       </div>
     </div>
   );
-};
+});
+
+List.displayName = "List";
 
 export default List;

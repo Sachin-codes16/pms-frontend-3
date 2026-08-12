@@ -265,7 +265,6 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
         rental_type: rentalType,
         rental_for: values.rental_purpose === 'Commercial' ? 'Commercial' : 'Family',
         expected_rent: toStr(values.monthly_rent ?? ''),
-        photos: [],
         assigned_to: {
           user_id: toNum(values.assigned_to_user_id) || toNum(loggedInUserId) || 0,
           name: '',

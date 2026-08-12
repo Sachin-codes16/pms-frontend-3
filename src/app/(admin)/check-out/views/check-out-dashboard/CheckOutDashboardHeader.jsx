@@ -12,7 +12,8 @@ const CheckOutDashboardHeader = () => {
           Check-Out Dashboard
         </h4>
         <p className="mb-0" style={{ color: '#536b86', fontSize: 15 }}>
-          Dashboard &gt; Check-Out &gt; Dashboard
+          <Link to="/dashboards" style={{ color: '#536b86' }}>Dashboard</Link> &gt;{' '}
+          <Link to="/check-out-dashboard" style={{ color: '#536b86' }}>Check-Out</Link> &gt; Dashboard
         </p>
       </div>
 

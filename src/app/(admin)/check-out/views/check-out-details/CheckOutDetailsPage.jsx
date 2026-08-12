@@ -144,7 +144,8 @@ const CheckOutDetailsPage = () => {
             Check-Out Details
           </h4>
           <div style={{ color: pageText, fontSize: 15 }}>
-            Dashboard &gt; Check-Out &gt; Check-Out Details
+            <Link to="/dashboards" style={{ color: pageText }}>Dashboard</Link> &gt;{' '}
+            <Link to="/check-out-dashboard" style={{ color: pageText }}>Check-Out</Link> &gt; Check-Out Details
           </div>
         </div>
 
