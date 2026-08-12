@@ -211,7 +211,7 @@ const CheckOutListView = () => {
               customInput={<DateFilterButton label="To Date" />}
             />
             <Button
-              style={{ ...primaryButtonStyle, background: '#3d5a80', borderColor: '#3d5a80' }}
+              style={primaryButtonStyle}
               onClick={() => listRef.current?.exportToPDF()}
             >
               Export PDF
