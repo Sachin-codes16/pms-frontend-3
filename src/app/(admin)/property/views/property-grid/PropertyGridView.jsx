@@ -10,7 +10,7 @@ const PropertyGridView = () => {
     <>
       <h4 className="mb-3 fw-semibold">Listing Grid</h4>
       <Row>
-        <PropertiesFilter />
+        <PropertiesFilter {...gridController} />
         <ListingGrid {...gridController} />
       </Row>
     </>

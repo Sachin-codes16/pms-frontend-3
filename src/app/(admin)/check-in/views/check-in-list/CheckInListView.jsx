@@ -1,5 +1,6 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
-import { forwardRef, useRef, useState } from 'react';
+import checkInApi from '@/helpers/checkInApi';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 import { Button, Col, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
@@ -10,13 +11,17 @@ const pageText = '#526b89';
 const darkButton = '#292f57';
 const borderColor = '#b8c5d7';
 
-const filterOptions = {
+const OPTIONS_ENDPOINT = '/checkin-checkout/check_in/get_all/';
+const OPTIONS_FETCH_LIMIT = 500;
+
+// Property Type is intentionally left decorative (not wired to the API) -
+// see backend note: check-in list has no property-type filter param yet.
+// Status/Assignment Status/Key Status are fixed backend enums (confirmed via API testing).
+const staticFilterOptions = {
   propertyType: ['All', 'Villa', 'Warehouse', 'Flat', 'Commercial'],
-  building: ['All', 'Pearl Residency', 'AZ Apartment', 'Royal Villa', 'Star Studio'],
-  status: ['All', 'Pending', 'In Progress', 'Completed'],
-  assignedEmployee: ['All', 'John D.', 'Shounak S.', 'Kartik D.', 'Pranit P.'],
-  assignmentStatus: ['All', 'Assigned', 'Unassigned', 'Reassigned'],
-  keyStatus: ['All', 'Available', 'Booked', 'Handed Over'],
+  status: ['All', 'Pending', 'In Progress', 'Key Pending', 'Active', 'Completed', 'Cancelled'],
+  assignmentStatus: ['All', 'Pending', 'Approved', 'Rejected'],
+  keyStatus: ['All', 'Pending', 'Booked', 'Handed Over', 'Returned'],
 };
 
 const shellStyle = {
@@ -73,6 +78,7 @@ const primaryButtonStyle = {
   minWidth: 116,
 };
 
+// options items may be a plain string (value === label) or { value, label } (e.g. employee id -> name)
 const SelectField = ({ label, options, value, onChange }) => (
   <Col xs={12} sm={6} lg={4} xl={2}>
     <label className="d-block mb-2" style={{ color: '#71849c', fontSize: 16, fontWeight: 500 }}>
@@ -80,9 +86,15 @@ const SelectField = ({ label, options, value, onChange }) => (
     </label>
     <div style={{ position: 'relative' }}>
       <select style={selectStyle} value={value} onChange={onChange}>
-        {options.map((option) => (
-          <option key={option}>{option}</option>
-        ))}
+        {options.map((option) => {
+          const optValue = typeof option === 'object' ? option.value : option;
+          const optLabel = typeof option === 'object' ? option.label : option;
+          return (
+            <option key={optValue} value={optValue}>
+              {optLabel}
+            </option>
+          );
+        })}
       </select>
       <IconifyIcon
         icon="ri:arrow-down-s-line"
@@ -127,6 +139,42 @@ const CheckInListView = () => {
   const [keyStatus, setKeyStatus] = useState('All');
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
+
+  const [buildingOptions, setBuildingOptions] = useState(['All']);
+  const [assignedEmployeeOptions, setAssignedEmployeeOptions] = useState([{ value: 'All', label: 'All' }]);
+
+  // Derive real Building / Assigned Employee dropdown options from the full dataset -
+  // there's no dedicated directory endpoint for either, so this mirrors the pattern used
+  // elsewhere in the app of deriving filter options from a bulk, unfiltered fetch.
+  useEffect(() => {
+    let cancelled = false;
+
+    checkInApi
+      .get(OPTIONS_ENDPOINT, { params: { limit: OPTIONS_FETCH_LIMIT } })
+      .then((res) => {
+        if (cancelled) return;
+        const records = res.data?.data?.data ?? [];
+
+        const buildings = [...new Set(records.map((r) => r.buildingName).filter(Boolean))].sort();
+        setBuildingOptions(['All', ...buildings]);
+
+        const employeeMap = new Map();
+        records.forEach((r) => {
+          if (r.assignedEmployeeId && r.assignedEmployee?.name) {
+            employeeMap.set(r.assignedEmployeeId, r.assignedEmployee.name);
+          }
+        });
+        const employees = [...employeeMap.entries()]
+          .map(([id, name]) => ({ value: String(id), label: name }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+        setAssignedEmployeeOptions([{ value: 'All', label: 'All' }, ...employees]);
+      })
+      .catch((err) => {
+        console.error('Failed to load check-in filter options:', err?.message || err);
+      });
+
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div className="check-in-list-page" style={shellStyle}>
@@ -221,37 +269,37 @@ const CheckInListView = () => {
           <Row className="g-4">
             <SelectField
               label="Property Type"
-              options={filterOptions.propertyType}
+              options={staticFilterOptions.propertyType}
               value={propertyType}
               onChange={(e) => setPropertyType(e.target.value)}
             />
             <SelectField
               label="Building"
-              options={filterOptions.building}
+              options={buildingOptions}
               value={building}
               onChange={(e) => setBuilding(e.target.value)}
             />
             <SelectField
               label="Status"
-              options={filterOptions.status}
+              options={staticFilterOptions.status}
               value={status}
               onChange={(e) => setStatus(e.target.value)}
             />
             <SelectField
               label="Assigned Employee"
-              options={filterOptions.assignedEmployee}
+              options={assignedEmployeeOptions}
               value={assignedEmployee}
               onChange={(e) => setAssignedEmployee(e.target.value)}
             />
             <SelectField
               label="Assignment Status"
-              options={filterOptions.assignmentStatus}
+              options={staticFilterOptions.assignmentStatus}
               value={assignmentStatus}
               onChange={(e) => setAssignmentStatus(e.target.value)}
             />
             <SelectField
               label="Key Status"
-              options={filterOptions.keyStatus}
+              options={staticFilterOptions.keyStatus}
               value={keyStatus}
               onChange={(e) => setKeyStatus(e.target.value)}
             />

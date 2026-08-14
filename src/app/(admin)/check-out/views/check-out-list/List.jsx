@@ -2,7 +2,7 @@
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import checkInApi from "@/helpers/checkInApi";
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { Button } from "react-bootstrap";
+import { Button, Spinner } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 
@@ -11,8 +11,10 @@ const detailsPath = "/check-out-details";
 const editPathFor = (id) => `/check-out-start?id=${id}`;
 
 const API_ENDPOINT = "/checkin-checkout/check_out/get_all/";
+const PAGE_SIZE = 10;
+const EXPORT_PAGE_SIZE = 500;
 
-const getRecordsFromResponse = (data) => data?.data?.data ?? [];
+const getListData = (data) => data?.data ?? {};
 
 const mapRow = (item, idx) => ({
   id:               item.checkOutId,
@@ -29,6 +31,38 @@ const mapRow = (item, idx) => ({
   status:           item.checkOutStatus || "",
   requestFrom:      item.requestFrom || "",
 });
+
+// backend expects DD-MM-YY
+const toApiDateParam = (date) => {
+  if (!date) return undefined;
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = String(date.getFullYear()).slice(-2);
+  return `${day}-${month}-${year}`;
+};
+
+// property_type is not yet filterable server-side (backend gap, flagged separately) so
+// it is intentionally NOT included here even though propertyType is now present in the response.
+const buildFilterParams = ({ building, checkOutStatus, inspectionStatus, refundStatus, keyReturnStatus, requestFrom, search, fromDate, toDate }) => {
+  const params = {};
+  if (building && building !== "All") params.building = building;
+  if (checkOutStatus && checkOutStatus !== "All") params.status = checkOutStatus;
+  if (inspectionStatus && inspectionStatus !== "All") params.manager_approval = inspectionStatus;
+  if (refundStatus && refundStatus !== "All") params.payment_status = refundStatus;
+  if (keyReturnStatus && keyReturnStatus !== "All") params.key_return_status = keyReturnStatus;
+  if (requestFrom && requestFrom !== "All") params.request_from = requestFrom;
+  const from = toApiDateParam(fromDate);
+  if (from) params.from_date = from;
+  const to = toApiDateParam(toDate);
+  if (to) params.to_date = to;
+  // search_key/values is still non-functional server-side (confirmed via testing); sent anyway so
+  // it activates automatically once the backend fixes it, without further frontend changes.
+  if (search) {
+    params.search_key = "tenant_name";
+    params.values = search;
+  }
+  return params;
+};
 
 const panelStyle = {
   background: "#fff",
@@ -100,33 +134,50 @@ const ActionButton = ({ icon, label, to, bg = "#f4f7fa" }) => (
 );
 
 const List = forwardRef(({
-  propertyType    = "All",
   building        = "All",
   checkOutStatus  = "All",
   inspectionStatus = "All",
   refundStatus    = "All",
   keyReturnStatus = "All",
+  requestFrom     = "All",
   search          = "",
   fromDate        = null,
   toDate          = null,
 }, ref) => {
   const navigate = useNavigate();
-  const [allRows,     setAllRows]     = useState([]);
+  const [rows,        setRows]        = useState([]);
+  const [presentPage, setPresentPage] = useState(1);
+  const [totalPage,   setTotalPage]   = useState(1);
   const [totalCount,  setTotalCount]  = useState(null);
   const [loadingList, setLoadingList] = useState(true);
   const [fetchError,  setFetchError]  = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportError,   setExportError]   = useState(null);
+
+  // reset to page 1 whenever a filter changes
+  useEffect(() => {
+    setPresentPage(1);
+  }, [building, checkOutStatus, inspectionStatus, refundStatus, keyReturnStatus, requestFrom, search, fromDate, toDate]);
 
   useEffect(() => {
     let cancelled = false;
     setLoadingList(true);
     setFetchError(null);
 
+    const params = {
+      page_num: presentPage,
+      limit: PAGE_SIZE,
+      ...buildFilterParams({ building, checkOutStatus, inspectionStatus, refundStatus, keyReturnStatus, requestFrom, search, fromDate, toDate }),
+    };
+
     checkInApi
-      .get(API_ENDPOINT)
+      .get(API_ENDPOINT, { params })
       .then((res) => {
         if (cancelled) return;
-        const records = getRecordsFromResponse(res.data);
-        setAllRows(records.map(mapRow));
+        const data = getListData(res.data);
+        const records = data.data ?? [];
+        setRows(records.map(mapRow));
+        setTotalPage(data.totalPage ?? 1);
         setTotalCount(records.length);
       })
       .catch((err) => {
@@ -134,31 +185,18 @@ const List = forwardRef(({
         const status = err?.response?.status;
         const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.message || "Unknown error";
         setFetchError(status ? `HTTP ${status}: ${detail}` : detail);
-        setAllRows([]);
+        setRows([]);
         setTotalCount(0);
       })
       .finally(() => { if (!cancelled) setLoadingList(false); });
 
     return () => { cancelled = true; };
-  }, []);
+  }, [presentPage, building, checkOutStatus, inspectionStatus, refundStatus, keyReturnStatus, requestFrom, search, fromDate, toDate]);
 
-  // Client-side filtering
-  const rows = allRows.filter((row) => {
-    const hay = `${row.tenantId} ${row.tenantName} ${row.property} ${row.unitNo}`.toLowerCase();
-    if (search && !hay.includes(search.toLowerCase())) return false;
-    if (propertyType    !== "All" && row.property      !== propertyType)    return false;
-    if (building        !== "All" && row.property      !== building)       return false;
-    if (checkOutStatus  !== "All" && row.status        !== checkOutStatus)  return false;
-    if (inspectionStatus !== "All" && row.inspectionStatus !== inspectionStatus) return false;
-    if (refundStatus    !== "All" && row.refundStatus  !== refundStatus)    return false;
-    if (keyReturnStatus !== "All" && row.keyReturnStatus !== keyReturnStatus) return false;
-    if (row.checkOutDate && (fromDate || toDate)) {
-      const rowDate = new Date(row.checkOutDate);
-      if (fromDate && rowDate < new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate())) return false;
-      if (toDate && rowDate > new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate(), 23, 59, 59)) return false;
-    }
-    return true;
-  });
+  const goToPage = (page) => {
+    const clamped = Math.min(Math.max(page, 1), totalPage);
+    setPresentPage(clamped);
+  };
 
   const COLS = [
     "Sr. No.", "Tenant ID", "Tenant Name", "Property", "Unit No.",
@@ -167,25 +205,53 @@ const List = forwardRef(({
   ];
 
   useImperativeHandle(ref, () => ({
-    exportToPDF: () => {
-      const excelRows = rows.map((row) => ({
-        "Sr. No.": row.srNo,
-        "Tenant ID": row.tenantId,
-        "Tenant Name": row.tenantName,
-        Property: row.property,
-        "Unit No.": row.unitNo,
-        "Check-Out Date": row.checkOutDate,
-        "Security Deposit": row.securityDeposit,
-        "Inspection Status": row.inspectionStatus,
-        "Key Return Status": row.keyReturnStatus,
-        "Refund Status": row.refundStatus,
-        Status: row.status,
-        "Request From": row.requestFrom,
-      }));
-      const worksheet = XLSX.utils.json_to_sheet(excelRows);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Check-Out List");
-      XLSX.writeFile(workbook, `Check_Out_List_${new Date().toISOString().split("T")[0]}.xlsx`);
+    exportToPDF: async () => {
+      setExportLoading(true);
+      setExportError(null);
+
+      const params = { limit: EXPORT_PAGE_SIZE, ...buildFilterParams({ building, checkOutStatus, inspectionStatus, refundStatus, keyReturnStatus, requestFrom, search, fromDate, toDate }) };
+
+      try {
+        let page = 1;
+        let totalPages = 1;
+        const allItems = [];
+
+        do {
+          const res = await checkInApi.get(API_ENDPOINT, { params: { ...params, page_num: page } });
+          const data = getListData(res.data);
+          allItems.push(...(data.data ?? []));
+          totalPages = data.totalPage ?? 1;
+          page += 1;
+        } while (page <= totalPages);
+
+        const excelRows = allItems.map((item, idx) => {
+          const row = mapRow(item, idx);
+          return {
+            "Sr. No.": row.srNo,
+            "Tenant ID": row.tenantId,
+            "Tenant Name": row.tenantName,
+            Property: row.property,
+            "Unit No.": row.unitNo,
+            "Check-Out Date": row.checkOutDate,
+            "Security Deposit": row.securityDeposit,
+            "Inspection Status": row.inspectionStatus,
+            "Key Return Status": row.keyReturnStatus,
+            "Refund Status": row.refundStatus,
+            Status: row.status,
+            "Request From": row.requestFrom,
+          };
+        });
+        const worksheet = XLSX.utils.json_to_sheet(excelRows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Check-Out List");
+        XLSX.writeFile(workbook, `Check_Out_List_${new Date().toISOString().split("T")[0]}.xlsx`);
+      } catch (err) {
+        const status = err?.response?.status;
+        const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.message || "Unable to export check-out list.";
+        setExportError(status ? `HTTP ${status}: ${detail}` : detail);
+      } finally {
+        setExportLoading(false);
+      }
     },
   }));
 
@@ -197,6 +263,16 @@ const List = forwardRef(({
       >
         Check-Out List {totalCount !== null ? `(${totalCount})` : ""}
       </h5>
+      {exportError && (
+        <div style={{ padding: "10px 20px", color: "#e05252", fontSize: 14 }}>
+          Export failed: {exportError}
+        </div>
+      )}
+      {exportLoading && (
+        <div style={{ padding: "10px 20px" }}>
+          <Spinner animation="border" size="sm" /> Exporting...
+        </div>
+      )}
 
       <div style={{ background: "#fff", overflowX: "auto", padding: "0 16px 16px" }}>
         <table style={{ borderCollapse: "collapse", minWidth: 1550, width: "100%" }}>
@@ -215,7 +291,7 @@ const List = forwardRef(({
             {loadingList ? (
               <tr>
                 <td colSpan={COLS.length} style={{ ...tableCellStyle, textAlign: "center", padding: "40px 0" }}>
-                  Loading...
+                  <Spinner animation="border" size="sm" />
                 </td>
               </tr>
             ) : fetchError ? (
@@ -275,28 +351,70 @@ const List = forwardRef(({
 
       <div className="d-flex justify-content-end" style={{ padding: "0 20px 15px" }}>
         <div className="d-flex" style={{ border: "1px solid #e4e9f0", borderRadius: 5, overflow: "hidden" }}>
-          {["Previous", "1", "2", "3", "Next"].map((item) => (
+          <button
+            type="button"
+            onClick={() => goToPage(presentPage - 1)}
+            disabled={presentPage <= 1}
+            style={{
+              background: "#fff",
+              border: 0,
+              borderRight: "1px solid #e4e9f0",
+              color: "#3d4655",
+              height: 35,
+              minWidth: 78,
+              padding: "0 12px",
+            }}
+          >
+            Previous
+          </button>
+          {paginationRange(presentPage, totalPage).map((page) => (
             <button
-              key={item}
+              key={page}
               type="button"
+              onClick={() => goToPage(page)}
               style={{
-                background: item === "1" ? "#283140" : "#fff",
+                background: page === presentPage ? "#283140" : "#fff",
                 border: 0,
-                borderRight: item === "Next" ? 0 : "1px solid #e4e9f0",
-                color: item === "1" ? "#fff" : "#3d4655",
+                borderRight: "1px solid #e4e9f0",
+                color: page === presentPage ? "#fff" : "#3d4655",
                 height: 35,
-                minWidth: item.length > 1 ? 78 : 32,
+                minWidth: 32,
                 padding: "0 12px",
               }}
             >
-              {item}
+              {page}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => goToPage(presentPage + 1)}
+            disabled={presentPage >= totalPage}
+            style={{
+              background: "#fff",
+              border: 0,
+              color: "#3d4655",
+              height: 35,
+              minWidth: 32,
+              padding: "0 12px",
+            }}
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
   );
 });
+
+const paginationRange = (current, total) => {
+  const windowSize = 3;
+  let start = Math.max(1, current - 1);
+  const end = Math.min(total, start + windowSize - 1);
+  start = Math.max(1, end - windowSize + 1);
+  const pages = [];
+  for (let p = start; p <= end; p++) pages.push(p);
+  return pages;
+};
 
 List.displayName = "List";
 

@@ -2,7 +2,7 @@
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import checkInApi from "@/helpers/checkInApi";
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { Button } from "react-bootstrap";
+import { Button, Spinner } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 
@@ -11,10 +11,12 @@ const detailsPath = "/check-in-information";
 const editPathFor = (id) => `/check-in-start?id=${id}#check-in-information`;
 
 const API_ENDPOINT = "/checkin-checkout/check_in/get_all/";
+const PAGE_SIZE = 10;
+const EXPORT_PAGE_SIZE = 500;
 
 // GET /checkin-checkout/check_in/get_all/ response shape:
 // { data: { data: CheckInListItem[], presentPage, totalPage } }
-const getRecordsFromResponse = (data) => data?.data?.data ?? [];
+const getListData = (data) => data?.data ?? {};
 
 // Maps a CheckInListItem (response) to the table row shape.
 const mapRow = (item, idx) => ({
@@ -32,6 +34,37 @@ const mapRow = (item, idx) => ({
   assignedTo: item.assignedEmployee?.name || "",
   requestFrom: item.requestFrom || "",
 });
+
+// backend expects DD-MM-YY
+const toApiDateParam = (date) => {
+  if (!date) return undefined;
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = String(date.getFullYear()).slice(-2);
+  return `${day}-${month}-${year}`;
+};
+
+// property_type is not yet filterable server-side (backend gap, flagged separately) so
+// it is intentionally NOT included here even though propertyType is now present in the response.
+const buildFilterParams = ({ building, status, assignedEmployee, assignmentStatus, keyStatus, search, fromDate, toDate }) => {
+  const params = {};
+  if (building && building !== "All") params.building = building;
+  if (status && status !== "All") params.status = status;
+  if (assignedEmployee && assignedEmployee !== "All") params.assigned_employee_id = assignedEmployee;
+  if (assignmentStatus && assignmentStatus !== "All") params.manager_approval = assignmentStatus;
+  if (keyStatus && keyStatus !== "All") params.key_handover_status = keyStatus;
+  const from = toApiDateParam(fromDate);
+  if (from) params.from_date = from;
+  const to = toApiDateParam(toDate);
+  if (to) params.to_date = to;
+  // search_key/values is still non-functional server-side (confirmed via testing); sent anyway so
+  // it activates automatically once the backend fixes it, without further frontend changes.
+  if (search) {
+    params.search_key = "tenant_name";
+    params.values = search;
+  }
+  return params;
+};
 
 const panelStyle = {
   background: "#fff",
@@ -105,7 +138,6 @@ const ActionButton = ({ icon, label, to, bg = "#f4f7fa" }) => (
 );
 
 const List = forwardRef(({
-  propertyType = 'All',
   building = 'All',
   status = 'All',
   assignedEmployee = 'All',
@@ -116,31 +148,43 @@ const List = forwardRef(({
   toDate = null,
 }, ref) => {
   const navigate = useNavigate();
-  const [allRows, setAllRows] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [presentPage, setPresentPage] = useState(1);
+  const [totalPage, setTotalPage] = useState(1);
   const [totalCount, setTotalCount] = useState(null);
   const [loadingList, setLoadingList] = useState(true);
   const [fetchError, setFetchError] = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportError, setExportError] = useState(null);
+
+  // reset to page 1 whenever a filter changes
+  useEffect(() => {
+    setPresentPage(1);
+  }, [building, status, assignedEmployee, assignmentStatus, keyStatus, search, fromDate, toDate]);
 
   useEffect(() => {
     let cancelled = false;
     setLoadingList(true);
     setFetchError(null);
 
-    const loadCheckIns = async () => {
-      try {
-        const params = {};
-        if (propertyType && propertyType !== 'All') {
-          params.filter_key = 'rental_type';
-          params.filter_value = propertyType.toLowerCase();
-        }
-        const res = await checkInApi.get(API_ENDPOINT, { params });
-        const records = getRecordsFromResponse(res.data);
-        if (!cancelled) {
-          const mapped = records.map(mapRow);
-          setAllRows(mapped);
-          setTotalCount(mapped.length);
-        }
-      } catch (err) {
+    const params = {
+      page_num: presentPage,
+      limit: PAGE_SIZE,
+      ...buildFilterParams({ building, status, assignedEmployee, assignmentStatus, keyStatus, search, fromDate, toDate }),
+    };
+
+    checkInApi
+      .get(API_ENDPOINT, { params })
+      .then((res) => {
+        if (cancelled) return;
+        const data = getListData(res.data);
+        const records = data.data ?? [];
+        setRows(records.map(mapRow));
+        setTotalPage(data.totalPage ?? 1);
+        setTotalCount(records.length);
+      })
+      .catch((err) => {
+        if (cancelled) return;
         const status = err?.response?.status;
         const detail =
           err?.response?.data?.detail ||
@@ -149,59 +193,72 @@ const List = forwardRef(({
           "Unknown error";
         const msg = status ? `HTTP ${status}: ${detail}` : detail;
         console.error("Check-in list fetch failed:", msg);
-        if (!cancelled) {
-          setAllRows([]);
-          setTotalCount(0);
-          setFetchError(msg);
-        }
-      } finally {
+        setRows([]);
+        setTotalCount(0);
+        setFetchError(msg);
+      })
+      .finally(() => {
         if (!cancelled) setLoadingList(false);
-      }
-    };
+      });
 
-    loadCheckIns();
     return () => {
       cancelled = true;
     };
-  }, [propertyType]);
+  }, [presentPage, building, status, assignedEmployee, assignmentStatus, keyStatus, search, fromDate, toDate]);
 
-  // Client-side filtering
-  const rows = allRows.filter((row) => {
-    const hay = `${row.tenantId} ${row.tenantName} ${row.property} ${row.unitNo}`.toLowerCase();
-    if (search && !hay.includes(search.toLowerCase())) return false;
-    if (building !== "All" && row.property !== building) return false;
-    if (status !== "All" && row.status !== status) return false;
-    if (assignedEmployee !== "All" && row.assignedTo !== assignedEmployee) return false;
-    if (assignmentStatus !== "All" && row.assignmentStatus !== assignmentStatus) return false;
-    if (keyStatus !== "All" && row.keyStatus !== keyStatus) return false;
-    if (row.checkinDate && (fromDate || toDate)) {
-      const rowDate = new Date(row.checkinDate);
-      if (fromDate && rowDate < new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate())) return false;
-      if (toDate && rowDate > new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate(), 23, 59, 59)) return false;
-    }
-    return true;
-  });
+  const goToPage = (page) => {
+    const clamped = Math.min(Math.max(page, 1), totalPage);
+    setPresentPage(clamped);
+  };
 
   useImperativeHandle(ref, () => ({
-    exportToExcel: () => {
-      const excelRows = rows.map((row) => ({
-        "Sr. No.": row.srNo,
-        "Tenant ID": row.tenantId,
-        "Tenant Name": row.tenantName,
-        Property: row.property,
-        "Unit No.": row.unitNo,
-        "Check-In Date": row.checkinDate,
-        Rent: row.rent,
-        "Assignment Status": row.assignmentStatus,
-        "Key Status": row.keyStatus,
-        Status: row.status,
-        "Assigned To": row.assignedTo,
-        "Request From": row.requestFrom,
-      }));
-      const worksheet = XLSX.utils.json_to_sheet(excelRows);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Check-In List");
-      XLSX.writeFile(workbook, `Check_In_List_${new Date().toISOString().split("T")[0]}.xlsx`);
+    exportToExcel: async () => {
+      setExportLoading(true);
+      setExportError(null);
+
+      const params = { limit: EXPORT_PAGE_SIZE, ...buildFilterParams({ building, status, assignedEmployee, assignmentStatus, keyStatus, search, fromDate, toDate }) };
+
+      try {
+        let page = 1;
+        let totalPages = 1;
+        const allItems = [];
+
+        do {
+          const res = await checkInApi.get(API_ENDPOINT, { params: { ...params, page_num: page } });
+          const data = getListData(res.data);
+          allItems.push(...(data.data ?? []));
+          totalPages = data.totalPage ?? 1;
+          page += 1;
+        } while (page <= totalPages);
+
+        const excelRows = allItems.map((item, idx) => {
+          const row = mapRow(item, idx);
+          return {
+            "Sr. No.": row.srNo,
+            "Tenant ID": row.tenantId,
+            "Tenant Name": row.tenantName,
+            Property: row.property,
+            "Unit No.": row.unitNo,
+            "Check-In Date": row.checkinDate,
+            Rent: row.rent,
+            "Assignment Status": row.assignmentStatus,
+            "Key Status": row.keyStatus,
+            Status: row.status,
+            "Assigned To": row.assignedTo,
+            "Request From": row.requestFrom,
+          };
+        });
+        const worksheet = XLSX.utils.json_to_sheet(excelRows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Check-In List");
+        XLSX.writeFile(workbook, `Check_In_List_${new Date().toISOString().split("T")[0]}.xlsx`);
+      } catch (err) {
+        const status = err?.response?.status;
+        const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.message || "Unable to export check-in list.";
+        setExportError(status ? `HTTP ${status}: ${detail}` : detail);
+      } finally {
+        setExportLoading(false);
+      }
     },
   }));
 
@@ -219,6 +276,16 @@ const List = forwardRef(({
       >
         Check-in List {totalCount !== null ? `(${totalCount})` : ""}
       </h5>
+      {exportError && (
+        <div style={{ padding: "10px 20px", color: "#e05252", fontSize: 14 }}>
+          Export failed: {exportError}
+        </div>
+      )}
+      {exportLoading && (
+        <div style={{ padding: "10px 20px" }}>
+          <Spinner animation="border" size="sm" /> Exporting...
+        </div>
+      )}
       <div
         style={{
           background: "#fff",
@@ -251,7 +318,7 @@ const List = forwardRef(({
             {loadingList ? (
               <tr>
                 <td colSpan={14} style={{ ...tableCellStyle, textAlign: "center", padding: "40px 0" }}>
-                  Loading...
+                  <Spinner animation="border" size="sm" />
                 </td>
               </tr>
             ) : fetchError ? (
@@ -356,28 +423,70 @@ const List = forwardRef(({
             overflow: "hidden",
           }}
         >
-          {["Previous", "1", "2", "3", "Next"].map((item) => (
+          <button
+            type="button"
+            onClick={() => goToPage(presentPage - 1)}
+            disabled={presentPage <= 1}
+            style={{
+              background: "#fff",
+              border: 0,
+              borderRight: "1px solid #e4e9f0",
+              color: "#3d4655",
+              height: 35,
+              minWidth: 78,
+              padding: "0 12px",
+            }}
+          >
+            Previous
+          </button>
+          {paginationRange(presentPage, totalPage).map((page) => (
             <button
-              key={item}
+              key={page}
               type="button"
+              onClick={() => goToPage(page)}
               style={{
-                background: item === "1" ? "#283140" : "#fff",
+                background: page === presentPage ? "#283140" : "#fff",
                 border: 0,
-                borderRight: item === "Next" ? 0 : "1px solid #e4e9f0",
-                color: item === "1" ? "#fff" : "#3d4655",
+                borderRight: "1px solid #e4e9f0",
+                color: page === presentPage ? "#fff" : "#3d4655",
                 height: 35,
-                minWidth: item.length > 1 ? 78 : 32,
+                minWidth: 32,
                 padding: "0 12px",
               }}
             >
-              {item}
+              {page}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => goToPage(presentPage + 1)}
+            disabled={presentPage >= totalPage}
+            style={{
+              background: "#fff",
+              border: 0,
+              color: "#3d4655",
+              height: 35,
+              minWidth: 32,
+              padding: "0 12px",
+            }}
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
   );
 });
+
+const paginationRange = (current, total) => {
+  const windowSize = 3;
+  let start = Math.max(1, current - 1);
+  const end = Math.min(total, start + windowSize - 1);
+  start = Math.max(1, end - windowSize + 1);
+  const pages = [];
+  for (let p = start; p <= end; p++) pages.push(p);
+  return pages;
+};
 
 List.displayName = "List";
 

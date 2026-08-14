@@ -1,14 +1,49 @@
-import { forwardRef, useState } from 'react';
-import { Button, Card, CardBody, CardHeader, Col, Row } from 'react-bootstrap';
+import { forwardRef } from 'react';
+import { Alert, Button, Card, CardBody, CardHeader, Col, Row, Spinner } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { useRentalReportController } from '../../controllers/useRentalReportController';
 
 const RentalReportView = () => {
-  const { breadcrumb, filterSummary, filters, rows, title, totalProperties } = useRentalReportController();
-  const [fromDate, setFromDate] = useState(null);
-  const [toDate, setToDate] = useState(null);
+  const {
+    breadcrumb,
+    filterSummary,
+    filters,
+    searchInput,
+    setSearchInput,
+    city,
+    setCity,
+    selectedTypes,
+    toggleType,
+    selectedBedrooms,
+    toggleBedroom,
+    selectedFeatures,
+    toggleFeature,
+    selectedRentalFor,
+    toggleRentalFor,
+    minRentInput,
+    setMinRentInput,
+    maxRentInput,
+    setMaxRentInput,
+    fromDate,
+    setFromDate,
+    toDate,
+    setToDate,
+    rows,
+    rowsLoading,
+    rowsError,
+    presentPage,
+    totalPage,
+    goToPage,
+    title,
+    totalProperties,
+    summaryError,
+    exportExcel,
+    exportLoading,
+    exportError,
+  } = useRentalReportController();
 
   return (
     <div className="rental-report-page">
@@ -161,11 +196,27 @@ const RentalReportView = () => {
         </p>
       </div>
 
+      {summaryError && (
+        <Alert variant="danger" className="mt-3 mb-0">
+          {summaryError}
+        </Alert>
+      )}
+      {exportError && (
+        <Alert variant="danger" className="mt-3 mb-0">
+          {exportError}
+        </Alert>
+      )}
+
       <div className="report-toolbar">
         <div className="d-flex align-items-center gap-3 flex-wrap">
           <div className="search-box">
             <IconifyIcon icon="ri:search-line" className="position-absolute" style={{ left: 13, top: '50%', transform: 'translateY(-50%)', color: '#7a8da5', fontSize: 17 }} />
-            <input className="form-control" placeholder="Reports and Analysis" />
+            <input
+              className="form-control"
+              placeholder="Reports and Analysis"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
           </div>
           <span style={{ color: '#2f3848', fontSize: 15, fontWeight: 500 }}>{totalProperties}</span>
         </div>
@@ -195,7 +246,9 @@ const RentalReportView = () => {
             isClearable
             customInput={<DateFilterButton label="To Date" />}
           />
-          <Button className="primary-action">Export Excel</Button>
+          <Button className="primary-action" onClick={exportExcel} disabled={exportLoading}>
+            {exportLoading ? <Spinner animation="border" size="sm" /> : 'Export Excel'}
+          </Button>
         </div>
       </div>
 
@@ -212,35 +265,61 @@ const RentalReportView = () => {
               <label className="form-label mb-2" style={{ color: '#536b86', fontSize: 14 }}>
                 Properties Location
               </label>
-              <select className="form-select filter-select">
-                {filters.cities.map((city) => (
-                  <option key={city}>{city}</option>
+              <select
+                className="form-select filter-select"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              >
+                {filters.cities.map((cityOption) => (
+                  <option key={cityOption} value={cityOption === 'Choose a city' ? '' : cityOption}>
+                    {cityOption}
+                  </option>
                 ))}
               </select>
 
               <div className="filter-section">
                 <h5 className="filter-label">Custom Price Range :</h5>
-                <div className="d-flex align-items-center px-1 mb-3" style={{ height: 18 }}>
-                  <span style={{ width: 17, height: 17, borderRadius: '50%', background: '#293052' }} />
-                  <span style={{ flex: 1, height: 7, background: '#293052' }} />
-                  <span style={{ width: 17, height: 17, borderRadius: '50%', background: '#293052' }} />
-                </div>
                 <div className="d-flex align-items-center gap-2">
-                  <input className="form-control price-input text-center" value="OMR 1000" readOnly />
+                  <input
+                    type="number"
+                    min="0"
+                    className="form-control price-input text-center"
+                    placeholder="Min OMR"
+                    value={minRentInput}
+                    onChange={(e) => setMinRentInput(e.target.value)}
+                  />
                   <span style={{ color: '#536b86', fontSize: 14, fontWeight: 600 }}>to</span>
-                  <input className="form-control price-input text-center" value="OMR 10000" readOnly />
+                  <input
+                    type="number"
+                    min="0"
+                    className="form-control price-input text-center"
+                    placeholder="Max OMR"
+                    value={maxRentInput}
+                    onChange={(e) => setMaxRentInput(e.target.value)}
+                  />
                 </div>
               </div>
 
               <FilterCheckboxGroup title="Property Type :" items={filters.propertyType} />
-              <FilterCheckboxGroup title="Properties Type :" items={filters.propertiesType} checkedItem="All Properties" />
+              <FilterCheckboxGroup
+                title="Properties Type :"
+                items={filters.propertiesType}
+                selected={selectedTypes.length === 0 ? ['All Properties'] : selectedTypes}
+                onToggle={(item) => (item === 'All Properties' ? selectedTypes.forEach((t) => toggleType(t)) : toggleType(item))}
+              />
 
               <div className="filter-section">
                 <h5 className="filter-label">Bedrooms :</h5>
                 <div className="bedroom-options">
                   {filters.bedrooms.map((bedroom) => (
                     <div key={bedroom}>
-                      <input type="checkbox" className="btn-check" id={`rental-${bedroom}`} defaultChecked={bedroom === '3 BHK'} />
+                      <input
+                        type="checkbox"
+                        className="btn-check"
+                        id={`rental-${bedroom}`}
+                        checked={selectedBedrooms.includes(bedroom)}
+                        onChange={() => toggleBedroom(bedroom)}
+                      />
                       <label className="btn w-100" htmlFor={`rental-${bedroom}`}>
                         {bedroom}
                       </label>
@@ -249,8 +328,18 @@ const RentalReportView = () => {
                 </div>
               </div>
 
-              <FilterCheckboxGroup title="Accessibility Features :" items={filters.accessibilityFeatures} />
-              <FilterCheckboxGroup title="Rental For" items={filters.rentalFor} />
+              <FilterCheckboxGroup
+                title="Accessibility Features :"
+                items={filters.accessibilityFeatures}
+                selected={selectedFeatures}
+                onToggle={toggleFeature}
+              />
+              <FilterCheckboxGroup
+                title="Rental For"
+                items={filters.rentalFor}
+                selected={selectedRentalFor}
+                onToggle={toggleRentalFor}
+              />
               <FilterCheckboxGroup title="Rental For" items={filters.rentalStatus} />
             </CardBody>
 
@@ -278,8 +367,29 @@ const RentalReportView = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row, index) => (
-                      <tr key={`${row.title}-${index}`}>
+                    {rowsLoading && (
+                      <tr>
+                        <td colSpan={11} className="text-center" style={{ ...cellStyle, padding: '30px 12px' }}>
+                          <Spinner animation="border" size="sm" />
+                        </td>
+                      </tr>
+                    )}
+                    {!rowsLoading && rowsError && (
+                      <tr>
+                        <td colSpan={11} className="text-center" style={{ ...cellStyle, padding: '30px 12px', color: '#e65f5c' }}>
+                          {rowsError}
+                        </td>
+                      </tr>
+                    )}
+                    {!rowsLoading && !rowsError && rows.length === 0 && (
+                      <tr>
+                        <td colSpan={11} className="text-center" style={{ ...cellStyle, padding: '30px 12px' }}>
+                          No properties found.
+                        </td>
+                      </tr>
+                    )}
+                    {!rowsLoading && !rowsError && rows.map((row, index) => (
+                      <tr key={`${row.id}-${index}`}>
                         <td style={cellStyle}>{row.id}</td>
                         <td className="title-cell" style={{ ...cellStyle, color: '#2f3848', fontWeight: 600 }}>
                           <span className="d-inline-flex align-items-center gap-2">
@@ -303,10 +413,22 @@ const RentalReportView = () => {
                         </td>
                         <td className="action-cell" style={cellStyle}>
                           <div className="d-flex gap-2">
-                            <Button variant="light" size="sm" style={actionButtonStyle}>
+                            <Button
+                              as={Link}
+                              to={`/landlord/detailspage?property_id=${row.id}`}
+                              variant="light"
+                              size="sm"
+                              style={actionButtonStyle}
+                            >
                               <IconifyIcon icon="solar:eye-broken" className="align-middle fs-16" />
                             </Button>
-                            <Button variant="light" size="sm" style={{ ...actionButtonStyle, background: '#f0edff', color: '#293052' }}>
+                            <Button
+                              as={Link}
+                              to={`/landlord/add-property?property_id=${row.id}`}
+                              variant="light"
+                              size="sm"
+                              style={{ ...actionButtonStyle, background: '#f0edff', color: '#293052' }}
+                            >
                               <IconifyIcon icon="solar:pen-2-broken" className="align-middle fs-16" />
                             </Button>
                           </div>
@@ -321,20 +443,35 @@ const RentalReportView = () => {
                 <nav aria-label="Rental report pagination">
                   <ul className="pagination pagination-sm mb-0">
                     <li className="page-item">
-                      <button className="page-link" style={paginationButtonStyle}>Previous</button>
+                      <button
+                        className="page-link"
+                        style={paginationButtonStyle}
+                        disabled={presentPage <= 1}
+                        onClick={() => goToPage(presentPage - 1)}
+                      >
+                        Previous
+                      </button>
                     </li>
-                    {[1, 2, 3].map((page) => (
-                      <li className={`page-item ${page === 1 ? 'active' : ''}`} key={page}>
+                    {paginationRange(presentPage, totalPage).map((page) => (
+                      <li className={`page-item ${page === presentPage ? 'active' : ''}`} key={page}>
                         <button
                           className="page-link"
-                          style={page === 1 ? activePaginationButtonStyle : paginationButtonStyle}
+                          style={page === presentPage ? activePaginationButtonStyle : paginationButtonStyle}
+                          onClick={() => goToPage(page)}
                         >
                           {page}
                         </button>
                       </li>
                     ))}
                     <li className="page-item">
-                      <button className="page-link" style={paginationButtonStyle}>Next</button>
+                      <button
+                        className="page-link"
+                        style={paginationButtonStyle}
+                        disabled={presentPage >= totalPage}
+                        onClick={() => goToPage(presentPage + 1)}
+                      >
+                        Next
+                      </button>
                     </li>
                   </ul>
                 </nav>
@@ -361,14 +498,26 @@ const DateFilterButton = forwardRef(({ label, value, onClick }, ref) => (
 ));
 DateFilterButton.displayName = 'DateFilterButton';
 
-const FilterCheckboxGroup = ({ title, items, checkedItem }) => (
+// Controlled when `selected`/`onToggle` are given (real filter, bound to the API);
+// otherwise falls back to a plain uncontrolled checkbox (decorative-only group with no API equivalent).
+const FilterCheckboxGroup = ({ title, items, checkedItem, selected, onToggle }) => (
   <div className="filter-section">
     <h5 className="filter-label">{title}</h5>
     <Row className="g-0">
       {items.map((item) => (
         <Col xs={6} key={item} className="overflow-hidden">
           <div className="d-flex align-items-center gap-2 mb-3">
-            <input className="form-check-input flex-shrink-0" type="checkbox" id={`rental-${item}`} defaultChecked={item === checkedItem} />
+            {onToggle ? (
+              <input
+                className="form-check-input flex-shrink-0"
+                type="checkbox"
+                id={`rental-${item}`}
+                checked={selected.includes(item)}
+                onChange={() => onToggle(item)}
+              />
+            ) : (
+              <input className="form-check-input flex-shrink-0" type="checkbox" id={`rental-${item}`} defaultChecked={item === checkedItem} />
+            )}
             <label className="form-check-label text-truncate" htmlFor={`rental-${item}`} style={{ color: '#536b86', fontSize: 14, minWidth: 0 }}>
               {item}
             </label>
@@ -378,6 +527,16 @@ const FilterCheckboxGroup = ({ title, items, checkedItem }) => (
     </Row>
   </div>
 );
+
+const paginationRange = (current, total) => {
+  const windowSize = 3;
+  let start = Math.max(1, current - 1);
+  const end = Math.min(total, start + windowSize - 1);
+  start = Math.max(1, end - windowSize + 1);
+  const pages = [];
+  for (let p = start; p <= end; p++) pages.push(p);
+  return pages;
+};
 
 const headStyle = {
   color: '#526b89',

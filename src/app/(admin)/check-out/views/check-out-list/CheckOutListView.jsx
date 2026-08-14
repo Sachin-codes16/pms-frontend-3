@@ -1,5 +1,6 @@
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
-import { forwardRef, useRef, useState } from 'react';
+import checkInApi from '@/helpers/checkInApi';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 import { Button, Col, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
@@ -10,13 +11,19 @@ const pageText = '#526b89';
 const darkButton = '#292f57';
 const borderColor = '#b8c5d7';
 
-const filterOptions = {
+const OPTIONS_ENDPOINT = '/checkin-checkout/check_out/get_all/';
+const OPTIONS_FETCH_LIMIT = 500;
+
+// Property Type is intentionally left decorative (not wired to the API) -
+// see backend note: check-out list has no property-type filter param yet.
+// Check-Out Status / Inspection Status / Request From already matched the real
+// backend enums exactly; Refund Status / Key Return Status were missing values.
+const staticFilterOptions = {
   propertyType:     ['All', 'Villa', 'Warehouse', 'Flat', 'Commercial'],
-  building:         ['All', 'Pearl Residency', 'AZ Apartment', 'Royal Villa', 'Star Studio'],
-  checkOutStatus:   ['All', 'Pending', 'Inspection Pending', 'Active', 'Approved', 'Completed', 'Cancelled'],
+  checkOutStatus:   ['All', 'Pending', 'Inspection Pending', 'Approved', 'Active', 'Completed', 'Cancelled'],
   inspectionStatus: ['All', 'Pending', 'Approved', 'Rejected'],
-  refundStatus:     ['All', 'Pending', 'Paid', 'Refunded'],
-  keyReturnStatus:  ['All', 'Pending', 'Returned', 'Lost'],
+  refundStatus:     ['All', 'Pending', 'Paid', 'Partially Paid', 'Refunded'],
+  keyReturnStatus:  ['All', 'Pending', 'Returned', 'Not Returned', 'Lost'],
   requestFrom:      ['All', 'Tenant', 'Admin'],
 };
 
@@ -123,6 +130,28 @@ const CheckOutListView = () => {
   const [fromDate,         setFromDate]         = useState(null);
   const [toDate,           setToDate]           = useState(null);
 
+  const [buildingOptions, setBuildingOptions] = useState(['All']);
+
+  // Derive real Building dropdown options from the full dataset - there's no
+  // dedicated directory endpoint, so this mirrors the same pattern used for Check-In List.
+  useEffect(() => {
+    let cancelled = false;
+
+    checkInApi
+      .get(OPTIONS_ENDPOINT, { params: { limit: OPTIONS_FETCH_LIMIT } })
+      .then((res) => {
+        if (cancelled) return;
+        const records = res.data?.data?.data ?? [];
+        const buildings = [...new Set(records.map((r) => r.buildingName).filter(Boolean))].sort();
+        setBuildingOptions(['All', ...buildings]);
+      })
+      .catch((err) => {
+        console.error('Failed to load check-out filter options:', err?.message || err);
+      });
+
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <div className="check-out-list-page" style={shellStyle}>
       <div className="d-flex flex-column flex-md-row align-items-md-start justify-content-between gap-3" style={topBarStyle}>
@@ -176,7 +205,7 @@ const CheckOutListView = () => {
                 value={requestFrom}
                 onChange={(e) => setRequestFrom(e.target.value)}
               >
-                {filterOptions.requestFrom.map((o) => (
+                {staticFilterOptions.requestFrom.map((o) => (
                   <option key={o}>{o === 'All' ? 'Request From' : o}</option>
                 ))}
               </select>
@@ -221,12 +250,12 @@ const CheckOutListView = () => {
 
         <div className="mb-4" style={{ ...panelStyle, padding: '20px 20px' }}>
           <Row className="g-4">
-            <SelectField label="Property Type"     options={filterOptions.propertyType}     value={propertyType}     onChange={(e) => setPropertyType(e.target.value)} />
-            <SelectField label="Building"          options={filterOptions.building}          value={building}         onChange={(e) => setBuilding(e.target.value)} />
-            <SelectField label="Check-Out Status"  options={filterOptions.checkOutStatus}   value={checkOutStatus}   onChange={(e) => setCheckOutStatus(e.target.value)} />
-            <SelectField label="Inspection Status" options={filterOptions.inspectionStatus} value={inspectionStatus} onChange={(e) => setInspectionStatus(e.target.value)} />
-            <SelectField label="Refund Status"     options={filterOptions.refundStatus}     value={refundStatus}     onChange={(e) => setRefundStatus(e.target.value)} />
-            <SelectField label="Key Return Status" options={filterOptions.keyReturnStatus}  value={keyReturnStatus}  onChange={(e) => setKeyReturnStatus(e.target.value)} />
+            <SelectField label="Property Type"     options={staticFilterOptions.propertyType}     value={propertyType}     onChange={(e) => setPropertyType(e.target.value)} />
+            <SelectField label="Building"          options={buildingOptions}          value={building}         onChange={(e) => setBuilding(e.target.value)} />
+            <SelectField label="Check-Out Status"  options={staticFilterOptions.checkOutStatus}   value={checkOutStatus}   onChange={(e) => setCheckOutStatus(e.target.value)} />
+            <SelectField label="Inspection Status" options={staticFilterOptions.inspectionStatus} value={inspectionStatus} onChange={(e) => setInspectionStatus(e.target.value)} />
+            <SelectField label="Refund Status"     options={staticFilterOptions.refundStatus}     value={refundStatus}     onChange={(e) => setRefundStatus(e.target.value)} />
+            <SelectField label="Key Return Status" options={staticFilterOptions.keyReturnStatus}  value={keyReturnStatus}  onChange={(e) => setKeyReturnStatus(e.target.value)} />
           </Row>
         </div>
 

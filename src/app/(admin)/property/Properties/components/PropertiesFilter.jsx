@@ -1,39 +1,34 @@
 import ChoicesFormInput from '@/components/from/ChoicesFormInput';
-import { useState } from 'react';
 import { Card, CardBody, CardHeader, CardTitle, Col, Row } from 'react-bootstrap';
 
-const checkboxGroups = {
-  propertyType: [
-    { id: 'property-type-residential', label: 'Residential' },
-    { id: 'property-type-commercial', label: 'Commercial' }
-  ],
-  propertiesType: [
-    { id: 'properties-type-all', label: 'All Properties', defaultChecked: true },
-    { id: 'properties-type-apartment', label: 'Apartment' },
-    { id: 'properties-type-villas', label: 'Villas' },
-    { id: 'properties-type-warehouse', label: 'Ware House' },
-    { id: 'properties-type-commercial', label: 'Commercial' }
-  ],
-  amenities: [
-    { id: 'amenity-balcony', label: 'Balcony' },
-    { id: 'amenity-parking', label: 'Parking' },
-    { id: 'amenity-spa', label: 'Spa' },
-    { id: 'amenity-pool', label: 'Pool' },
-    { id: 'amenity-restaurant', label: 'Restaurant' },
-    { id: 'amenity-fitness-club', label: 'Fitness Club' }
-  ],
-  rentalFor: [
-    { id: 'rental-for-bachelor', label: 'Bachelor' },
-    { id: 'rental-for-family', label: 'Family' }
-  ]
-};
+// "Property Type :" (Residential/Commercial) is intentionally left decorative -
+// there is no backend equivalent for that grouping, only the real property_types
+// enum below ("Properties Type :"). Same treatment as Rental Report's identical group.
+const decorativePropertyType = [
+  { id: 'property-type-residential', label: 'Residential' },
+  { id: 'property-type-commercial', label: 'Commercial' }
+];
 
-const bedrooms = ['1 BHK', '2 BHK', '3 BHK', '4 & 5 BHK'];
+// real property_types enum: Apartment,Villa,Warehouse,Commercial
+const propertiesTypeOptions = ['All Properties', 'Apartment', 'Villa', 'Warehouse', 'Commercial'];
 
-const CheckOption = ({ id, label, defaultChecked = false }) => (
+// real features enum is exactly Balcony,Parking,Pool - confirmed via testing that this
+// endpoint (unlike Rental Report's) silently returns the FULL UNFILTERED set for any
+// unrecognized value instead of an empty result, so Spa/Restaurant/Fitness Club were
+// removed rather than left as filters that silently do nothing.
+const amenityOptions = ['Balcony', 'Parking', 'Pool'];
+
+// real rental_for enum: Bachelor,Family,Labour
+const rentalForOptions = ['Bachelor', 'Family', 'Labour'];
+
+const bedroomOptions = ['1 BHK', '2 BHK', '3 BHK', '4 & 5 BHK'];
+
+const cityOptions = ['Choose a city', 'Muscat', 'Nizwa', 'Salalah', 'Sohar'];
+
+const CheckOption = ({ id, label, checked, onChange }) => (
   <Col xs={6}>
     <div className="filter-check">
-      <input className="form-check-input" type="checkbox" id={id} defaultChecked={defaultChecked} />
+      <input className="form-check-input" type="checkbox" id={id} checked={checked} onChange={onChange} />
       <label className="form-check-label" htmlFor={id}>
         {label}
       </label>
@@ -41,20 +36,26 @@ const CheckOption = ({ id, label, defaultChecked = false }) => (
   </Col>
 );
 
-const PropertiesFilter = () => {
-  const [selectedValue, setSelectedValue] = useState([1000, 10000]);
-
-  const handleInputChange = (event, index) => {
-    const value = Number(event.target.value.replace(/\D/g, '')) || 0;
-
-    if (index === 0 && value <= selectedValue[1]) {
-      setSelectedValue([value, selectedValue[1]]);
-    }
-
-    if (index === 1 && value >= selectedValue[0]) {
-      setSelectedValue([selectedValue[0], value]);
-    }
-  };
+const PropertiesFilter = ({
+  presentPage = 1,
+  totalPage = 1,
+  city = '',
+  setCity = () => {},
+  selectedTypes = [],
+  toggleType = () => {},
+  selectedBedrooms = [],
+  toggleBedroom = () => {},
+  selectedFeatures = [],
+  toggleFeature = () => {},
+  selectedRentalFor = [],
+  toggleRentalFor = () => {},
+  minRentInput = '',
+  setMinRentInput = () => {},
+  maxRentInput = '',
+  setMaxRentInput = () => {},
+}) => {
+  const onToggleType = (item) =>
+    item === 'All Properties' ? selectedTypes.forEach((t) => toggleType(t)) : toggleType(item);
 
   return (
     <Col xl={3} lg={12}>
@@ -133,30 +134,6 @@ const PropertiesFilter = () => {
             min-height: 39px;
           }
 
-          .properties-filter-card .noUi-target {
-            align-items: center;
-            display: flex;
-            height: 7px;
-            margin: 18px 8px 22px;
-          }
-
-          .properties-filter-card .noUi-connect {
-            background: #604ae3;
-            border-radius: 999px;
-            display: block;
-            height: 7px;
-            width: 100%;
-          }
-
-          .properties-filter-card .noUi-handle {
-            background: #604ae3;
-            border-radius: 50%;
-            display: block;
-            flex: 0 0 18px;
-            height: 18px;
-            width: 18px;
-          }
-
           .bedroom-options {
             display: grid;
             gap: 4px;
@@ -194,7 +171,7 @@ const PropertiesFilter = () => {
           <CardTitle as="h4" className="filter-title mb-1">
             Properties
           </CardTitle>
-          <p className="filter-subtitle mb-0">Show 15,780 Properties</p>
+          <p className="filter-subtitle mb-0">Page {presentPage} of {totalPage}</p>
         </CardHeader>
 
         <CardBody>
@@ -202,34 +179,48 @@ const PropertiesFilter = () => {
             <label htmlFor="property-city" className="form-label filter-subtitle mb-2">
               Properties Location
             </label>
-            <ChoicesFormInput className="form-control" id="property-city">
-              <option>Choose a city</option>
-              <option value="Muscat">Muscat</option>
-              <option value="Nizwa">Nizwa</option>
-              <option value="Salalah">Salalah</option>
-              <option value="Sohar">Sohar</option>
+            <ChoicesFormInput
+              className="form-control"
+              id="property-city"
+              defaultValue={city}
+              onChange={(value) => setCity(value === 'Choose a city' ? '' : value)}
+            >
+              {cityOptions.map((option) => (
+                <option key={option} value={option === 'Choose a city' ? '' : option}>
+                  {option}
+                </option>
+              ))}
             </ChoicesFormInput>
           </div>
 
           <div className="filter-section">
             <h5 className="filter-label">Custom Price Range :</h5>
-            <div className="noUi-target" aria-hidden="true">
-              <span className="noUi-handle" />
-              <span className="noUi-connect" />
-              <span className="noUi-handle" />
-            </div>
             <div className="d-flex align-items-center gap-2">
-              <input className="form-control text-center" type="text" value={`OMR ${selectedValue[0]}`} onChange={event => handleInputChange(event, 0)} />
+              <input
+                type="number"
+                min="0"
+                className="form-control text-center"
+                placeholder="Min OMR"
+                value={minRentInput}
+                onChange={(e) => setMinRentInput(e.target.value)}
+              />
               <span className="filter-subtitle fw-semibold">to</span>
-              <input className="form-control text-center" type="text" value={`OMR ${selectedValue[1]}`} onChange={event => handleInputChange(event, 1)} />
+              <input
+                type="number"
+                min="0"
+                className="form-control text-center"
+                placeholder="Max OMR"
+                value={maxRentInput}
+                onChange={(e) => setMaxRentInput(e.target.value)}
+              />
             </div>
           </div>
 
           <div className="filter-section">
             <h5 className="filter-label">Property Type :</h5>
             <Row className="g-0">
-              {checkboxGroups.propertyType.map(item => (
-                <CheckOption key={item.id} {...item} />
+              {decorativePropertyType.map((item) => (
+                <CheckOption key={item.id} {...item} checked={false} onChange={() => {}} />
               ))}
             </Row>
           </div>
@@ -237,8 +228,14 @@ const PropertiesFilter = () => {
           <div className="filter-section">
             <h5 className="filter-label">Properties Type :</h5>
             <Row className="g-0">
-              {checkboxGroups.propertiesType.map(item => (
-                <CheckOption key={item.id} {...item} />
+              {propertiesTypeOptions.map((item) => (
+                <CheckOption
+                  key={item}
+                  id={`properties-type-${item.replace(/\W+/g, '-').toLowerCase()}`}
+                  label={item}
+                  checked={item === 'All Properties' ? selectedTypes.length === 0 : selectedTypes.includes(item)}
+                  onChange={() => onToggleType(item)}
+                />
               ))}
             </Row>
           </div>
@@ -246,9 +243,15 @@ const PropertiesFilter = () => {
           <div className="filter-section">
             <h5 className="filter-label">Bedrooms :</h5>
             <div className="bedroom-options" role="group" aria-label="Bedroom options">
-              {bedrooms.map(item => (
+              {bedroomOptions.map((item) => (
                 <div key={item}>
-                  <input type="checkbox" className="btn-check" id={`bedroom-${item.replace(/\W+/g, '-').toLowerCase()}`} defaultChecked={item === '3 BHK'} />
+                  <input
+                    type="checkbox"
+                    className="btn-check"
+                    id={`bedroom-${item.replace(/\W+/g, '-').toLowerCase()}`}
+                    checked={selectedBedrooms.includes(item)}
+                    onChange={() => toggleBedroom(item)}
+                  />
                   <label className="btn w-100" htmlFor={`bedroom-${item.replace(/\W+/g, '-').toLowerCase()}`}>
                     {item}
                   </label>
@@ -260,8 +263,14 @@ const PropertiesFilter = () => {
           <div className="filter-section">
             <h5 className="filter-label">Amenities:</h5>
             <Row className="g-0">
-              {checkboxGroups.amenities.map(item => (
-                <CheckOption key={item.id} {...item} />
+              {amenityOptions.map((item) => (
+                <CheckOption
+                  key={item}
+                  id={`amenity-${item.replace(/\W+/g, '-').toLowerCase()}`}
+                  label={item}
+                  checked={selectedFeatures.includes(item)}
+                  onChange={() => toggleFeature(item)}
+                />
               ))}
             </Row>
           </div>
@@ -269,8 +278,14 @@ const PropertiesFilter = () => {
           <div className="filter-section">
             <h5 className="filter-label">Rental For</h5>
             <Row className="g-0">
-              {checkboxGroups.rentalFor.map(item => (
-                <CheckOption key={item.id} {...item} />
+              {rentalForOptions.map((item) => (
+                <CheckOption
+                  key={item}
+                  id={`rental-for-${item.replace(/\W+/g, '-').toLowerCase()}`}
+                  label={item}
+                  checked={selectedRentalFor.includes(item)}
+                  onChange={() => toggleRentalFor(item)}
+                />
               ))}
             </Row>
           </div>
