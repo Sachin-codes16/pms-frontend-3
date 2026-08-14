@@ -230,7 +230,7 @@ const TenantDetailsEditDetailsPage = () => {
                     as={Link}
                     to={dashboardPath}
                     variant="outline-secondary"
-                    className="w-50"
+                    className="w-50 edit-detail-btn-cancel"
                     style={{ borderColor: "#526b89", color: "#526b89", borderRadius: 5, height: 40 }}
                   >
                     Cancel
@@ -238,7 +238,7 @@ const TenantDetailsEditDetailsPage = () => {
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="w-50"
+                    className="w-50 edit-detail-btn-submit"
                     style={{ background: "#526b89", borderColor: "#526b89", borderRadius: 5, height: 40 }}
                   >
                     {submitting ? "Saving..." : "Submit"}
@@ -511,14 +511,14 @@ const TenantDetailsEditDetailsPage = () => {
                     <Button
                       as={Link}
                       to={dashboardPath}
-                      variant="outline-secondary"
+                      variant="outline-secondary" className="edit-detail-btn-cancel"
                       style={{ borderColor: "#526b89", color: "#526b89", borderRadius: 5, minWidth: 200, height: 45 }}
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
-                      disabled={submitting}
+                      disabled={submitting} className="edit-detail-btn-submit"
                       style={{ background: "#526b89", borderColor: "#526b89", borderRadius: 5, minWidth: 200, height: 45 }}
                     >
                       {submitting ? "Saving..." : "Submit"}

@@ -154,7 +154,7 @@ const CheckOutDetailsPage = () => {
             as={Link}
             to="/check-out-list"
             variant="outline-primary"
-            className="d-inline-flex align-items-center justify-content-center gap-2 px-4"
+            className="edit-detail-btn-cancel d-inline-flex align-items-center justify-content-center gap-2 px-4"
             style={outlineButtonStyle}
           >
             <IconifyIcon icon="ri:arrow-left-s-line" width={18} height={18} />

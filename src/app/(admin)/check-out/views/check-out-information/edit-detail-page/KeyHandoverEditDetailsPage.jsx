@@ -273,11 +273,11 @@ const KeyHandoverEditDetailsPage = () => {
                   </>
                 )}
                 <div className="d-flex gap-2">
-                  <Button as={Link} to={backPath} variant="outline-secondary" className="w-50"
+                  <Button as={Link} to={backPath} variant="outline-secondary" className="w-50 edit-detail-btn-cancel"
                     style={{ borderColor: "#526b89", color: "#526b89", borderRadius: 5, height: 40 }}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={submitting} className="w-50"
+                  <Button type="submit" disabled={submitting} className="w-50 edit-detail-btn-submit"
                     style={{ background: "#526b89", borderColor: "#526b89", borderRadius: 5, height: 40 }}>
                     {submitting ? "Saving…" : "Submit"}
                   </Button>
@@ -394,7 +394,7 @@ const KeyHandoverEditDetailsPage = () => {
                   {newKeyRowIds.map((rowId) => (
                     <NewKeyRow key={rowId} rowId={rowId} onRemove={removeNewKeyRow} />
                   ))}
-                  <Button type="button" variant="outline-secondary" className="mb-5"
+                  <Button type="button" variant="outline-secondary" className="mb-5 edit-detail-btn-cancel"
                     style={{ borderColor: "#526b89", color: "#526b89", borderRadius: 5 }}
                     onClick={addNewKeyRow}>
                     + Add Key
@@ -429,11 +429,11 @@ const KeyHandoverEditDetailsPage = () => {
                   </Row>
 
                   <div className="d-flex justify-content-end gap-2 mt-2">
-                    <Button as={Link} to={backPath} variant="outline-secondary"
+                    <Button as={Link} to={backPath} variant="outline-secondary" className="edit-detail-btn-cancel"
                       style={{ borderColor: "#526b89", color: "#526b89", borderRadius: 5, height: 45, minWidth: 200 }}>
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={submitting}
+                    <Button type="submit" disabled={submitting} className="edit-detail-btn-submit"
                       style={{ background: "#526b89", borderColor: "#526b89", borderRadius: 5, height: 45, minWidth: 200 }}>
                       {submitting ? "Saving…" : "Submit"}
                     </Button>

@@ -18,6 +18,28 @@
   color: #2f3848;
 }
 
+.property-add-form .form-check-input:checked {
+  background-color: #292f57;
+  border-color: #292f57;
+}
+
+.property-add-form .form-check-input:focus {
+  border-color: #292f57;
+  box-shadow: 0 0 0 0.25rem rgba(41, 47, 87, 0.25);
+}
+
+.property-add-form select.form-control,
+.property-add-form select.form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23536b86' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px 14px;
+  padding-right: 36px;
+}
+
 .property-add-form .choices {
   width: 100%;
 }
@@ -165,12 +187,18 @@
 }
 
 .dropdown-arrow {
-  border-bottom: 2px solid #666;
-  border-right: 2px solid #666;
+  border-bottom: 2px solid #536b86;
+  border-right: 2px solid #536b86;
   display: inline-block;
+  flex-shrink: 0;
   height: 8px;
   transform: rotate(45deg);
+  transition: transform 0.2s ease-in-out;
   width: 8px;
+}
+
+.dropdown-arrow.open {
+  transform: rotate(-135deg);
 }
 
 @media (max-width: 767.98px) {

@@ -13,7 +13,7 @@ const CheckOutDashboardHeader = () => {
         </h4>
         <p className="mb-0" style={{ color: '#536b86', fontSize: 15 }}>
           <Link to="/dashboards" style={{ color: '#536b86' }}>Dashboard</Link> &gt;{' '}
-          <Link to="/check-out-dashboard" style={{ color: '#536b86' }}>Check-Out</Link> &gt; Dashboard
+          <Link to="/check-out-dashboard" style={{ color: '#536b86' }}>Check-Out Dashboard</Link>
         </p>
       </div>
 
@@ -21,8 +21,9 @@ const CheckOutDashboardHeader = () => {
         <Button
           type="button"
           variant="outline-primary"
+          className="edit-detail-btn-cancel"
           onClick={() => navigate(-1)}
-          style={{ borderColor: '#b9abff', borderRadius: 4, color: '#604ae3', minWidth: 100, padding: '10px 18px' }}
+          style={{ borderRadius: 4, minWidth: 100, padding: '10px 18px' }}
         >
           <IconifyIcon icon="ri:arrow-left-s-line" className="me-1" />
           Back

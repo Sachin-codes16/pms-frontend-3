@@ -116,7 +116,7 @@ const SelectField = ({ label, options, value, onChange }) => (
 const DateFilterButton = forwardRef(({ label, value, onClick }, ref) => (
   <Button
     variant="outline-primary"
-    className="d-inline-flex align-items-center justify-content-center gap-2 px-3"
+    className="date-filter-btn d-inline-flex align-items-center justify-content-center gap-2 px-3"
     style={outlineButtonStyle}
     onClick={onClick}
     ref={ref}
@@ -188,7 +188,7 @@ const CheckInListView = () => {
           </h4>
           <div style={{ color: pageText, fontSize: 15 }}>
             <Link to="/dashboards" style={{ color: pageText }}>Dashboard</Link> &gt;{' '}
-            <Link to="/check-in-dashboard" style={{ color: pageText }}>Check-in</Link> &gt; Check-In List
+            <Link to="/check-in-dashboard" style={{ color: pageText }}>Check-In Dashboard</Link> &gt; Check-In List
           </div>
         </div>
 
@@ -197,8 +197,8 @@ const CheckInListView = () => {
             as={Link}
             to="/check-in-dashboard"
             variant="outline-primary"
-            className="d-inline-flex align-items-center justify-content-center gap-2 px-4"
-            style={{ ...outlineButtonStyle, borderColor: '#b8b6ff', color: darkButton }}
+            className="edit-detail-btn-cancel d-inline-flex align-items-center justify-content-center gap-2 px-4"
+            style={outlineButtonStyle}
           >
             <IconifyIcon icon="ri:arrow-left-s-line" width={18} height={18} />
             <span>Back</span>

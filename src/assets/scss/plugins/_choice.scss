@@ -24,26 +24,28 @@
                }
           }
 
+          // drawn with borders instead of the boxicons glyph font so the arrow
+          // still renders correctly even if the icon font fails to load
           &:after {
-               content: "\ea4a";
+               content: "";
                position: absolute;
-               border: 0;
-               top: 18px;
-               right: 12px;
+               top: 50%;
+               right: 16px;
                left: auto;
-               font-size: 20px;
-               font-family: "boxicons";
-               width: auto;
-               height: auto;
-               margin-top: 0;
-               transform: translateY(-50%);
+               width: 8px;
+               height: 8px;
+               border: 0;
+               border-bottom: 2px solid currentColor;
+               border-right: 2px solid currentColor;
+               margin-top: -6px;
+               transform: rotate(45deg);
                transition: transform 0.2s ease-in-out;
                pointer-events: none;
           }
 
           &.is-open:after {
-               margin-top: 0;
-               transform: translateY(-50%) rotate(-180deg);
+               margin-top: -2px;
+               transform: rotate(-135deg);
           }
 
           .choices__button {

@@ -487,7 +487,7 @@ const RentalReportView = () => {
 const DateFilterButton = forwardRef(({ label, value, onClick }, ref) => (
   <Button
     variant="outline-primary"
-    className="toolbar-btn d-inline-flex align-items-center gap-2"
+    className="date-filter-btn toolbar-btn d-inline-flex align-items-center gap-2"
     onClick={onClick}
     ref={ref}
   >

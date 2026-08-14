@@ -226,7 +226,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   as={Link}
                   to={dashboardPath}
                   variant="outline-secondary"
-                  className="w-50"
+                  className="w-50 edit-detail-btn-cancel"
                   style={{
                     borderColor: "#526b89",
                     color: "#526b89",
@@ -238,7 +238,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                 </Button>
                 <Button
                   type="button"
-                  className="w-50"
+                  className="w-50 edit-detail-btn-submit"
                   style={{
                     background: "#526b89",
                     borderColor: "#526b89",
@@ -814,7 +814,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   <Button
                     as={Link}
                     to={dashboardPath}
-                    variant="outline-secondary"
+                    variant="outline-secondary" className="edit-detail-btn-cancel"
                     style={{
                       borderColor: "#526b89",
                       color: "#526b89",
@@ -825,7 +825,7 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
                   >
                     Cancel
                   </Button>
-                  <Button
+                  <Button className="edit-detail-btn-submit"
                     type="button"
                     style={{
                       background: "#526b89",

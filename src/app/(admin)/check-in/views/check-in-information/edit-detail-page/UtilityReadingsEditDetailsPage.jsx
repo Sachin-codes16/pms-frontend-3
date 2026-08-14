@@ -424,7 +424,7 @@ const UtilityReadingsEditDetailsPage = ({ mode = "check-in" }) => {
                     as={Link}
                     to={backPath}
                     variant="outline-secondary"
-                    className="w-50"
+                    className="w-50 edit-detail-btn-cancel"
                     style={{ borderColor: "#526b89", borderRadius: 5, color: "#526b89", height: 40 }}
                   >
                     Cancel
@@ -432,7 +432,7 @@ const UtilityReadingsEditDetailsPage = ({ mode = "check-in" }) => {
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="w-50"
+                    className="w-50 edit-detail-btn-submit"
                     style={{ background: "#526b89", borderColor: "#526b89", borderRadius: 5, height: 40 }}
                   >
                     {submitting ? "Saving…" : "Submit"}
@@ -497,12 +497,12 @@ const UtilityReadingsEditDetailsPage = ({ mode = "check-in" }) => {
                     <Button
                       as={Link}
                       to={backPath}
-                      variant="outline-secondary"
+                      variant="outline-secondary" className="edit-detail-btn-cancel"
                       style={{ borderColor: "#526b89", borderRadius: 5, color: "#526b89", height: 45, minWidth: 200 }}
                     >
                       Cancel
                     </Button>
-                    <Button
+                    <Button className="edit-detail-btn-submit"
                       type="submit"
                       disabled={submitting || loading}
                       style={{ background: "#526b89", borderColor: "#526b89", borderRadius: 5, height: 45, minWidth: 200 }}

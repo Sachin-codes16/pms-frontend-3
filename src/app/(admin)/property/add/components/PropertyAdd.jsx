@@ -1298,7 +1298,7 @@ style ={{ backgroundColor: '#F9F9FC' }}
           />
           <span className="country-name">{selectedCountry.name}</span>
         </div>
-        <span className="dropdown-arrow">▼</span>
+        <span className={`dropdown-arrow${showCountryDropdown ? ' open' : ''}`} />
       </div>
       
       {showCountryDropdown && (
@@ -1343,7 +1343,7 @@ style ={{ backgroundColor: '#F9F9FC' }}
       <div className="mb-3 rounded">
         <Row className="justify-content-end g-2">
           <Col lg={2}>
-            <Button variant="outline-primary" type="button" className="w-100" onClick={() => navigate('/landlord/property-grid')}>
+            <Button variant="outline-primary" type="button" className="w-100 edit-detail-btn-cancel" onClick={() => navigate('/landlord/property-grid')}>
               Cancel
             </Button>
           </Col>

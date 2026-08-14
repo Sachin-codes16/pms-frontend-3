@@ -13,7 +13,7 @@ const CheckInDashboardHeader = () => {
         </h4>
         <p className="mb-0" style={{ color: '#536b86', fontSize: 15 }}>
           <Link to="/dashboards" style={{ color: '#536b86' }}>Dashboard</Link> &gt;{' '}
-          <Link to="/check-in-dashboard" style={{ color: '#536b86' }}>Check-in</Link> &gt; Dashboard
+          <Link to="/check-in-dashboard" style={{ color: '#536b86' }}>Check-In Dashboard</Link>
         </p>
       </div>
 
@@ -22,10 +22,9 @@ const CheckInDashboardHeader = () => {
           type="button"
           variant="outline-primary"
           onClick={() => navigate(-1)}
+          className="edit-detail-btn-cancel"
           style={{
-            borderColor: '#b9abff',
             borderRadius: 4,
-            color: '#604ae3',
             minWidth: 100,
             padding: '10px 18px'
           }}

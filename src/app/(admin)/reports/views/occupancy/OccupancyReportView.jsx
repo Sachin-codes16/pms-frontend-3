@@ -420,7 +420,7 @@ const OccupancyReportView = () => {
 const DateFilterButton = forwardRef(({ label, value, onClick }, ref) => (
   <Button
     variant="outline-primary"
-    className="outline-action d-inline-flex align-items-center gap-2"
+    className="date-filter-btn outline-action d-inline-flex align-items-center gap-2"
     onClick={onClick}
     ref={ref}
   >

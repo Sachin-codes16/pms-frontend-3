@@ -187,7 +187,10 @@ export const salesChart = {
 };
 export const statusOverviewOptions = {
   chart: {
-    height: 210,
+    // Must match the width/height passed to <ReactApexChart> in SocialSource.jsx
+    // (160x160) - a mismatch here throws off ApexCharts' internal coordinate math
+    // and makes the hover tooltip render off-screen.
+    height: 160,
     type: 'donut',
     sparkline: {
       enabled: true
@@ -217,7 +220,13 @@ export const statusOverviewOptions = {
     show: false
   },
   tooltip: {
-    enabled: false
+    enabled: true,
+    // At this chart's small (160px) size ApexCharts' default datapoint-anchored
+    // tooltip position lands off-screen; anchoring to the cursor keeps it visible.
+    followCursor: true,
+    y: {
+      formatter: (val) => `${val}`
+    }
   }
 };
 export const salesOptions = {
@@ -398,6 +407,13 @@ export const checkInOutOptions = {
     itemMargin: {
       horizontal: 8,
       vertical: 0
+    }
+  },
+  tooltip: {
+    shared: true,
+    intersect: false,
+    y: {
+      formatter: (val) => `${val}`
     }
   }
 };

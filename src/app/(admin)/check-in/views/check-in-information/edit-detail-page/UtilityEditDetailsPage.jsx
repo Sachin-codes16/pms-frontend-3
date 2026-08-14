@@ -229,7 +229,7 @@ const UtilityEditDetailsPage = () => {
                   as={Link}
                   to={backPath}
                   variant="outline-secondary"
-                  className="w-50"
+                  className="w-50 edit-detail-btn-cancel"
                   style={{
                     borderColor: "#526b89",
                     color: "#526b89",
@@ -241,7 +241,7 @@ const UtilityEditDetailsPage = () => {
                 </Button>
                 <Button
                   type="button"
-                  className="w-50"
+                  className="w-50 edit-detail-btn-submit"
                   style={{
                     background: "#526b89",
                     borderColor: "#526b89",
@@ -653,7 +653,7 @@ const UtilityEditDetailsPage = () => {
                   <Button
                     as={Link}
                     to={backPath}
-                    variant="outline-secondary"
+                    variant="outline-secondary" className="edit-detail-btn-cancel"
                     style={{
                       borderColor: "#526b89",
                       color: "#526b89",
@@ -664,7 +664,7 @@ const UtilityEditDetailsPage = () => {
                   >
                     Cancel
                   </Button>
-                  <Button
+                  <Button className="edit-detail-btn-submit"
                     type="button"
                     style={{
                       background: "#526b89",

@@ -1,5 +1,9 @@
 import ChoicesFormInput from '@/components/from/ChoicesFormInput';
+import Nouislider from 'nouislider-react';
 import { Card, CardBody, CardHeader, CardTitle, Col, Row } from 'react-bootstrap';
+
+const RENT_MIN = 0;
+const RENT_MAX = 10000;
 
 // "Property Type :" (Residential/Commercial) is intentionally left decorative -
 // there is no backend equivalent for that grouping, only the real property_types
@@ -123,8 +127,8 @@ const PropertiesFilter = ({
           }
 
           .properties-filter-card .form-check-input:checked {
-            background-color: #604ae3;
-            border-color: #604ae3;
+            background-color: #292f57;
+            border-color: #292f57;
           }
 
           .properties-filter-card .form-control,
@@ -146,9 +150,9 @@ const PropertiesFilter = ({
 
           .bedroom-options .btn {
             align-items: center;
-            border-color: #604ae3;
+            border-color: #292f57;
             border-radius: 5px;
-            color: #604ae3;
+            color: #292f57;
             display: flex;
             font-size: 13px;
             justify-content: center;
@@ -159,9 +163,22 @@ const PropertiesFilter = ({
           }
 
           .bedroom-options .btn-check:checked + .btn {
-            background: #604ae3;
-            border-color: #604ae3;
+            background: #292f57;
+            border-color: #292f57;
             color: #fff;
+          }
+
+          .properties-filter-card .noUi-connect {
+            background: #292f57;
+          }
+
+          .properties-filter-card .noUi-handle {
+            background: #292f57;
+            border-color: #292f57;
+          }
+
+          .properties-filter-card .noUi-target {
+            margin: 10px 4px 24px;
           }
         `}
       </style>
@@ -195,7 +212,16 @@ const PropertiesFilter = ({
 
           <div className="filter-section">
             <h5 className="filter-label">Custom Price Range :</h5>
-            <div className="d-flex align-items-center gap-2">
+            <Nouislider
+              range={{ min: RENT_MIN, max: RENT_MAX }}
+              start={[Number(minRentInput) || RENT_MIN, Number(maxRentInput) || RENT_MAX]}
+              connect
+              onSlide={([min, max]) => {
+                setMinRentInput(String(Math.round(min)));
+                setMaxRentInput(String(Math.round(max)));
+              }}
+            />
+            <div className="d-flex align-items-center gap-2 mt-3">
               <input
                 type="number"
                 min="0"

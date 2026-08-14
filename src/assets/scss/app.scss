@@ -95,3 +95,59 @@
   max-height: 20px !important;
 }
 
+// Check-in / check-out edit-detail-page Cancel & Submit buttons.
+// Overrides both Bootstrap's variant hover (which used the theme's purple
+// $secondary and clashed with the buttons' own inline text color) and the
+// per-page inline styles (background/border/color), so every one of these
+// buttons shares one readable, smoothly-transitioning hover state.
+.edit-detail-btn-cancel {
+  background-color: #ffffff !important;
+  border-color: #292f57 !important;
+  color: #292f57 !important;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.edit-detail-btn-cancel:hover,
+.edit-detail-btn-cancel:focus {
+  background-color: #292f57 !important;
+  border-color: #292f57 !important;
+  color: #ffffff !important;
+}
+
+.edit-detail-btn-submit {
+  background-color: #292f57 !important;
+  border-color: #292f57 !important;
+  color: #ffffff !important;
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.edit-detail-btn-submit:hover,
+.edit-detail-btn-submit:focus {
+  background-color: #1c2140 !important;
+  border-color: #1c2140 !important;
+  color: #ffffff !important;
+}
+
+// "From Date" / "To Date" filter buttons (react-datepicker custom input) across
+// list/report pages - same override as .edit-detail-btn-cancel above, so the
+// Bootstrap outline-primary variant's purple hover doesn't leak through.
+.date-filter-btn {
+  background-color: #ffffff !important;
+  border-color: #292f57 !important;
+  color: #292f57 !important;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.date-filter-btn:hover,
+.date-filter-btn:focus {
+  background-color: #292f57 !important;
+  border-color: #292f57 !important;
+  color: #ffffff !important;
+}
+
+.edit-detail-btn-submit:disabled {
+  background-color: #292f57 !important;
+  border-color: #292f57 !important;
+  opacity: 0.65;
+}
+
