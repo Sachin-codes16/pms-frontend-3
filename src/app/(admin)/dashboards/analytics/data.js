@@ -188,9 +188,9 @@ export const salesChart = {
 export const statusOverviewOptions = {
   chart: {
     // Must match the width/height passed to <ReactApexChart> in SocialSource.jsx
-    // (160x160) - a mismatch here throws off ApexCharts' internal coordinate math
+    // (190x190) - a mismatch here throws off ApexCharts' internal coordinate math
     // and makes the hover tooltip render off-screen.
-    height: 160,
+    height: 190,
     type: 'donut',
     sparkline: {
       enabled: true

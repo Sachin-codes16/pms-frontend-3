@@ -20,9 +20,9 @@ const StatusOverviewCard = ({ data = [] }) => {
             <Col xs={12} md={4}>
               <div
                 className="d-flex justify-content-center justify-content-md-start"
-                style={{ width: 160, height: 160, flexShrink: 0 }}
+                style={{ width: 190, height: 190, flexShrink: 0 }}
               >
-                <ReactApexChart options={options} series={series} width={160} height={160} type="donut" className="apex-charts" />
+                <ReactApexChart options={options} series={series} width={190} height={190} type="donut" className="apex-charts" />
               </div>
             </Col>
             <Col xs={12} md={8} className="ps-md-5">
