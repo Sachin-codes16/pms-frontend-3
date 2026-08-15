@@ -1,6 +1,6 @@
 export const rentalReportContent = {
-  title: 'Property Reports',
-  breadcrumb: 'Real Estate > Property Reports',
+  title: 'Rental Reports',
+  breadcrumb: 'Real Estate > Rental Reports',
   totalProperties: '311 Properties',
   filterSummary: 'Show 15,780 Property',
 };

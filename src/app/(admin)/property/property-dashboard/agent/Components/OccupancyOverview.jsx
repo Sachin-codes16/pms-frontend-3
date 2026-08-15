@@ -11,7 +11,7 @@ const OccupancyOverview = ({ occupancyStatusData = [] }) => {
     legend: { show: false },
     dataLabels: { enabled: false },
     plotOptions: { pie: { donut: { size: '65%' } } },
-    tooltip: { y: { formatter: (v) => `${v} properties` } },
+    tooltip: { theme: 'dark', y: { formatter: (v) => `${v} properties` } },
   };
 
   return <Col lg={6}>

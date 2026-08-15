@@ -221,6 +221,7 @@ export const statusOverviewOptions = {
   },
   tooltip: {
     enabled: true,
+    theme: 'dark',
     // At this chart's small (160px) size ApexCharts' default datapoint-anchored
     // tooltip position lands off-screen; anchoring to the cursor keeps it visible.
     followCursor: true,

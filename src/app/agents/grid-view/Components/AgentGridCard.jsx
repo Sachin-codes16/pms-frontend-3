@@ -13,6 +13,9 @@ const PropertiesChart = () => {
     legend: {
       show: false
     },
+    tooltip: {
+      theme: 'dark'
+    },
     stroke: {
       width: 0
     },

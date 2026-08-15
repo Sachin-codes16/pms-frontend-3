@@ -1,11 +1,20 @@
+import { useRef, useState } from "react";
 import { Card, CardBody } from "react-bootstrap";
 
 function DonutChart({ data, size = 190, thickness = 42 }) {
+  const wrapperRef = useRef(null);
+  const [hovered, setHovered] = useState(null);
+
   const cx = size / 2;
   const cy = size / 2;
   const r = (size - thickness) / 2;
   const circumference = 2 * Math.PI * r;
   const total = data.reduce((sum, d) => sum + d.value, 0);
+
+  const handleMove = (slice) => (e) => {
+    const rect = wrapperRef.current.getBoundingClientRect();
+    setHovered({ ...slice, x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
 
   if (total <= 0) {
     return (
@@ -25,30 +34,60 @@ function DonutChart({ data, size = 190, thickness = 42 }) {
   });
 
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      style={{ transform: "rotate(-90deg)" }}
-    >
-      {slices.map((s, i) => (
-        <circle
-          key={i}
-          cx={cx}
-          cy={cy}
-          r={r}
-          fill="none"
-          stroke={s.color}
-          strokeWidth={thickness}
-          strokeDasharray={`${s.dash} ${s.gap}`}
-          strokeDashoffset={-s.offset}
+    <div ref={wrapperRef} style={{ position: "relative", display: "inline-block" }}>
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        style={{ transform: "rotate(-90deg)" }}
+      >
+        {slices.map((s, i) => (
+          <circle
+            key={i}
+            cx={cx}
+            cy={cy}
+            r={r}
+            fill="none"
+            stroke={s.color}
+            strokeWidth={thickness}
+            strokeDasharray={`${s.dash} ${s.gap}`}
+            strokeDashoffset={-s.offset}
+            onMouseMove={handleMove(s)}
+            onMouseLeave={() => setHovered(null)}
+            style={{
+              cursor: "pointer",
+              transition:
+                "stroke-dasharray 0.6s ease, stroke-dashoffset 0.6s ease",
+            }}
+          />
+        ))}
+      </svg>
+
+      {hovered && (
+        <div
           style={{
-            transition:
-              "stroke-dasharray 0.6s ease, stroke-dashoffset 0.6s ease",
+            position: "absolute",
+            left: hovered.x + 12,
+            top: hovered.y + 12,
+            background: "#1f2937",
+            color: "#fff",
+            borderRadius: 6,
+            padding: "8px 12px",
+            fontSize: 13,
+            pointerEvents: "none",
+            zIndex: 10,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+            whiteSpace: "nowrap",
           }}
-        />
-      ))}
-    </svg>
+        >
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>{hovered.label}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: hovered.color, display: "inline-block" }} />
+            <span>{hovered.display}</span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

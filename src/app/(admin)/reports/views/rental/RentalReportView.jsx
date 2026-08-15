@@ -3,12 +3,15 @@ import { Alert, Button, Card, CardBody, CardHeader, Col, Row, Spinner } from 're
 import { Link } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import Nouislider from 'nouislider-react';
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { useRentalReportController } from '../../controllers/useRentalReportController';
 
+const RENT_MIN = 0;
+const RENT_MAX = 10000;
+
 const RentalReportView = () => {
   const {
-    breadcrumb,
     filterSummary,
     filters,
     searchInput,
@@ -184,6 +187,19 @@ const RentalReportView = () => {
           .rental-report-page .report-table td:nth-child(1) {
             width: 7%;
           }
+
+          .rental-report-page .noUi-connect {
+            background: #293052;
+          }
+
+          .rental-report-page .noUi-handle {
+            background: #293052;
+            border-color: #293052;
+          }
+
+          .rental-report-page .noUi-target {
+            margin: 10px 4px 24px;
+          }
         `}
       </style>
 
@@ -191,9 +207,6 @@ const RentalReportView = () => {
         <h4 className="mb-1 fw-semibold" style={{ color: '#536b86', fontSize: 18 }}>
           {title}
         </h4>
-        <p className="mb-0" style={{ color: '#536b86', fontSize: 14 }}>
-          {breadcrumb}
-        </p>
       </div>
 
       {summaryError && (
@@ -279,7 +292,16 @@ const RentalReportView = () => {
 
               <div className="filter-section">
                 <h5 className="filter-label">Custom Price Range :</h5>
-                <div className="d-flex align-items-center gap-2">
+                <Nouislider
+                  range={{ min: RENT_MIN, max: RENT_MAX }}
+                  start={[Number(minRentInput) || RENT_MIN, Number(maxRentInput) || RENT_MAX]}
+                  connect
+                  onSlide={([min, max]) => {
+                    setMinRentInput(String(Math.round(min)));
+                    setMaxRentInput(String(Math.round(max)));
+                  }}
+                />
+                <div className="d-flex align-items-center gap-2 mt-3">
                   <input
                     type="number"
                     min="0"
@@ -351,7 +373,7 @@ const RentalReportView = () => {
           <Card className="report-card">
             <CardHeader className="bg-white border-0" style={{ padding: '18px 20px 14px' }}>
               <h5 className="mb-0" style={{ color: '#536b86', fontSize: 16, fontWeight: 700 }}>
-                Property Reports
+                Rental Reports
               </h5>
             </CardHeader>
             <CardBody className="p-0">
