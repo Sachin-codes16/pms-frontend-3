@@ -654,13 +654,39 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
         toast.success(`${flowTitle} created successfully`);
         navigate(isCheckOut ? "/check-out-list" : "/check-in-list");
       }
+    // } catch (err) {
+    //   setSubmitting(false);
+    //   console.error(`${flowTitle} submit failed`, err);
+    //   const res = err?.response?.data;
+    //   const message = res ? JSON.stringify(res) : err?.message || "Something went wrong";
+    //   toast.error(message);
+    // }
     } catch (err) {
-      setSubmitting(false);
-      console.error(`${flowTitle} submit failed`, err);
-      const res = err?.response?.data;
-      const message = res ? JSON.stringify(res) : err?.message || "Something went wrong";
-      toast.error(message);
+  setSubmitting(false);
+  console.error(`${flowTitle} submit failed`, err);
+
+  const res = err?.response?.data;
+
+  let message = "Something went wrong. Please try again.";
+
+  if (res?.error && typeof res.error === "object") {
+    const firstError = Object.values(res.error)
+      .flat(Infinity)
+      .find((value) => typeof value === "string");
+
+    if (firstError) {
+      message = firstError;
     }
+  } else if (res?.message) {
+    message = res.message;
+  } else if (typeof res === "string") {
+    message = res;
+  } else if (err?.message) {
+    message = err.message;
+  }
+
+  toast.error(message);
+}
   };
 
   return (
