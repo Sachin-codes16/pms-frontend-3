@@ -49,7 +49,8 @@ export const useOccupancyReportController = () => {
     setSummaryError('');
 
     checkInApi
-      .get(SUMMARY_ENDPOINT)
+      // cache-bust so freshly created/updated check-ins are reflected immediately
+      .get(SUMMARY_ENDPOINT, { params: { _: Date.now() }, headers: { 'Cache-Control': 'no-cache' } })
       .then((res) => {
         if (cancelled) return;
         setSummary(res.data?.data ?? null);
@@ -110,7 +111,7 @@ export const useOccupancyReportController = () => {
     setRowsLoading(true);
     setRowsError('');
 
-    const params = { page_num: presentPage, limit: PAGE_SIZE };
+    const params = { page_num: presentPage, limit: PAGE_SIZE, _: Date.now() };
     if (search) params.search = search;
     if (selectedTypes.length) params.property_types = selectedTypes.join(',');
     if (selectedStatuses.length) params.statuses = selectedStatuses.join(',');
@@ -118,7 +119,7 @@ export const useOccupancyReportController = () => {
     if (toDate) params.to_date = toApiDateParam(toDate);
 
     checkInApi
-      .get(LIST_ENDPOINT, { params })
+      .get(LIST_ENDPOINT, { params, headers: { 'Cache-Control': 'no-cache' } })
       .then((res) => {
         if (cancelled) return;
         const data = res.data?.data ?? {};

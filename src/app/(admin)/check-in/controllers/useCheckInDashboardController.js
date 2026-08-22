@@ -113,10 +113,13 @@ export const useCheckInDashboardController = () => {
 
     const loadDashboard = async () => {
       try {
+        // cache-bust (_) + no-cache header so a freshly created/updated check-in is
+        // never served from a stale browser/proxy cache of these same URLs
+        const noCacheHeaders = { 'Cache-Control': 'no-cache' };
         const [summaryRes, upcomingRes, checkInsRes] = await Promise.all([
-          checkInApi.get(SUMMARY_ENDPOINT),
-          checkInApi.get(UPCOMING_ENDPOINT, { params: { page_num: 1, limit: 10 } }),
-          checkInApi.get(CHECK_INS_ENDPOINT, { params: { page_num: 1, limit: 10 } }),
+          checkInApi.get(SUMMARY_ENDPOINT, { params: { _: Date.now() }, headers: noCacheHeaders }),
+          checkInApi.get(UPCOMING_ENDPOINT, { params: { page_num: 1, limit: 10, _: Date.now() }, headers: noCacheHeaders }),
+          checkInApi.get(CHECK_INS_ENDPOINT, { params: { page_num: 1, limit: 10, _: Date.now() }, headers: noCacheHeaders }),
         ]);
 
         if (cancelled) return;
@@ -141,7 +144,8 @@ export const useCheckInDashboardController = () => {
         );
         if (latestCheckIn && !cancelled) {
           const detailRes = await checkInApi.get(CHECK_IN_DETAIL_ENDPOINT, {
-            params: { check_in_id: latestCheckIn.checkInId },
+            params: { check_in_id: latestCheckIn.checkInId, _: Date.now() },
+            headers: noCacheHeaders,
           });
           if (!cancelled) setWorkflowSteps(mapWorkflowSteps(detailRes.data?.data ?? {}));
         } else if (!cancelled) {

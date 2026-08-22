@@ -92,7 +92,8 @@ export const useRentalReportController = () => {
     setSummaryError('');
 
     checkInApi
-      .get(SUMMARY_ENDPOINT, { params: buildFilterParams() })
+      // cache-bust so freshly created/updated properties are reflected immediately
+      .get(SUMMARY_ENDPOINT, { params: { ...buildFilterParams(), _: Date.now() }, headers: { 'Cache-Control': 'no-cache' } })
       .then((res) => {
         if (cancelled) return;
         setSummary(res.data?.data ?? null);
@@ -124,10 +125,10 @@ export const useRentalReportController = () => {
     setRowsLoading(true);
     setRowsError('');
 
-    const params = { page_num: presentPage, limit: PAGE_SIZE, ...buildFilterParams() };
+    const params = { page_num: presentPage, limit: PAGE_SIZE, ...buildFilterParams(), _: Date.now() };
 
     checkInApi
-      .get(LIST_ENDPOINT, { params })
+      .get(LIST_ENDPOINT, { params, headers: { 'Cache-Control': 'no-cache' } })
       .then((res) => {
         if (cancelled) return;
         const data = res.data?.data ?? {};

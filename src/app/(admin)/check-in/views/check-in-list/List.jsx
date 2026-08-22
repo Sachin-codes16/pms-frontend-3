@@ -170,11 +170,14 @@ const List = forwardRef(({
     const params = {
       page_num: presentPage,
       limit: PAGE_SIZE,
+      // cache-bust so a freshly created/updated check-in is never served from a stale
+      // browser/proxy cache of this same URL+params combination
+      _: Date.now(),
       ...buildFilterParams({ building, status, assignedEmployee, assignmentStatus, keyStatus, search, fromDate, toDate }),
     };
 
     checkInApi
-      .get(API_ENDPOINT, { params })
+      .get(API_ENDPOINT, { params, headers: { 'Cache-Control': 'no-cache' } })
       .then((res) => {
         if (cancelled) return;
         const data = getListData(res.data);

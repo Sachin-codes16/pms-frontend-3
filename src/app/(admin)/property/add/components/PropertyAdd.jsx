@@ -2,7 +2,8 @@ import ChoicesFormInput from '@/components/from/ChoicesFormInput';
 import TextFormInput from '@/components/from/TextFormInput';
 import TextAreaFormInput from '@/components/from/TextAreaFormInput';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { Card, CardBody, Col, Row, Form, Button } from 'react-bootstrap';
+import { Card, CardBody, Col, Row, Form, Button, Modal } from 'react-bootstrap';
+import IconifyIcon from '@/components/wrappers/IconifyIcon';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { useEffect, useState } from 'react';
@@ -125,6 +126,7 @@ const PropertyTypeSelect = ({ value, options, onChange }) => (
 );
 
 const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] }) => {
+  const [successModal, setSuccessModal] = useState({ show: false, message: '' });
   const [propertyType , setPropertyType] = useState('flat')
   const [selectedCountry, setSelectedCountry] = useState({ code: 'OM', name: 'Oman' });
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
@@ -408,18 +410,16 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
           email: selectedLandlord.email || '',
         };
       }
-
+// changes updated succesfully
       const sanitized = sanitizePayload(payload);
 
       if (mode==='update' && initialData?.propertyId) {
         const updatePayload = { property_id: initialData.propertyId, ...sanitized };
         await api.put('/property/update/', updatePayload);
-        alert('Property updated successfully.');
-        navigate('/landlord/property-grid');
+        setSuccessModal({ show: true, message: 'Property updated successfully.' });
       } else {
         await api.post('/property/create/', sanitized);
-        alert('Property added successfully.');
-        navigate('/landlord/property-grid');
+        setSuccessModal({ show: true, message: 'Property added successfully.' });
       }
 
     } catch (e) {
@@ -432,7 +432,13 @@ const PropertyAdd = ({ initialData = null, mode = 'create', uploadedPhotos = [] 
   });
 
 
+  const handleSuccessModalClose = () => {
+    setSuccessModal({ show: false, message: '' });
+    navigate('/landlord/property-grid');
+  };
+
   return (
+    <>
     <form className="property-add-form" onSubmit={onSubmit}>
 
       <Card className="mb-4 property-add-card">
@@ -1361,6 +1367,28 @@ style ={{ backgroundColor: '#F9F9FC' }}
       </div>
 
     </form>
+
+    <Modal show={successModal.show} onHide={handleSuccessModalClose} centered>
+      <Modal.Body className="text-center p-4">
+        <div
+          className="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle"
+          style={{ width: 64, height: 64, backgroundColor: '#E6F4EA' }}
+        >
+          <IconifyIcon icon="ri:checkbox-circle-fill" style={{ color: '#28A745', fontSize: 36 }} />
+        </div>
+        <h5 className="fw-semibold mb-2">Success</h5>
+        <p className="text-muted mb-4">{successModal.message}</p>
+        <Button
+          variant="primary"
+          className="px-4"
+          style={{ backgroundColor: '#5D7186', borderColor: '#5D7186' }}
+          onClick={handleSuccessModalClose}
+        >
+          OK
+        </Button>
+      </Modal.Body>
+    </Modal>
+    </>
   );
 };
 

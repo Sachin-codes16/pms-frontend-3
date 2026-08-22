@@ -146,14 +146,17 @@ export const useCheckOutDashboardController = () => {
 
     const loadDashboard = async () => {
       try {
+        // cache-bust (_) + no-cache header so a freshly created/updated check-out is
+        // never served from a stale browser/proxy cache of these same URLs
+        const noCacheHeaders = { 'Cache-Control': 'no-cache' };
         const [summaryRes, upcomingRes, widgetsRes, pendingRes] = await Promise.all([
-          checkInApi.get(SUMMARY_ENDPOINT),
-          checkInApi.get(UPCOMING_ENDPOINT, { params: { page_num: 1, limit: 10 } }),
-          checkInApi.get(WIDGETS_ENDPOINT),
+          checkInApi.get(SUMMARY_ENDPOINT, { params: { _: Date.now() }, headers: noCacheHeaders }),
+          checkInApi.get(UPCOMING_ENDPOINT, { params: { page_num: 1, limit: 10, _: Date.now() }, headers: noCacheHeaders }),
+          checkInApi.get(WIDGETS_ENDPOINT, { params: { _: Date.now() }, headers: noCacheHeaders }),
           // filter_key only supports "is_active" server-side (confirmed against the API
           // schema) — "check_out_status" is silently ignored, so status filtering for the
           // "Pending Check-Outs" widget is done client-side below instead.
-          checkInApi.get(CHECK_OUTS_ENDPOINT, { params: { page_num: 1, limit: 50 } }),
+          checkInApi.get(CHECK_OUTS_ENDPOINT, { params: { page_num: 1, limit: 50, _: Date.now() }, headers: noCacheHeaders }),
         ]);
 
         if (cancelled) return;

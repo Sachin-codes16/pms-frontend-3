@@ -667,16 +667,30 @@ const CheckInInformationForm = ({ mode = "check-in" }) => {
 
   const res = err?.response?.data;
 
+  const findFirstString = (value) => {
+    if (typeof value === "string") return value;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = findFirstString(item);
+        if (found) return found;
+      }
+      return undefined;
+    }
+    if (value && typeof value === "object") {
+      for (const v of Object.values(value)) {
+        const found = findFirstString(v);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+
   let message = "Something went wrong. Please try again.";
 
-  if (res?.error && typeof res.error === "object") {
-    const firstError = Object.values(res.error)
-      .flat(Infinity)
-      .find((value) => typeof value === "string");
-
-    if (firstError) {
-      message = firstError;
-    }
+  if (res?.error) {
+    const firstError = findFirstString(res.error);
+    if (firstError) message = firstError;
+    else if (res?.message) message = res.message;
   } else if (res?.message) {
     message = res.message;
   } else if (typeof res === "string") {

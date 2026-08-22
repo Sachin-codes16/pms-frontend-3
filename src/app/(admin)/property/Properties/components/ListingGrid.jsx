@@ -163,7 +163,14 @@ const PropertiesCard = ({
       <CardFooter className="bg-light-subtle d-flex justify-content-between align-items-center border-top">
         <p className="fw-medium text-dark fs-16 mb-0">{price === '—' ? '—' : `OMR ${price}.00`}</p>
         <div>
-          <Link to="" className="link-primary fw-medium">
+          <Link
+            to=""
+            className="link-primary fw-medium"
+            onClick={(e) => {
+              e.preventDefault();
+              openDetails();
+            }}
+          >
             More Inquiry{" "}
             <IconifyIcon icon="ri:arrow-right-line" className="align-middle" />
           </Link>
